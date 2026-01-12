@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  APP_NAME: BingoVoiceGenerator
+  RELEASES_REPO: wombat-apps/bingo-voice-generator-releases
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Update version.env
+          echo "MARKETING_VERSION=$VERSION" > version.env
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> version.env
+
+          cat version.env
+
+      - name: Import Code Signing Certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo "$CERTIFICATE_P12" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k $KEYCHAIN_PATH
+
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Allow codesign to access keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+      - name: Build project
+        run: swift build -c release
+
+      - name: Import Sparkle Signing Key
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Import private key into Keychain for generate_appcast
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo "$SPARKLE_PRIVATE_KEY" | base64 --decode > $RUNNER_TEMP/sparkle_private_key
+
+          # Import the EdDSA key using Sparkle's tool
+          .build/artifacts/sparkle/Sparkle/bin/generate_keys -p $RUNNER_TEMP/sparkle_private_key
+
+          rm -f $RUNNER_TEMP/sparkle_private_key
+
+      - name: Build and Sign App
+        env:
+          APP_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
+          SPARKLE_FEED_URL: https://github.com/wombat-apps/bingo-voice-generator-releases/releases/latest/download/appcast.xml
+          ENABLE_SPARKLE: "1"
+          ARCHES: "arm64 x86_64"
+        run: |
+          ./Scripts/package_app.sh release
+
+          # Verify signature
+          codesign --verify --deep --strict ${APP_NAME}.app
+          echo "Code signature verified"
+
+      - name: Create Release Archive
+        id: archive
+        run: |
+          mkdir -p releases
+          ZIP_NAME="${APP_NAME}-${{ steps.version.outputs.version }}.zip"
+          ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "zip_path=releases/$ZIP_NAME" >> $GITHUB_OUTPUT
+
+      - name: Notarize App
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "${{ steps.archive.outputs.zip_path }}" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          echo "Notarization complete"
+
+      - name: Generate Appcast
+        env:
+          DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator-releases/releases/download/v${{ steps.version.outputs.version }}
+        run: |
+          .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
+            --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
+            releases/
+
+          echo "Appcast generated:"
+          cat releases/appcast.xml
+
+      - name: Create Release in Releases Repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP_PATH="${{ steps.archive.outputs.zip_path }}"
+
+          # Create release in the public releases repo
+          gh release create "v${VERSION}" \
+            --repo "${{ env.RELEASES_REPO }}" \
+            --title "v${VERSION}" \
+            --notes "Release v${VERSION}" \
+            "$ZIP_PATH" \
+            releases/appcast.xml
+
+          echo "Release created at https://github.com/${{ env.RELEASES_REPO }}/releases/tag/v${VERSION}"
