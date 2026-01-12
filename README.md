@@ -6,18 +6,30 @@ Native macOS app to generate audio files for bingo numbers using the ElevenLabs 
 
 - **Bingo 90** (numbers 1-90) - European format
 - **Bingo 75** (numbers 1-75 with B-I-N-G-O letters) - American format
-- Individual generation or regeneration of audio files
-- Playback of generated audio
+- **Two-part audio**: Word part ("forty-two") + digit part ("four-two") for numbers 10+
+- **Now Playing bar** with waveform visualization and seek control
+- **Automatic silence trimming** using bundled ffmpeg
+- **Import/Export voices** as ZIP files for backup or sharing
+- **Voice favorites** with star system
+- **Custom voice naming** for ElevenLabs voices
+- **Batch generation** with progress tracking and cancellation
+- Individual generation or regeneration of audio parts
+- Playback with previous/next navigation
 - Secure API key storage in Keychain
 - Automatic updates via Sparkle
 
-## Languages and Voices
+## Supported Languages
 
-| Language | Voices |
-|----------|--------|
-| Spanish (es-ES) | Lucia, Manuel |
-| English (en-US) | Aria |
-| French (fr-FR) | Marie |
+| Language | Code |
+|----------|------|
+| Spanish | es-ES |
+| English (US) | en-US |
+| English (UK) | en-GB |
+| French | fr-FR |
+| Portuguese | pt-BR |
+| Italian | it-IT |
+
+Voices are added directly from your ElevenLabs account. Any voice available in your ElevenLabs library can be used with any supported language.
 
 ## Requirements
 
@@ -26,6 +38,19 @@ Native macOS app to generate audio files for bingo numbers using the ElevenLabs 
 - [ElevenLabs](https://elevenlabs.io) account with API key
 
 ## Installation
+
+### Download (Recommended)
+
+1. Download the latest version from [GitHub Releases](https://github.com/wombat-apps/bingo-voice-generator/releases/latest)
+2. Unzip `BingoVoiceGenerator-x.x.x.zip`
+3. Move `Bingo Voice Generator.app` to your Applications folder
+4. On first launch, right-click and select "Open" to bypass Gatekeeper
+
+The app includes automatic updates via Sparkle.
+
+### Build from Source
+
+Requires Xcode with Swift 6.2+.
 
 ```bash
 git clone git@github.com:wombat-apps/bingo-voice-generator.git
@@ -55,53 +80,45 @@ swift build && ./.build/arm64-apple-macosx/debug/BingoVoiceGenerator
 ### Configure API Key
 
 1. Open the application
-2. Go to Settings (Cmd+,)
-3. Enter your ElevenLabs API key
+2. Enter your ElevenLabs API key in the sidebar panel
+3. Click "Test Connection" to verify
 
-## Generated Files Structure
+## Audio Files
 
 Audio files are saved at:
 
 ```
 ~/Library/Application Support/BingoVoiceGenerator/
-├── es-ES/
-│   ├── lucia/
-│   │   ├── bingo90/
-│   │   │   ├── 1.mp3
-│   │   │   └── ...
-│   │   └── bingo75/
-│   │       ├── 1.mp3
-│   │       └── ...
-│   └── manuel/
-│       └── ...
-├── en-US/
-│   └── aria/
-│       └── ...
-└── fr-FR/
-    └── marie/
+└── {language}/
+    └── {voice-uuid}/
+        ├── 1_word.mp3        # Bingo 90
+        ├── 45_word.mp3
+        ├── 45_digit.mp3
+        ├── b1_word.mp3       # Bingo 75 (with letter prefix)
+        ├── b15_word.mp3
+        ├── b15_digit.mp3
         └── ...
 ```
 
-## Voice Configuration (ElevenLabs)
+File naming: `{number}_word.mp3` and `{number}_digit.mp3`. Bingo 75 files include the letter prefix (b, i, n, g, o).
 
-```swift
-voiceSettings = [
-    "stability": 0.0,           // 0.0=Creative, 0.5=Natural, 1.0=Robust
-    "similarity_boost": 0.85,
-    "style": 0.75,
-    "use_speaker_boost": true
-]
-```
+## Voice Settings
 
-## Adding New Languages/Voices
+Voice parameters are configurable in the Settings sidebar:
 
-1. Add a case to the `Language` enum in `Sources/BingoVoiceGenerator/Models/Language.swift`
-2. Add language configuration in `Sources/BingoVoiceGenerator/Config/NumberWords.swift`
-3. Add ElevenLabs voice ID in `Sources/BingoVoiceGenerator/Models/Voice.swift`
+- **Stability** (0.0-1.0): Lower = more expressive, higher = more consistent
+- **Similarity Boost** (0.0-1.0): How closely to match the original voice
+- **Style** (0.0-1.0): Style exaggeration intensity
+- **Speaker Boost**: Enhances voice clarity
+- **Speed**: Playback speed adjustment
 
 ## Tech Stack
 
 - **Framework**: SwiftUI
-- **Language**: Swift 6 (strict concurrency)
+- **Language**: Swift 6.2 (strict concurrency)
 - **Platform**: macOS 14+
 - **Dependencies**: Sparkle 2.8.0 (automatic updates)
+
+## License
+
+MIT License
