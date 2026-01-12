@@ -2,14 +2,20 @@ import Foundation
 
 struct LanguageConfig: Sendable {
     let numbers: [Int: String]
+    let letters: [String: String]
     let patterns: SpeechPatterns
 }
 
 struct SpeechPatterns: Sendable {
-    let singleDigit90: String
-    let twoDigit90: String
-    let singleDigit75: String
-    let twoDigit75: String
+    // Word patterns (number spoken as words)
+    let wordSingleDigit90: String
+    let wordTwoDigit90: String
+    let wordSingleDigit75: String
+    let wordTwoDigit75: String
+
+    // Digit patterns (digits spoken separately)
+    let digitTwoDigit90: String
+    let digitTwoDigit75: String
 }
 
 enum NumberWords {
@@ -56,11 +62,14 @@ enum NumberWords {
             85: "ochenta y cinco", 86: "ochenta y seis", 87: "ochenta y siete",
             88: "ochenta y ocho", 89: "ochenta y nueve", 90: "noventa",
         ],
+        letters: ["B": "be", "I": "i", "N": "ene", "G": "ge", "O": "o"],
         patterns: SpeechPatterns(
-            singleDigit90: "[excited] ¡{num_word}!",
-            twoDigit90: "[excited] ¡{num_word}! ¡{d1}-{d2}!",
-            singleDigit75: "[excited] ¡{letter} {num_word}!",
-            twoDigit75: "[excited] ¡{letter} {num_word}! ¡{d1}-{d2}!"
+            wordSingleDigit90: "[excited] ¡{num_word}!",
+            wordTwoDigit90: "[excited] ¡{num_word}!",
+            wordSingleDigit75: "[excited] ¡{letter} ... {num_word}!",
+            wordTwoDigit75: "[excited] ¡{letter} ... {num_word}!",
+            digitTwoDigit90: "[excited] {d1}-{d2}",
+            digitTwoDigit75: "[excited] {d1}-{d2}"
         )
     )
 
@@ -96,11 +105,14 @@ enum NumberWords {
             85: "eighty-five", 86: "eighty-six", 87: "eighty-seven",
             88: "eighty-eight", 89: "eighty-nine", 90: "ninety",
         ],
+        letters: ["B": "bee", "I": "eye", "N": "en", "G": "gee", "O": "oh"],
         patterns: SpeechPatterns(
-            singleDigit90: "[excited] {num_word}!",
-            twoDigit90: "[excited] {num_word}! {d1}-{d2}",
-            singleDigit75: "[excited] {letter} {num_word}!",
-            twoDigit75: "[excited] {letter} {num_word}! {letter} {d1}-{d2}"
+            wordSingleDigit90: "[excited] {num_word}!",
+            wordTwoDigit90: "[excited] {num_word}!",
+            wordSingleDigit75: "[excited] {letter} {num_word}!",
+            wordTwoDigit75: "[excited] {letter} {num_word}!",
+            digitTwoDigit90: "[excited] {d1}-{d2}",
+            digitTwoDigit75: "[excited] {d1}-{d2}"
         )
     )
 
@@ -136,11 +148,14 @@ enum NumberWords {
             85: "quatre-vingt-cinq", 86: "quatre-vingt-six", 87: "quatre-vingt-sept",
             88: "quatre-vingt-huit", 89: "quatre-vingt-neuf", 90: "quatre-vingt-dix",
         ],
+        letters: ["B": "bé", "I": "i", "N": "ène", "G": "gé", "O": "o"],
         patterns: SpeechPatterns(
-            singleDigit90: "[excited] {num_word}!",
-            twoDigit90: "[excited] {num_word}! {d1}-{d2}",
-            singleDigit75: "[excited] {letter} {num_word}!",
-            twoDigit75: "[excited] {letter} {num_word}! {letter} {d1}-{d2}"
+            wordSingleDigit90: "[excited] {num_word}!",
+            wordTwoDigit90: "[excited] {num_word}!",
+            wordSingleDigit75: "[excited] {letter} {num_word}!",
+            wordTwoDigit75: "[excited] {letter} {num_word}!",
+            digitTwoDigit90: "[excited] {d1}-{d2}",
+            digitTwoDigit75: "[excited] {d1}-{d2}"
         )
     )
 
@@ -176,11 +191,14 @@ enum NumberWords {
             85: "oitenta e cinco", 86: "oitenta e seis", 87: "oitenta e sete",
             88: "oitenta e oito", 89: "oitenta e nove", 90: "noventa",
         ],
+        letters: ["B": "bê", "I": "i", "N": "ene", "G": "gê", "O": "ó"],
         patterns: SpeechPatterns(
-            singleDigit90: "[excited] {num_word}!",
-            twoDigit90: "[excited] {num_word}! {d1}-{d2}",
-            singleDigit75: "[excited] {letter} {num_word}!",
-            twoDigit75: "[excited] {letter} {num_word}! {letter} {d1}-{d2}"
+            wordSingleDigit90: "[excited] {num_word}!",
+            wordTwoDigit90: "[excited] {num_word}!",
+            wordSingleDigit75: "[excited] {letter} {num_word}!",
+            wordTwoDigit75: "[excited] {letter} {num_word}!",
+            digitTwoDigit90: "[excited] {d1}-{d2}",
+            digitTwoDigit75: "[excited] {d1}-{d2}"
         )
     )
 
@@ -216,11 +234,14 @@ enum NumberWords {
             85: "ottantacinque", 86: "ottantasei", 87: "ottantasette",
             88: "ottantotto", 89: "ottantanove", 90: "novanta",
         ],
+        letters: ["B": "bi", "I": "i", "N": "enne", "G": "gi", "O": "o"],
         patterns: SpeechPatterns(
-            singleDigit90: "[excited] {num_word}!",
-            twoDigit90: "[excited] {num_word}! {d1}-{d2}",
-            singleDigit75: "[excited] {letter} {num_word}!",
-            twoDigit75: "[excited] {letter} {num_word}! {letter} {d1}-{d2}"
+            wordSingleDigit90: "[excited] {num_word}!",
+            wordTwoDigit90: "[excited] {num_word}!",
+            wordSingleDigit75: "[excited] {letter} {num_word}!",
+            wordTwoDigit75: "[excited] {letter} {num_word}!",
+            digitTwoDigit90: "[excited] {d1}-{d2}",
+            digitTwoDigit75: "[excited] {d1}-{d2}"
         )
     )
 }

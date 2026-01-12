@@ -16,6 +16,9 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources/BingoVoiceGenerator",
+            resources: [
+                .copy("Resources/ffmpeg"),
+            ],
             swiftSettings: [
                 .swiftLanguageMode(.v6),
             ]

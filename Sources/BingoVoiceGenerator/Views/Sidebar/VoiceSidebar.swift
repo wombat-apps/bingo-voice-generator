@@ -10,6 +10,8 @@ struct VoiceSidebar: View {
     @State private var isImporting = false
     @State private var showImportError = false
     @State private var importErrorMessage = ""
+    @State private var voiceAudioCounts: [UUID: Int] = [:]
+    @State private var playingVoiceId: UUID?
 
     var body: some View {
         List(selection: Binding(
@@ -26,11 +28,24 @@ struct VoiceSidebar: View {
                             VoiceRow(
                                 voice: voice,
                                 isFavorite: voiceStore.isFavorite(voice),
-                                onToggleFavorite: { voiceStore.toggleFavorite(voice) }
+                                hasAudio: (voiceAudioCounts[voice.uuid] ?? 0) > 0,
+                                isPlaying: playingVoiceId == voice.uuid && appState.playerService.isPlaying,
+                                onToggleFavorite: { voiceStore.toggleFavorite(voice) },
+                                onPlay: { playRandomAudio(for: voice) }
                             )
                             .tag(voice.uuid)
                             .contextMenu {
                                 Button("Edit") { voiceToEdit = voice }
+                                Button("Show in Finder") {
+                                    Task {
+                                        let url = await AudioStorageService.shared.voiceDirectory(
+                                            language: voice.language,
+                                            voice: voice
+                                        )
+                                        NSWorkspace.shared.open(url)
+                                    }
+                                }
+                                Divider()
                                 Button("Delete", role: .destructive) {
                                     deleteVoice(voice)
                                 }
@@ -61,6 +76,23 @@ struct VoiceSidebar: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(importErrorMessage)
+        }
+        .task {
+            await loadVoiceAudioCounts()
+        }
+        .onChange(of: appState.selectedMode) {
+            Task { await loadVoiceAudioCounts() }
+        }
+        .onChange(of: voiceStore.voices) {
+            Task { await loadVoiceAudioCounts() }
+        }
+        .onChange(of: appState.audioFiles.count) {
+            Task { await loadVoiceAudioCounts() }
+        }
+        .onChange(of: appState.playerService.isPlaying) { _, isPlaying in
+            if !isPlaying {
+                playingVoiceId = nil
+            }
         }
     }
 
@@ -115,6 +147,42 @@ struct VoiceSidebar: View {
             }
         }
     }
+
+    private func loadVoiceAudioCounts() async {
+        var counts: [UUID: Int] = [:]
+        for voice in voiceStore.voices {
+            let audioFiles = await AudioStorageService.shared.loadAudioFiles(
+                language: voice.language,
+                voice: voice,
+                mode: appState.selectedMode
+            )
+            counts[voice.uuid] = audioFiles.count
+        }
+        voiceAudioCounts = counts
+    }
+
+    private func playRandomAudio(for voice: Voice) {
+        // If this voice is already playing, stop it
+        if playingVoiceId == voice.uuid && appState.playerService.isPlaying {
+            appState.playerService.stop()
+            playingVoiceId = nil
+            return
+        }
+
+        Task {
+            let audioFiles = await AudioStorageService.shared.loadAudioFiles(
+                language: voice.language,
+                voice: voice,
+                mode: appState.selectedMode
+            )
+
+            if let randomPair = audioFiles.values.randomElement(),
+               let audioFile = randomPair.wordAudio ?? randomPair.digitAudio {
+                playingVoiceId = voice.uuid
+                appState.playerService.play(audioFile)
+            }
+        }
+    }
 }
 
 // MARK: - Supporting Views
@@ -133,7 +201,10 @@ private struct LanguageSectionHeader: View {
 private struct VoiceRow: View {
     let voice: Voice
     let isFavorite: Bool
+    let hasAudio: Bool
+    let isPlaying: Bool
     let onToggleFavorite: () -> Void
+    let onPlay: () -> Void
 
     var body: some View {
         HStack {
@@ -146,12 +217,37 @@ private struct VoiceRow: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-                Text(voice.elevenLabsId)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(voice.gender == "male" ? "Male" : "Female")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background((voice.gender == "male" ? Color.blue : Color.pink).opacity(0.15))
+                        .foregroundStyle(voice.gender == "male" ? .blue : .pink)
+                        .clipShape(Capsule())
+                    Text(voice.elevenLabsId)
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.15))
+                        .foregroundStyle(.secondary)
+                        .clipShape(Capsule())
+                        .lineLimit(1)
+                }
             }
             Spacer()
+            Button {
+                onPlay()
+            } label: {
+                Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                    .foregroundStyle(hasAudio ? Color.accentColor : Color.secondary.opacity(0.3))
+                    .font(.body)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!hasAudio)
+            .help(hasAudio ? (isPlaying ? "Stop" : "Play sample") : "No audio generated")
             Button {
                 onToggleFavorite()
             } label: {

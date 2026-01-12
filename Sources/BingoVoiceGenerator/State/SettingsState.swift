@@ -21,6 +21,10 @@ final class SettingsState {
         didSet { saveSettings() }
     }
 
+    var speed: Double = VoiceSettings.default.speed {
+        didSet { saveSettings() }
+    }
+
     // MARK: - Model & Format
 
     var selectedModel: ElevenLabsModel = .elevenV3 {
@@ -46,7 +50,8 @@ final class SettingsState {
             stability: stability,
             similarityBoost: similarityBoost,
             style: style,
-            useSpeakerBoost: useSpeakerBoost
+            useSpeakerBoost: useSpeakerBoost,
+            speed: speed
         )
     }
 
@@ -57,6 +62,7 @@ final class SettingsState {
         static let similarityBoost = "elevenLabs.similarityBoost"
         static let style = "elevenLabs.style"
         static let useSpeakerBoost = "elevenLabs.useSpeakerBoost"
+        static let speed = "elevenLabs.speed"
         static let model = "elevenLabs.model"
         static let outputFormat = "elevenLabs.outputFormat"
         static let sidebarVisible = "sidebar.visible"
@@ -85,6 +91,9 @@ final class SettingsState {
         if defaults.object(forKey: Keys.useSpeakerBoost) != nil {
             useSpeakerBoost = defaults.bool(forKey: Keys.useSpeakerBoost)
         }
+        if defaults.object(forKey: Keys.speed) != nil {
+            speed = defaults.double(forKey: Keys.speed)
+        }
 
         if let modelRaw = defaults.string(forKey: Keys.model),
            let model = ElevenLabsModel(rawValue: modelRaw)
@@ -109,6 +118,7 @@ final class SettingsState {
         defaults.set(similarityBoost, forKey: Keys.similarityBoost)
         defaults.set(style, forKey: Keys.style)
         defaults.set(useSpeakerBoost, forKey: Keys.useSpeakerBoost)
+        defaults.set(speed, forKey: Keys.speed)
         defaults.set(selectedModel.rawValue, forKey: Keys.model)
         defaults.set(outputFormat.rawValue, forKey: Keys.outputFormat)
     }
@@ -118,6 +128,7 @@ final class SettingsState {
         similarityBoost = VoiceSettings.default.similarityBoost
         style = VoiceSettings.default.style
         useSpeakerBoost = VoiceSettings.default.useSpeakerBoost
+        speed = VoiceSettings.default.speed
         selectedModel = .elevenV3
         outputFormat = .mp3_44100_128
     }

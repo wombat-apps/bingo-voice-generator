@@ -12,7 +12,22 @@ struct VoiceSettingsSection: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
 
-            StabilityPicker(value: $settings.stability)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Stability")
+                    .font(.subheadline)
+
+                Picker("Stability", selection: $settings.stability) {
+                    Text("Creative").tag(0.0)
+                    Text("Natural").tag(0.5)
+                    Text("Robust").tag(1.0)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                Text("Creative = expressive, Robust = consistent")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
 
             SettingsSlider(
                 title: "Similarity Boost",
@@ -23,8 +38,10 @@ struct VoiceSettingsSection: View {
             SettingsSlider(
                 title: "Style",
                 value: $settings.style,
-                description: "Style exaggeration (use sparingly)"
+                description: "Emotional exaggeration intensity"
             )
+
+            SpeedSlider(value: $settings.speed)
 
             Toggle("Speaker Boost", isOn: $settings.useSpeakerBoost)
                 .toggleStyle(.switch)
@@ -66,48 +83,27 @@ struct SettingsSlider: View {
     }
 }
 
-// MARK: - Stability Picker (v3 requires 0.0, 0.5, or 1.0)
+// MARK: - Speed Slider (0.7-1.2 range)
 
-struct StabilityPicker: View {
+struct SpeedSlider: View {
     @Binding var value: Double
-
-    private enum StabilityLevel: Double, CaseIterable {
-        case creative = 0.0
-        case natural = 0.5
-        case robust = 1.0
-
-        var label: String {
-            switch self {
-            case .creative: "Creative"
-            case .natural: "Natural"
-            case .robust: "Robust"
-            }
-        }
-    }
-
-    private var selectedLevel: StabilityLevel {
-        if value < 0.25 { return .creative }
-        if value < 0.75 { return .natural }
-        return .robust
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Stability")
-                .font(.subheadline)
-
-            Picker("Stability", selection: Binding(
-                get: { selectedLevel },
-                set: { value = $0.rawValue }
-            )) {
-                ForEach(StabilityLevel.allCases, id: \.self) { level in
-                    Text(level.label).tag(level)
-                }
+            HStack {
+                Text("Speed")
+                    .font(.subheadline)
+                Spacer()
+                Text(String(format: "%.2f", value))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            .pickerStyle(.segmented)
-            .controlSize(.small)
 
-            Text("Creative = expressive, Robust = consistent")
+            Slider(value: $value, in: 0.7 ... 1.2, step: 0.05)
+                .controlSize(.small)
+
+            Text("Speech rate (1.0 = normal)")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

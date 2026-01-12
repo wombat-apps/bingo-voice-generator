@@ -7,12 +7,14 @@ struct VoiceSettings: Codable, Sendable, Equatable {
     var similarityBoost: Double
     var style: Double
     var useSpeakerBoost: Bool
+    var speed: Double  // 0.7-1.2, affects speech rate
 
     static let `default` = VoiceSettings(
-        stability: 0.5,  // Natural (v3 accepts: 0.0=Creative, 0.5=Natural, 1.0=Robust)
+        stability: 0.5,  // Natural (valid values: 0.0=Creative, 0.5=Natural, 1.0=Robust)
         similarityBoost: 0.85,
-        style: 0.75,
-        useSpeakerBoost: true
+        style: 0.9,  // More dramatic emotional exaggeration
+        useSpeakerBoost: true,
+        speed: 1.0
     )
 
     var asDictionary: [String: Any] {

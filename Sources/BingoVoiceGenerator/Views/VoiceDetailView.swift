@@ -20,6 +20,12 @@ struct VoiceDetailView: View {
                     .padding()
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Divider()
+                NowPlayingBar()
+            }
+        }
         .frame(minWidth: 600, minHeight: 500)
     }
 }

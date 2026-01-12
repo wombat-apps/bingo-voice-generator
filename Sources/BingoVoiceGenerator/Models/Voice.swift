@@ -6,26 +6,29 @@ struct Voice: Identifiable, Hashable, Codable, Sendable {
     let elevenLabsName: String
     let customName: String
     let language: Language
+    let gender: String
 
     var id: UUID { uuid }
 
     /// Safe name for file system paths (sanitized customName)
     var fileSystemName: String { customName.sanitizedForFileSystem() }
 
-    init(elevenLabsId: String, elevenLabsName: String, customName: String? = nil, language: Language) {
+    init(elevenLabsId: String, elevenLabsName: String, customName: String? = nil, language: Language, gender: String = "male") {
         self.uuid = UUID()
         self.elevenLabsId = elevenLabsId
         self.elevenLabsName = elevenLabsName
         self.customName = customName ?? elevenLabsName
         self.language = language
+        self.gender = gender
     }
 
-    init(uuid: UUID, elevenLabsId: String, elevenLabsName: String, customName: String, language: Language) {
+    init(uuid: UUID, elevenLabsId: String, elevenLabsName: String, customName: String, language: Language, gender: String = "male") {
         self.uuid = uuid
         self.elevenLabsId = elevenLabsId
         self.elevenLabsName = elevenLabsName
         self.customName = customName
         self.language = language
+        self.gender = gender
     }
 
     // MARK: - Codable Migration
@@ -36,6 +39,7 @@ struct Voice: Identifiable, Hashable, Codable, Sendable {
         case elevenLabsName
         case customName
         case language
+        case gender
         // Legacy key
         case name
     }
@@ -62,6 +66,8 @@ struct Voice: Identifiable, Hashable, Codable, Sendable {
                 debugDescription: "Missing voice name"
             )
         }
+
+        gender = try container.decodeIfPresent(String.self, forKey: .gender) ?? "male"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -71,6 +77,7 @@ struct Voice: Identifiable, Hashable, Codable, Sendable {
         try container.encode(elevenLabsName, forKey: .elevenLabsName)
         try container.encode(customName, forKey: .customName)
         try container.encode(language, forKey: .language)
+        try container.encode(gender, forKey: .gender)
     }
 }
 

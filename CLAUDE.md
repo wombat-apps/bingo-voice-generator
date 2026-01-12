@@ -36,12 +36,17 @@ Note: This project has no test suite.
 - `GenerationState`: API key, generation progress, error handling
 - `SettingsState`: ElevenLabs model/format preferences
 - `VoiceStore`: Fetches and caches available voices from ElevenLabs API
+- `SharedVoicePickerState`: Voice picker UI state
 
 **Services**: Actor-based singletons for thread safety:
 - `ElevenLabsService`: TTS API client
 - `AudioStorageService`: File I/O at `~/Library/Application Support/BingoVoiceGenerator/{lang}/{voice}/{mode}/`
-- `KeychainService`: Secure API key storage
 - `AudioPlayerService`: AVAudioPlayer wrapper
+- `PreviewAudioService`: Preview audio generation and playback
+- `SilenceTrimmingService`: Trims silence from audio using bundled ffmpeg
+- `WaveformService`: Generates waveform data for audio visualization
+- `ExportService`: Exports audio files to various formats
+- `KeychainService`: Secure API key storage
 
 **Data Flow**:
 1. User configures ElevenLabs API key in the main screen control panel → saved to Keychain
@@ -53,6 +58,7 @@ Note: This project has no test suite.
 - `Sources/BingoVoiceGenerator/Config/NumberWords.swift` - TTS text patterns and digit words per language
 - `Sources/BingoVoiceGenerator/Models/Voice.swift` - ElevenLabs voice IDs
 - `Sources/BingoVoiceGenerator/Services/TextBuilder.swift` - Generates speech text from number
+- `Sources/BingoVoiceGenerator/Resources/ffmpeg` - Bundled ffmpeg binary for audio processing
 - `version.env` - Marketing version and build number
 
 ## Adding Languages/Voices

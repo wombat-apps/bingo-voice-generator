@@ -34,6 +34,48 @@ struct ElevenLabsErrorResponse: Codable, Sendable {
     let detail: ElevenLabsErrorDetail?
 }
 
+// MARK: - Shared Voices Models
+
+struct SharedVoice: Codable, Sendable, Identifiable, Hashable {
+    let voiceId: String
+    let name: String
+    let accent: String?
+    let gender: String?
+    let age: String?
+    let language: String?
+    let locale: String?
+    let description: String?
+    let previewUrl: String?
+    let category: String?
+    let useCase: String?
+
+    var id: String { voiceId }
+
+    enum CodingKeys: String, CodingKey {
+        case voiceId = "voice_id"
+        case name
+        case accent
+        case gender
+        case age
+        case language
+        case locale
+        case description
+        case previewUrl = "preview_url"
+        case category
+        case useCase = "use_case"
+    }
+}
+
+struct SharedVoicesResponse: Codable, Sendable {
+    let voices: [SharedVoice]
+    let hasMore: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case voices
+        case hasMore = "has_more"
+    }
+}
+
 struct SubscriptionInfo: Codable, Sendable {
     let tier: String
     let characterCount: Int
@@ -80,7 +122,8 @@ actor ElevenLabsService {
         apiKey: String,
         modelId: String = ElevenLabsModel.elevenV3.rawValue,
         outputFormat: String = OutputFormat.mp3_44100_128.rawValue,
-        voiceSettings: [String: Any]? = nil
+        voiceSettings: [String: Any]? = nil,
+        speed: Double = 1.0
     ) async throws -> Data {
         guard !apiKey.isEmpty else {
             throw ElevenLabsError.noAPIKey
@@ -102,6 +145,7 @@ actor ElevenLabsService {
             "model_id": modelId,
             "voice_settings": settings,
             "language_code": languageCode,
+            "speed": speed,
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -155,6 +199,56 @@ actor ElevenLabsService {
 
         let voicesResponse = try JSONDecoder().decode(VoicesResponse.self, from: data)
         return voicesResponse.voices
+    }
+
+    func searchSharedVoices(
+        language: Language,
+        apiKey: String,
+        gender: String? = nil,
+        search: String? = nil,
+        pageSize: Int = 20
+    ) async throws -> SharedVoicesResponse {
+        guard !apiKey.isEmpty else {
+            throw ElevenLabsError.noAPIKey
+        }
+
+        var components = URLComponents(string: "\(baseURL)/shared-voices")
+        var queryItems = [
+            URLQueryItem(name: "language", value: language.elevenLabsCode),
+            URLQueryItem(name: "accent", value: language.elevenLabsAccent),
+            URLQueryItem(name: "page_size", value: String(pageSize))
+        ]
+
+        if let gender, !gender.isEmpty {
+            queryItems.append(URLQueryItem(name: "gender", value: gender))
+        }
+
+        if let search, !search.isEmpty {
+            queryItems.append(URLQueryItem(name: "search", value: search))
+        }
+
+        components?.queryItems = queryItems
+
+        guard let url = components?.url else {
+            throw ElevenLabsError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ElevenLabsError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw ElevenLabsError.apiError(statusCode: httpResponse.statusCode, message: errorText)
+        }
+
+        return try JSONDecoder().decode(SharedVoicesResponse.self, from: data)
     }
 
     func deleteVoice(voiceId: String, apiKey: String) async throws {

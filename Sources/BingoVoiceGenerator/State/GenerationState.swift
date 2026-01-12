@@ -1,10 +1,16 @@
 import SwiftUI
 
+/// Identifies a specific generation task (number + part)
+struct GenerationTask: Hashable, Sendable {
+    let number: Int
+    let part: AudioPart
+}
+
 @Observable
 @MainActor
 final class GenerationState {
-    // Currently generating numbers
-    private(set) var generatingNumbers: Set<Int> = []
+    // Currently generating tasks (number + part)
+    private(set) var generatingTasks: Set<GenerationTask> = []
 
     // Batch generation
     private(set) var isBatchGenerating: Bool = false
@@ -67,18 +73,28 @@ final class GenerationState {
         }
     }
 
+    /// Check if any part of a number is generating
     func isGenerating(_ number: Int) -> Bool {
-        generatingNumbers.contains(number)
+        generatingTasks.contains { $0.number == number }
     }
 
+    /// Check if a specific part is generating
+    func isGenerating(_ number: Int, part: AudioPart) -> Bool {
+        generatingTasks.contains(GenerationTask(number: number, part: part))
+    }
+
+    /// Generate a specific part for a number
     func generate(
         number: Int,
         language: Language,
         voice: Voice,
         mode: BingoMode,
+        part: AudioPart,
         settings: SettingsState
     ) async throws -> AudioFile {
-        guard !generatingNumbers.contains(number) else {
+        let task = GenerationTask(number: number, part: part)
+
+        guard !generatingTasks.contains(task) else {
             throw GenerationError.alreadyGenerating
         }
 
@@ -86,8 +102,8 @@ final class GenerationState {
             throw GenerationError.noAPIKey
         }
 
-        generatingNumbers.insert(number)
-        defer { generatingNumbers.remove(number) }
+        generatingTasks.insert(task)
+        defer { generatingTasks.remove(task) }
 
         do {
             let audioFile = try await attemptGeneration(
@@ -95,6 +111,7 @@ final class GenerationState {
                 language: language,
                 voice: voice,
                 mode: mode,
+                part: part,
                 settings: settings
             )
             await refreshSubscription()
@@ -108,6 +125,7 @@ final class GenerationState {
                     language: language,
                     voice: voice,
                     mode: mode,
+                    part: part,
                     settings: settings
                 )
                 await refreshSubscription()
@@ -129,13 +147,15 @@ final class GenerationState {
         language: Language,
         voice: Voice,
         mode: BingoMode,
+        part: AudioPart,
         settings: SettingsState
     ) async throws -> AudioFile {
-        // Build TTS text
+        // Build TTS text for the specific part
         let text = TextBuilder.buildText(
             number: number,
             language: language,
-            mode: mode
+            mode: mode,
+            part: part
         )
 
         // Call ElevenLabs API with configurable settings
@@ -146,17 +166,29 @@ final class GenerationState {
             apiKey: apiKey,
             modelId: settings.selectedModel.rawValue,
             outputFormat: settings.outputFormat.rawValue,
-            voiceSettings: settings.voiceSettings.asDictionary
+            voiceSettings: settings.voiceSettings.asDictionary,
+            speed: settings.speed
         )
 
         // Save to local storage
-        let audioFile = try await storageService.saveAudioFile(
+        var audioFile = try await storageService.saveAudioFile(
             data: audioData,
             number: number,
             language: language,
             voice: voice,
-            mode: mode
+            mode: mode,
+            part: part
         )
+
+        // Auto-trim trailing silence
+        do {
+            let result = try await SilenceTrimmingService.shared.trimSilence(from: audioFile)
+            audioFile = audioFile.withDuration(result.trimmedDuration)
+        } catch SilenceTrimmingService.TrimmingError.noSignificantSilence {
+            // No trailing silence to trim - keep original file as-is
+        } catch {
+            // Other trimming errors - don't fail generation, audio is still valid
+        }
 
         return audioFile
     }
@@ -191,6 +223,7 @@ final class GenerationState {
         isBatchGenerating = false
     }
 
+    /// Generate all missing parts for all pending numbers
     func generateAll(
         pendingNumbers: [Int],
         language: Language,
@@ -206,17 +239,27 @@ final class GenerationState {
             for number in pendingNumbers {
                 guard !Task.isCancelled else { break }
 
-                do {
-                    let audioFile = try await generate(
-                        number: number,
-                        language: language,
-                        voice: voice,
-                        mode: mode,
-                        settings: settings
-                    )
-                    onGenerated(audioFile)
-                } catch {
-                    // Continue with next number
+                // Determine which parts to generate
+                // Single digits (1-9): only word part
+                // Two digits (10+): both word and digit parts
+                let partsToGenerate: [AudioPart] = number < 10 ? [.word] : [.word, .digit]
+
+                for part in partsToGenerate {
+                    guard !Task.isCancelled else { break }
+
+                    do {
+                        let audioFile = try await generate(
+                            number: number,
+                            language: language,
+                            voice: voice,
+                            mode: mode,
+                            part: part,
+                            settings: settings
+                        )
+                        onGenerated(audioFile)
+                    } catch {
+                        // Continue with next part/number
+                    }
                 }
             }
             isBatchGenerating = false

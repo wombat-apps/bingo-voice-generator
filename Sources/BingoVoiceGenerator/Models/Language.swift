@@ -43,4 +43,16 @@ enum Language: String, CaseIterable, Identifiable, Codable, Sendable {
         case .italian: "it"
         }
     }
+
+    /// Accent for ElevenLabs shared voices API filter
+    var elevenLabsAccent: String {
+        switch self {
+        case .spanish: "peninsular"
+        case .english: "american"
+        case .englishGB: "british"
+        case .french: "standard"
+        case .portuguese: "brazilian"
+        case .italian: "standard"
+        }
+    }
 }

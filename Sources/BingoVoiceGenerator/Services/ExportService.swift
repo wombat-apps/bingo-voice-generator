@@ -53,27 +53,31 @@ actor ExportService {
         var hasFiles = false
 
         for mode in BingoMode.allCases {
-            let audioFiles = await AudioStorageService.shared.loadAudioFiles(
+            let audioPairs = await AudioStorageService.shared.loadAudioFiles(
                 language: language,
                 voice: voice,
                 mode: mode
             )
 
-            for (number, audioFile) in audioFiles {
-                hasFiles = true
+            for (number, pair) in audioPairs {
+                // Export each part (word and digit)
+                for audioFile in pair.allAudioFiles {
+                    hasFiles = true
 
-                // Generate export filename
-                let exportFilename: String
-                switch mode {
-                case .bingo90:
-                    exportFilename = "\(langCode)_\(sanitizedName)_\(number).mp3"
-                case .bingo75:
-                    let letter = Bingo75Letter.letter(for: number).lowercased()
-                    exportFilename = "\(langCode)_\(sanitizedName)_\(letter)\(number).mp3"
+                    // Generate export filename including part
+                    let baseFilename: String
+                    switch mode {
+                    case .bingo90:
+                        baseFilename = "\(langCode)_\(sanitizedName)_\(number)"
+                    case .bingo75:
+                        let letter = Bingo75Letter.letter(for: number).lowercased()
+                        baseFilename = "\(langCode)_\(sanitizedName)_\(letter)\(number)"
+                    }
+                    let exportFilename = "\(baseFilename)_\(audioFile.part.fileSuffix).mp3"
+
+                    let destURL = exportDir.appendingPathComponent(exportFilename)
+                    try fileManager.copyItem(at: audioFile.fileURL, to: destURL)
                 }
-
-                let destURL = exportDir.appendingPathComponent(exportFilename)
-                try fileManager.copyItem(at: audioFile.fileURL, to: destURL)
             }
         }
 
