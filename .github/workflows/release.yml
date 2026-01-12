@@ -62,20 +62,6 @@ jobs:
       - name: Build project
         run: swift build -c release
 
-      - name: Import Sparkle Signing Key
-        env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-        run: |
-          # Import private key into Keychain for generate_appcast
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-          echo "$SPARKLE_PRIVATE_KEY" | base64 --decode > $RUNNER_TEMP/sparkle_private_key
-
-          # Import the EdDSA key using Sparkle's tool
-          .build/artifacts/sparkle/Sparkle/bin/generate_keys -f $RUNNER_TEMP/sparkle_private_key
-
-          rm -f $RUNNER_TEMP/sparkle_private_key
-
       - name: Build and Sign App
         env:
           APP_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
@@ -116,10 +102,14 @@ jobs:
       - name: Generate Appcast
         env:
           DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator-releases/releases/download/v${{ steps.version.outputs.version }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
-            --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
-            releases/
+          # Pass private key via stdin using --ed-key-file -
+          echo "$SPARKLE_PRIVATE_KEY" | base64 --decode | \
+            .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
+              --ed-key-file - \
+              --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
+              releases/
 
           echo "Appcast generated:"
           cat releases/appcast.xml
