@@ -72,7 +72,7 @@ jobs:
           echo "$SPARKLE_PRIVATE_KEY" | base64 --decode > $RUNNER_TEMP/sparkle_private_key
 
           # Import the EdDSA key using Sparkle's tool
-          .build/artifacts/sparkle/Sparkle/bin/generate_keys -p $RUNNER_TEMP/sparkle_private_key
+          .build/artifacts/sparkle/Sparkle/bin/generate_keys -f $RUNNER_TEMP/sparkle_private_key
 
           rm -f $RUNNER_TEMP/sparkle_private_key
 
