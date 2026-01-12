@@ -1,0 +1,50 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# App bundles (compiled)
+*.app/
+
+# Generated audio files
+out_audio/
+
+# Python (legacy script)
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Sparkle secrets
+sparkle.env
+sparkle_private_key.pem
+
+# Code signing
+signing.env
+
+# Release artifacts
+releases/
