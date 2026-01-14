@@ -227,15 +227,13 @@ sign_frameworks() {
 }
 sign_frameworks
 
-# Sign bundled executables in Resources (e.g., ffmpeg)
+# Sign bundled executables in Resources and resource bundles (e.g., ffmpeg)
 sign_bundled_executables() {
-  local exe
-  for exe in "$APP/Contents/Resources/"*; do
-    if [[ -f "$exe" && -x "$exe" ]]; then
-      echo "Signing bundled executable: $(basename "$exe")"
-      codesign "${CODESIGN_ARGS[@]}" "$exe"
-    fi
-  done
+  # Find all executable files in Resources (including inside .bundle directories)
+  while IFS= read -r -d '' exe; do
+    echo "Signing bundled executable: $exe"
+    codesign "${CODESIGN_ARGS[@]}" "$exe"
+  done < <(find "$APP/Contents/Resources" -type f -perm -111 -print0)
 }
 sign_bundled_executables
 
