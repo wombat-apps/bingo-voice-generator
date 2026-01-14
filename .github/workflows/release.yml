@@ -149,7 +149,7 @@ jobs:
 
       - name: Generate Appcast
         env:
-          DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator/releases/download/v${{ steps.version.outputs.version }}
+          DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator/releases/download/v${{ steps.version.outputs.version }}/
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           # Pass private key via stdin using --ed-key-file -
