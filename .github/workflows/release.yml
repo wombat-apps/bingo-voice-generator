@@ -103,9 +103,19 @@ jobs:
 
       - name: Staple Notarization Ticket
         run: |
-          xcrun stapler staple ${APP_NAME}.app
-          xcrun stapler validate ${APP_NAME}.app
-          echo "Stapling complete and validated"
+          # Retry stapling with delay - ticket may take time to propagate
+          for i in 1 2 3 4 5; do
+            echo "Stapling attempt $i..."
+            if xcrun stapler staple ${APP_NAME}.app; then
+              xcrun stapler validate ${APP_NAME}.app
+              echo "Stapling complete and validated"
+              exit 0
+            fi
+            echo "Stapling failed, waiting 30 seconds before retry..."
+            sleep 30
+          done
+          echo "Stapling failed after 5 attempts"
+          exit 1
 
       - name: Recreate Archive with Stapled App
         run: |
