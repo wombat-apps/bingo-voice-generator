@@ -50,7 +50,7 @@ if ! spctl --assess --type execute "$APP_PATH" 2>/dev/null; then
 fi
 
 # Create ZIP for distribution
-ZIP_NAME="${APP_NAME}-${MARKETING_VERSION}.zip"
+ZIP_NAME="${APP_NAME}.zip"
 ZIP_PATH="$RELEASES_DIR/$ZIP_NAME"
 
 echo "Creating distribution archive: $ZIP_NAME"

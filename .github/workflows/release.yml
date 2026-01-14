@@ -82,7 +82,7 @@ jobs:
         id: archive
         run: |
           mkdir -p releases
-          ZIP_NAME="${APP_NAME}-${{ steps.version.outputs.version }}.zip"
+          ZIP_NAME="${APP_NAME}.zip"
           ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
           echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
           echo "zip_path=releases/$ZIP_NAME" >> $GITHUB_OUTPUT
@@ -143,7 +143,7 @@ jobs:
       - name: Recreate Archive with Stapled App
         run: |
           rm -f "${{ steps.archive.outputs.zip_path }}"
-          ZIP_NAME="${APP_NAME}-${{ steps.version.outputs.version }}.zip"
+          ZIP_NAME="${APP_NAME}.zip"
           ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
           echo "Recreated archive with stapled app"
 
