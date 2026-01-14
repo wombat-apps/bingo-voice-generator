@@ -15,7 +15,8 @@
       "mcp__context7__query-docs",
       "mcp__context7__resolve-library-id",
       "WebSearch",
-      "WebFetch(domain:elevenlabs.io)"
+      "WebFetch(domain:elevenlabs.io)",
+      "Skill(macos-spm-app-packaging)"
     ]
   }
 }
