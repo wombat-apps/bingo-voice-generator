@@ -101,6 +101,19 @@ jobs:
 
           echo "Notarization complete"
 
+      - name: Staple Notarization Ticket
+        run: |
+          xcrun stapler staple ${APP_NAME}.app
+          xcrun stapler validate ${APP_NAME}.app
+          echo "Stapling complete and validated"
+
+      - name: Recreate Archive with Stapled App
+        run: |
+          rm -f "${{ steps.archive.outputs.zip_path }}"
+          ZIP_NAME="${APP_NAME}-${{ steps.version.outputs.version }}.zip"
+          ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
+          echo "Recreated archive with stapled app"
+
       - name: Generate Appcast
         env:
           DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator/releases/download/v${{ steps.version.outputs.version }}
