@@ -227,6 +227,18 @@ sign_frameworks() {
 }
 sign_frameworks
 
+# Sign bundled executables in Resources (e.g., ffmpeg)
+sign_bundled_executables() {
+  local exe
+  for exe in "$APP/Contents/Resources/"*; do
+    if [[ -f "$exe" && -x "$exe" ]]; then
+      echo "Signing bundled executable: $(basename "$exe")"
+      codesign "${CODESIGN_ARGS[@]}" "$exe"
+    fi
+  done
+}
+sign_bundled_executables
+
 codesign "${CODESIGN_ARGS[@]}" \
   --entitlements "$APP_ENTITLEMENTS" \
   "$APP"

@@ -93,13 +93,36 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # Submit and capture output to temp file (avoid logging secrets)
           xcrun notarytool submit "${{ steps.archive.outputs.zip_path }}" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_PASSWORD" \
             --team-id "$TEAM_ID" \
-            --wait
+            --wait \
+            --output-format json > /tmp/notarization-result.json
 
-          echo "Notarization complete"
+          # Extract submission ID and status (safe to log)
+          SUBMISSION_ID=$(jq -r '.id' /tmp/notarization-result.json)
+          STATUS=$(jq -r '.status' /tmp/notarization-result.json)
+
+          echo "Submission ID: $SUBMISSION_ID"
+          echo "Status: $STATUS"
+
+          # If not accepted, get detailed log and fail
+          if [ "$STATUS" != "Accepted" ]; then
+            echo "::error::Notarization failed with status: $STATUS"
+            echo "Fetching detailed log from Apple..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$TEAM_ID" \
+              /tmp/notarization-log.json || true
+            echo "=== Notarization Issues ==="
+            jq '.issues' /tmp/notarization-log.json || true
+            exit 1
+          fi
+
+          echo "Notarization accepted"
 
       - name: Staple Notarization Ticket
         run: |
