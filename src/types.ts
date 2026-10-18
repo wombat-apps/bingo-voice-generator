@@ -22,6 +22,13 @@ export interface BingoMode {
 // Audio part types
 export type AudioPart = 'word' | 'digit';
 
+// What is sent to ElevenLabs for one part: the spoken text and its unspoken context
+export interface TtsText {
+  text: string;
+  previousText: string;
+  nextText: string | null;
+}
+
 // Voice types
 /** Default Voice or Library Voice; see GLOSSARY.md. */
 export type VoiceKind = 'default' | 'library';

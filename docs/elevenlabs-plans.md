@@ -42,6 +42,10 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 
 No Plan restricts which TTS Model can be used. Source: [models](https://elevenlabs.io/docs/overview/models), [changelog 2026-09-28](https://elevenlabs.io/docs/changelog/2026/9/28).
 
+### Context (`previous_text` / `next_text`)
+
+The app sends each Audio Part with unspoken context: a scene describing the bingo call, plus the other part. `eleven_v3` does not support it ("request stitching"), so the app sends v3 the bare text. ElevenLabs does not say whether context characters count against the quota; the `character-cost` response header tells. SSML `<break>` tags do not work in v3 or v4. Source: [TTS convert](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), [request stitching](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching), [controls](https://elevenlabs.io/docs/best-practices/prompting/controls), 2026-10-18.
+
 ## Concurrent requests
 
 | Plan | Multilingual v2 (and, to be safe, v3/v4) | Flash |

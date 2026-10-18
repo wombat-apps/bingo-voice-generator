@@ -134,10 +134,10 @@ pub fn run() {
 }
 
 // Utility commands
-use models::{build_text, AudioPart, BingoMode, Language};
+use models::{AudioPart, BingoMode, Language, TtsText};
 
 #[tauri::command]
-fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
+fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> TtsText {
     log::debug!(
         "[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}",
         number,
@@ -145,8 +145,8 @@ fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioP
         mode,
         part
     );
-    let text = build_text(number, language, mode, part);
-    log::debug!("[build_tts_text] result: {}", text);
+    let text = models::build_tts_text(number, language, mode, part);
+    log::debug!("[build_tts_text] result: {:?}", text);
     text
 }
 

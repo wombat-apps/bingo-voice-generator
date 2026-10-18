@@ -263,6 +263,8 @@ pub async fn has_voices_read(api_key: &str) -> bool {
 #[tauri::command]
 pub async fn generate_speech(
     text: String,
+    previous_text: Option<String>,
+    next_text: Option<String>,
     voice_id: String,
     language_code: String,
     api_key: String,
@@ -309,13 +311,23 @@ pub async fn generate_speech(
 
     let client = reqwest::Client::new();
 
-    let request_body = serde_json::json!({
+    let mut request_body = serde_json::json!({
         "text": text,
         "model_id": model_id,
         "voice_settings": voice_settings,
         "language_code": language_code,
         "speed": speech_speed,
     });
+    // Eleven v3 does not support context (request stitching), so it gets the bare text.
+    if model_id != "eleven_v3" {
+        request_body["previous_text"] = serde_json::json!(previous_text);
+        request_body["next_text"] = serde_json::json!(next_text);
+    }
+    log::debug!(
+        "[generate_speech] previous_text={:?}, next_text={:?}",
+        request_body["previous_text"],
+        request_body["next_text"]
+    );
 
     log::debug!("[generate_speech] Sending request to ElevenLabs...");
     let response = client

@@ -16,6 +16,7 @@ import type {
   SharedVoicesResponse,
   SubscriptionInfo,
   TtsModelId,
+  TtsText,
   VoiceSettings,
 } from '../types';
 
@@ -24,7 +25,7 @@ import type {
 // ============================================================================
 
 export async function generateSpeech(
-  text: string,
+  tts: TtsText,
   voiceId: string,
   languageCode: string,
   apiKey: string,
@@ -33,7 +34,9 @@ export async function generateSpeech(
   voiceSettings?: VoiceSettings
 ): Promise<Uint8Array> {
   const result = await invoke<number[]>('generate_speech', {
-    text,
+    text: tts.text,
+    previousText: tts.previousText,
+    nextText: tts.nextText,
     voiceId,
     languageCode,
     apiKey,
@@ -274,8 +277,8 @@ export async function buildTtsText(
   language: LanguageId,
   mode: BingoModeId,
   part: AudioPart
-): Promise<string> {
-  return invoke<string>('build_tts_text', { number, language, mode, part });
+): Promise<TtsText> {
+  return invoke<TtsText>('build_tts_text', { number, language, mode, part });
 }
 
 export async function getLanguages(): Promise<Language[]> {

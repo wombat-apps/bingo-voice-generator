@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::collections::HashMap;
 
 use super::{bingo75_letter, AudioPart, BingoMode, Language};
@@ -14,6 +15,8 @@ pub struct SpeechPatterns {
 pub struct LanguageConfig {
     pub numbers: HashMap<u32, &'static str>,
     pub letters: HashMap<&'static str, &'static str>,
+    /// Describes the bingo call to ElevenLabs. It is sent as context, never spoken.
+    pub scene: &'static str,
     pub patterns: SpeechPatterns,
 }
 
@@ -47,17 +50,17 @@ impl LanguageConfig {
             (13, "trece"),
             (14, "catorce"),
             (15, "quince"),
-            (16, "dieciseis"),
+            (16, "diecis\u{e9}is"),
             (17, "diecisiete"),
             (18, "dieciocho"),
             (19, "diecinueve"),
             (20, "veinte"),
             (21, "veintiuno"),
-            (22, "veintidos"),
-            (23, "veintitres"),
+            (22, "veintid\u{f3}s"),
+            (23, "veintitr\u{e9}s"),
             (24, "veinticuatro"),
             (25, "veinticinco"),
-            (26, "veintiseis"),
+            (26, "veintis\u{e9}is"),
             (27, "veintisiete"),
             (28, "veintiocho"),
             (29, "veintinueve"),
@@ -137,13 +140,14 @@ impl LanguageConfig {
         Self {
             numbers,
             letters,
+            scene: "En una sala de bingo, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:",
             patterns: SpeechPatterns {
-                word_single_digit_90: "[excited] \u{a1}{num_word}!",
-                word_two_digit_90: "[excited] \u{a1}{num_word}!",
-                word_single_digit_75: "[excited] \u{a1}{letter} ... {num_word}!",
-                word_two_digit_75: "[excited] \u{a1}{letter} ... {num_word}!",
-                digit_two_digit_90: "[excited] {d1}-{d2}",
-                digit_two_digit_75: "[excited] {d1}-{d2}",
+                word_single_digit_90: "\u{a1}{num_word}!",
+                word_two_digit_90: "\u{a1}{num_word}!",
+                word_single_digit_75: "\u{a1}{letter} ... {num_word}!",
+                word_two_digit_75: "\u{a1}{letter} ... {num_word}!",
+                digit_two_digit_90: "{d1} {d2}",
+                digit_two_digit_75: "{d1} {d2}",
             },
         }
     }
@@ -257,13 +261,14 @@ impl LanguageConfig {
         Self {
             numbers,
             letters,
+            scene: "In a bingo hall, the caller draws the next ball from the cage and announces it with energy, loud and clear:",
             patterns: SpeechPatterns {
-                word_single_digit_90: "[excited] {num_word}!",
-                word_two_digit_90: "[excited] {num_word}!",
-                word_single_digit_75: "[excited] {letter} {num_word}!",
-                word_two_digit_75: "[excited] {letter} {num_word}!",
-                digit_two_digit_90: "[excited] {d1}-{d2}",
-                digit_two_digit_75: "[excited] {d1}-{d2}",
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} {num_word}!",
+                word_two_digit_75: "{letter} {num_word}!",
+                digit_two_digit_90: "{d1} {d2}",
+                digit_two_digit_75: "{d1} {d2}",
             },
         }
     }
@@ -377,13 +382,14 @@ impl LanguageConfig {
         Self {
             numbers,
             letters,
+            scene: "Dans une salle de bingo, l'animateur tire la boule suivante du boulier et l'annonce avec \u{e9}nergie, haut et fort :",
             patterns: SpeechPatterns {
-                word_single_digit_90: "[excited] {num_word}!",
-                word_two_digit_90: "[excited] {num_word}!",
-                word_single_digit_75: "[excited] {letter} {num_word}!",
-                word_two_digit_75: "[excited] {letter} {num_word}!",
-                digit_two_digit_90: "[excited] {d1}-{d2}",
-                digit_two_digit_75: "[excited] {d1}-{d2}",
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} {num_word}!",
+                word_two_digit_75: "{letter} {num_word}!",
+                digit_two_digit_90: "{d1} {d2}",
+                digit_two_digit_75: "{d1} {d2}",
             },
         }
     }
@@ -497,13 +503,14 @@ impl LanguageConfig {
         Self {
             numbers,
             letters,
+            scene: "Em um sal\u{e3}o de bingo, o locutor sorteia a pr\u{f3}xima bola do globo e a anuncia com energia, alto e bom som:",
             patterns: SpeechPatterns {
-                word_single_digit_90: "[excited] {num_word}!",
-                word_two_digit_90: "[excited] {num_word}!",
-                word_single_digit_75: "[excited] {letter} {num_word}!",
-                word_two_digit_75: "[excited] {letter} {num_word}!",
-                digit_two_digit_90: "[excited] {d1}-{d2}",
-                digit_two_digit_75: "[excited] {d1}-{d2}",
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} {num_word}!",
+                word_two_digit_75: "{letter} {num_word}!",
+                digit_two_digit_90: "{d1} {d2}",
+                digit_two_digit_75: "{d1} {d2}",
             },
         }
     }
@@ -617,152 +624,217 @@ impl LanguageConfig {
         Self {
             numbers,
             letters,
+            scene: "In una sala bingo, il banditore estrae la prossima pallina dall'urna e la annuncia con energia, forte e chiaro:",
             patterns: SpeechPatterns {
-                word_single_digit_90: "[excited] {num_word}!",
-                word_two_digit_90: "[excited] {num_word}!",
-                word_single_digit_75: "[excited] {letter} {num_word}!",
-                word_two_digit_75: "[excited] {letter} {num_word}!",
-                digit_two_digit_90: "[excited] {d1}-{d2}",
-                digit_two_digit_75: "[excited] {d1}-{d2}",
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} {num_word}!",
+                word_two_digit_75: "{letter} {num_word}!",
+                digit_two_digit_90: "{d1} {d2}",
+                digit_two_digit_75: "{d1} {d2}",
             },
         }
     }
 }
 
 /// Builds TTS text for a given number, language, mode, and part
+/// What is sent to ElevenLabs for one Audio Part: the text it speaks, and the context around it,
+/// which it does not speak.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TtsText {
+    pub text: String,
+    pub previous_text: String,
+    pub next_text: Option<String>,
+}
+
+/// Builds the text and its context. The Word knows the scene and that the digits follow;
+/// the Digit knows the scene and that the Word has just been said.
+pub fn build_tts_text(
+    number: u32,
+    language: Language,
+    mode: BingoMode,
+    part: AudioPart,
+) -> TtsText {
+    let scene = LanguageConfig::for_language(language).scene;
+    let word = build_text(number, language, mode, AudioPart::Word);
+    // Below 10 the Digit is the same text as the Word, so it gets the same context.
+    if number < 10 {
+        return TtsText {
+            text: word,
+            previous_text: scene.to_string(),
+            next_text: None,
+        };
+    }
+    let digit = build_text(number, language, mode, AudioPart::Digit);
+    match part {
+        AudioPart::Word => TtsText {
+            text: word,
+            previous_text: scene.to_string(),
+            next_text: Some(digit),
+        },
+        AudioPart::Digit => TtsText {
+            text: digit,
+            previous_text: format!("{} {}", scene, word),
+            next_text: None,
+        },
+    }
+}
+
 pub fn build_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
-    match (mode, part) {
+    let text = match (mode, part) {
         (BingoMode::Bingo90, AudioPart::Word) => build_word_text_90(number, language),
         (BingoMode::Bingo90, AudioPart::Digit) => build_digit_text_90(number, language),
         (BingoMode::Bingo75, AudioPart::Word) => build_word_text_75(number, language),
         (BingoMode::Bingo75, AudioPart::Digit) => build_digit_text_75(number, language),
+    };
+    capitalize_first_letter(&text)
+}
+
+/// Upper-cases the first letter, skipping leading punctuation such as Spanish "¡".
+fn capitalize_first_letter(text: &str) -> String {
+    match text.char_indices().find(|(_, c)| c.is_alphabetic()) {
+        Some((i, c)) => format!(
+            "{}{}{}",
+            &text[..i],
+            c.to_uppercase(),
+            &text[i + c.len_utf8()..]
+        ),
+        None => text.to_string(),
     }
+}
+
+fn number_word(config: &LanguageConfig, number: u32) -> String {
+    config
+        .numbers
+        .get(&number)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| number.to_string())
+}
+
+fn letter_name(config: &LanguageConfig, number: u32) -> String {
+    let letter_key = bingo75_letter(number);
+    config
+        .letters
+        .get(letter_key)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| letter_key.to_string())
 }
 
 fn build_word_text_90(number: u32, language: Language) -> String {
     let config = LanguageConfig::for_language(language);
-    let num_word = config
-        .numbers
-        .get(&number)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| number.to_string());
-
-    if number < 10 {
-        config
-            .patterns
-            .word_single_digit_90
-            .replace("{num_word}", &num_word)
+    let pattern = if number < 10 {
+        config.patterns.word_single_digit_90
     } else {
-        config
-            .patterns
-            .word_two_digit_90
-            .replace("{num_word}", &num_word)
-    }
+        config.patterns.word_two_digit_90
+    };
+    pattern.replace("{num_word}", &number_word(&config, number))
 }
 
 fn build_digit_text_90(number: u32, language: Language) -> String {
-    let config = LanguageConfig::for_language(language);
-
     if number < 10 {
-        let num_word = config
-            .numbers
-            .get(&number)
-            .map(|s| s.to_uppercase())
-            .unwrap_or_else(|| number.to_string());
-        return config
-            .patterns
-            .word_single_digit_90
-            .replace("{num_word}", &num_word);
+        return build_word_text_90(number, language);
     }
-
-    let d1 = number / 10;
-    let d2 = number % 10;
-    let d1_word = config
-        .numbers
-        .get(&d1)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| d1.to_string());
-    let d2_word = config
-        .numbers
-        .get(&d2)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| d2.to_string());
-
+    let config = LanguageConfig::for_language(language);
     config
         .patterns
         .digit_two_digit_90
-        .replace("{d1}", &d1_word)
-        .replace("{d2}", &d2_word)
+        .replace("{d1}", &number_word(&config, number / 10))
+        .replace("{d2}", &number_word(&config, number % 10))
 }
 
 fn build_word_text_75(number: u32, language: Language) -> String {
     let config = LanguageConfig::for_language(language);
-    let letter_key = bingo75_letter(number);
-    let letter_name = config
-        .letters
-        .get(letter_key)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| letter_key.to_string());
-    let num_word = config
-        .numbers
-        .get(&number)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| number.to_string());
-
-    if number < 10 {
-        config
-            .patterns
-            .word_single_digit_75
-            .replace("{letter}", &letter_name)
-            .replace("{num_word}", &num_word)
+    let pattern = if number < 10 {
+        config.patterns.word_single_digit_75
     } else {
-        config
-            .patterns
-            .word_two_digit_75
-            .replace("{letter}", &letter_name)
-            .replace("{num_word}", &num_word)
-    }
+        config.patterns.word_two_digit_75
+    };
+    pattern
+        .replace("{letter}", &letter_name(&config, number))
+        .replace("{num_word}", &number_word(&config, number))
 }
 
 fn build_digit_text_75(number: u32, language: Language) -> String {
-    let config = LanguageConfig::for_language(language);
-    let letter_key = bingo75_letter(number);
-    let letter_name = config
-        .letters
-        .get(letter_key)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| letter_key.to_string());
-
     if number < 10 {
-        let num_word = config
-            .numbers
-            .get(&number)
-            .map(|s| s.to_uppercase())
-            .unwrap_or_else(|| number.to_string());
-        return config
-            .patterns
-            .word_single_digit_75
-            .replace("{letter}", &letter_name)
-            .replace("{num_word}", &num_word);
+        return build_word_text_75(number, language);
     }
-
-    let d1 = number / 10;
-    let d2 = number % 10;
-    let d1_word = config
-        .numbers
-        .get(&d1)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| d1.to_string());
-    let d2_word = config
-        .numbers
-        .get(&d2)
-        .map(|s| s.to_uppercase())
-        .unwrap_or_else(|| d2.to_string());
-
+    let config = LanguageConfig::for_language(language);
     config
         .patterns
         .digit_two_digit_75
-        .replace("{letter}", &letter_name)
-        .replace("{d1}", &d1_word)
-        .replace("{d2}", &d2_word)
+        .replace("{letter}", &letter_name(&config, number))
+        .replace("{d1}", &number_word(&config, number / 10))
+        .replace("{d2}", &number_word(&config, number % 10))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SPANISH_SCENE: &str = "En una sala de bingo, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:";
+
+    #[test]
+    fn word_knows_the_scene_and_that_the_digits_follow() {
+        let tts = build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(
+            tts,
+            TtsText {
+                text: "\u{a1}Cuarenta y cinco!".to_string(),
+                previous_text: SPANISH_SCENE.to_string(),
+                next_text: Some("Cuatro cinco".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn digit_knows_the_scene_and_the_word_said_before() {
+        let tts = build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit);
+
+        assert_eq!(
+            tts,
+            TtsText {
+                text: "Cuatro cinco".to_string(),
+                previous_text: format!("{} \u{a1}Cuarenta y cinco!", SPANISH_SCENE),
+                next_text: None,
+            }
+        );
+    }
+
+    #[test]
+    fn single_digit_number_has_the_same_text_and_context_for_both_parts() {
+        let word = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
+        let digit = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit);
+
+        assert_eq!(word.text, "\u{a1}Siete!");
+        assert_eq!(word.next_text, None);
+        assert_eq!(word, digit);
+    }
+
+    #[test]
+    fn spanish_number_words_carry_their_accents() {
+        let text = |n| build_text(n, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(16), "\u{a1}Diecis\u{e9}is!");
+        assert_eq!(text(22), "\u{a1}Veintid\u{f3}s!");
+        assert_eq!(text(23), "\u{a1}Veintitr\u{e9}s!");
+        assert_eq!(text(26), "\u{a1}Veintis\u{e9}is!");
+    }
+
+    #[test]
+    fn bingo_75_word_starts_with_the_letter() {
+        let spanish = build_text(7, Language::Spanish, BingoMode::Bingo75, AudioPart::Word);
+        let english = build_text(52, Language::English, BingoMode::Bingo75, AudioPart::Digit);
+
+        assert_eq!(spanish, "\u{a1}Be ... siete!");
+        assert_eq!(english, "Five two");
+    }
+
+    #[test]
+    fn every_language_has_a_scene() {
+        for language in Language::all() {
+            assert!(!LanguageConfig::for_language(language).scene.is_empty());
+        }
+    }
 }

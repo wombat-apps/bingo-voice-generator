@@ -564,11 +564,11 @@ function App() {
         const languageCode = currentLang?.elevenlabsCode || 'es';
 
         // Build TTS text
-        const text = await buildTtsText(selectedNumber, selectedLanguage, selectedMode, part);
+        const tts = await buildTtsText(selectedNumber, selectedLanguage, selectedMode, part);
 
         // Generate speech
         const audioData = await generateSpeech(
-          text,
+          tts,
           selectedVoice.elevenlabsId,
           languageCode,
           apiKey,
