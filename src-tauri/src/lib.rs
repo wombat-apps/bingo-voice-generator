@@ -3,6 +3,7 @@ mod models;
 mod services;
 
 use commands::*;
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind, TimezoneStrategy};
 
 // Platform detection types
 #[derive(serde::Serialize)]
@@ -63,6 +64,22 @@ fn get_platform_info() -> PlatformInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
+        .plugin(
+            // Writes to stdout and to ~/Library/Logs/com.wombatapps.bingovoicegenerator/
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("bingo-voice-generator".to_string()),
+                    }),
+                ])
+                .level(log::LevelFilter::Info)
+                .level_for("bingo_voice_generator_tauri_lib", log::LevelFilter::Debug)
+                .max_file_size(5_000_000)
+                .rotation_strategy(RotationStrategy::KeepSome(3))
+                .timezone_strategy(TimezoneStrategy::UseLocal)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init());
@@ -122,12 +139,15 @@ use models::{build_text, AudioPart, BingoMode, Language};
 
 #[tauri::command]
 fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
-    println!(
+    log::debug!(
         "[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}",
-        number, language, mode, part
+        number,
+        language,
+        mode,
+        part
     );
     let text = build_text(number, language, mode, part);
-    println!("[build_tts_text] result: {}", text);
+    log::debug!("[build_tts_text] result: {}", text);
     text
 }
 

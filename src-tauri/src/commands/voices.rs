@@ -89,12 +89,12 @@ pub struct CreateVoiceInput {
 /// Creates a new voice with the given parameters (UUID generated server-side)
 #[tauri::command]
 pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesError> {
-    println!("[create_voice] Received input: {:?}", input);
-    println!("[create_voice] elevenlabs_id: {}", input.elevenlabs_id);
-    println!("[create_voice] elevenlabs_name: {}", input.elevenlabs_name);
-    println!("[create_voice] custom_name: {}", input.custom_name);
-    println!("[create_voice] language: {:?}", input.language);
-    println!("[create_voice] gender: {}", input.gender);
+    log::debug!("[create_voice] Received input: {:?}", input);
+    log::debug!("[create_voice] elevenlabs_id: {}", input.elevenlabs_id);
+    log::debug!("[create_voice] elevenlabs_name: {}", input.elevenlabs_name);
+    log::debug!("[create_voice] custom_name: {}", input.custom_name);
+    log::debug!("[create_voice] language: {:?}", input.language);
+    log::debug!("[create_voice] gender: {}", input.gender);
 
     let voice = Voice::new(
         input.elevenlabs_id,
@@ -104,23 +104,23 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
         Some(input.gender),
     );
 
-    println!("[create_voice] Created voice: {:?}", voice);
+    log::debug!("[create_voice] Created voice: {:?}", voice);
 
     let mut voices = load_voices().await?;
-    println!("[create_voice] Loaded {} existing voices", voices.len());
+    log::debug!("[create_voice] Loaded {} existing voices", voices.len());
 
     // Check if voice already exists (by elevenlabs_id and language)
     if voices
         .iter()
         .any(|v| v.elevenlabs_id == voice.elevenlabs_id && v.language == voice.language)
     {
-        println!("[create_voice] Voice already exists, returning existing list");
+        log::debug!("[create_voice] Voice already exists, returning existing list");
         return Ok(voices);
     }
 
     voices.push(voice);
     save_voices(voices.clone()).await?;
-    println!("[create_voice] Saved {} voices", voices.len());
+    log::debug!("[create_voice] Saved {} voices", voices.len());
 
     Ok(voices)
 }

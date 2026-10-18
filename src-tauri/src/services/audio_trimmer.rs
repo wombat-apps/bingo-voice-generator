@@ -362,7 +362,7 @@ pub fn trim_trailing_silence(
     let mut samples = pcm.samples;
 
     if samples.is_empty() {
-        println!("[trim_trailing_silence] Empty audio, returning original");
+        log::debug!("[trim_trailing_silence] Empty audio, returning original");
         return Ok(mp3_bytes);
     }
 
@@ -373,7 +373,7 @@ pub fn trim_trailing_silence(
     let trim_point = match detect_trailing_silence(&samples, channels, sample_rate, config) {
         Some(point) => point,
         None => {
-            println!(
+            log::debug!(
                 "[trim_trailing_silence] No significant trailing silence detected (duration={:.2}s)",
                 original_duration_secs
             );
@@ -386,7 +386,7 @@ pub fn trim_trailing_silence(
     let would_trim_secs = would_trim_frames as f64 / sample_rate as f64;
 
     if would_trim_secs < 0.1 {
-        println!(
+        log::debug!(
             "[trim_trailing_silence] Would only trim {:.2}s, not significant enough",
             would_trim_secs
         );
@@ -397,7 +397,7 @@ pub fn trim_trailing_silence(
     samples.truncate(trim_point);
 
     if samples.is_empty() {
-        println!("[trim_trailing_silence] Trimmed to empty, returning original");
+        log::debug!("[trim_trailing_silence] Trimmed to empty, returning original");
         return Ok(mp3_bytes);
     }
 
@@ -412,7 +412,7 @@ pub fn trim_trailing_silence(
     let trimmed_frames = samples.len() / channels;
     let trimmed_duration_secs = trimmed_frames as f64 / sample_rate as f64;
 
-    println!(
+    log::debug!(
         "[trim_trailing_silence] Trimmed: {:.2}s -> {:.2}s (removed {:.2}s)",
         original_duration_secs,
         trimmed_duration_secs,
@@ -422,7 +422,7 @@ pub fn trim_trailing_silence(
     // Encode back to MP3
     let result = encode_mp3(&samples, sample_rate, channels)?;
 
-    println!(
+    log::debug!(
         "[trim_trailing_silence] Encoded: {} -> {} bytes",
         original_len,
         result.len()

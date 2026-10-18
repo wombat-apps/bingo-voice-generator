@@ -32,6 +32,10 @@ cargo test                     # Run Rust tests
 
 Build outputs: `src-tauri/target/release/bundle/` (`.app` and `.dmg`).
 
+## Logs
+
+`tauri-plugin-log` writes Rust `log::*` output, plus the webview's `console.error`/`console.warn` and uncaught errors, to stdout and to `~/Library/Logs/com.wombatapps.bingovoicegenerator/bingo-voice-generator.log`, in dev and in release builds. Failed ElevenLabs calls log the HTTP status and the raw response body. Use `log::*` macros, never `println!`. Keep `tauri-plugin-log` (Cargo) and `@tauri-apps/plugin-log` (npm) on the same minor version.
+
 ## CI / Release
 
 - `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
