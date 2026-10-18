@@ -4,26 +4,9 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::models::{Accent, AudioFile, AudioPart, BingoMode, NumberAudioPair, Voice};
+use crate::models::{Accent, AudioPart, BingoMode, NumberAudioPair};
 use crate::services::app_dirs::AppDirs;
 pub use crate::services::audio_store::StorageError;
-
-/// Saves `data`, the audio exactly as ElevenLabs returned it, as the Original
-/// Audio, then saves its Trimmed Audio, the file the app plays.
-#[tauri::command]
-pub async fn save_audio_file(
-    dirs: State<'_, AppDirs>,
-    data: Vec<u8>,
-    number: u32,
-    accent: Accent,
-    voice: Voice,
-    mode: BingoMode,
-    part: AudioPart,
-) -> Result<AudioFile, StorageError> {
-    dirs.audio_store()
-        .save(number, accent, voice.uuid, mode, part, data)
-        .await
-}
 
 #[tauri::command]
 pub async fn load_audio_files(

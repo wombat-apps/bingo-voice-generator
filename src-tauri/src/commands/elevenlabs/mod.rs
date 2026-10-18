@@ -1,31 +1,14 @@
 mod client;
 mod types;
 
-pub use client::{ElevenLabs, ElevenLabsError};
+pub use client::{ElevenLabs, ElevenLabsClient, ElevenLabsError};
 pub use types::*;
 
 use tauri::State;
 use uuid::Uuid;
 
-use crate::models::{Accent, TtsText, VoiceSettings};
+use crate::models::Accent;
 use crate::services::app_dirs::AppDirs;
-
-// Arguments map 1:1 to the `invoke()` payload in src/services/tauri.ts.
-#[tauri::command]
-pub async fn generate_speech(
-    elevenlabs: State<'_, ElevenLabs>,
-    dirs: State<'_, AppDirs>,
-    tts: TtsText,
-    voice_id: String,
-    language_code: String,
-    settings: VoiceSettings,
-) -> Result<Vec<u8>, ElevenLabsError> {
-    elevenlabs
-        .active_client(&dirs)
-        .await?
-        .text_to_speech(&voice_id, &language_code, &tts, &settings)
-        .await
-}
 
 /// The Default Voices ElevenLabs has verified for the Language of `accent`.
 #[tauri::command]

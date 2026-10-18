@@ -95,13 +95,12 @@ pub fn run() {
         .manage(ElevenLabs::default())
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
-            generate_speech,
+            generate_audio,
             list_default_voices,
             search_shared_voices,
             get_account_subscription,
             add_shared_voice,
             // Storage commands
-            save_audio_file,
             load_audio_files,
             delete_audio_file,
             delete_all_audio_files,
@@ -122,7 +121,6 @@ pub fn run() {
             delete_account,
             set_active_account,
             // Utility commands
-            build_tts_text,
             get_accents,
             get_bingo_modes,
             // Platform detection
@@ -133,42 +131,7 @@ pub fn run() {
 }
 
 // Utility commands
-use models::{Accent, AudioPart, BingoMode, TtsText};
-
-#[derive(Debug, thiserror::Error)]
-enum TtsTextError {
-    #[error("Number {0} has no Digit: numbers below 10 only have a Word")]
-    NoDigit(u32),
-}
-
-impl serde::Serialize for TtsTextError {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-#[tauri::command]
-fn build_tts_text(
-    number: u32,
-    accent: Accent,
-    mode: BingoMode,
-    part: AudioPart,
-) -> Result<TtsText, TtsTextError> {
-    log::debug!(
-        "[build_tts_text] number={}, accent={:?}, mode={:?}, part={:?}",
-        number,
-        accent,
-        mode,
-        part
-    );
-    let text =
-        models::build_tts_text(number, accent, mode, part).ok_or(TtsTextError::NoDigit(number))?;
-    log::debug!("[build_tts_text] result: {:?}", text);
-    Ok(text)
-}
+use models::Accent;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]

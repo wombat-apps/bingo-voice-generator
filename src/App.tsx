@@ -16,9 +16,7 @@ import {
   loadAudioFiles,
   listAccounts,
   setActiveAccount,
-  generateSpeech,
-  saveAudioFile,
-  buildTtsText,
+  generateAudio as generateAudioFile,
   getAccountSubscription,
   updateVoice,
   deleteAudioFile,
@@ -538,24 +536,7 @@ function App() {
       setGenerating(true);
 
       try {
-        const currentAccentInfo = accents.find((l) => l.id === selectedAccent);
-        const languageCode = currentAccentInfo?.elevenlabsCode || 'es';
-
-        // Build TTS text
-        const tts = await buildTtsText(selectedNumber, selectedAccent, selectedMode, part);
-
-        // Generate speech
-        const audioData = await generateSpeech(tts, selectedVoice.elevenlabsId, languageCode, voiceSettings);
-
-        // Save audio file
-        const savedFile = await saveAudioFile(
-          audioData,
-          selectedNumber,
-          selectedAccent,
-          selectedVoice,
-          selectedMode,
-          part
-        );
+        const savedFile = await generateAudioFile(selectedNumber, selectedVoice, selectedMode, part, voiceSettings);
 
         // Update local state
         setAudioFiles((prev) => {
@@ -582,7 +563,7 @@ function App() {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, hasActiveAccount, activeAccountName, selectedAccent, selectedMode, accents, voiceSettings]
+    [selectedNumber, selectedVoice, hasActiveAccount, activeAccountName, selectedMode, voiceSettings]
   );
 
   const handleGenerateWord = useCallback(() => {

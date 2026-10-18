@@ -43,6 +43,9 @@ export function describeGenerationError(err: unknown, accountName: string | null
       return `No se pudo leer la API key de la cuenta del Llavero: ${err.message}`;
     case 'NETWORK_ERROR':
       return 'No se pudo conectar con ElevenLabs. Comprueba tu conexión a internet.';
+    case 'NO_DIGIT':
+    case 'STORAGE_ERROR':
+      return `Error al generar audio: ${err.message}`;
     case 'API_ERROR':
       break;
   }

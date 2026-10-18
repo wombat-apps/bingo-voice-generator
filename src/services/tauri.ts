@@ -16,7 +16,6 @@ import type {
   SharedVoicesResponse,
   SharedVoiceSort,
   SubscriptionInfo,
-  TtsText,
   VoiceSettings,
 } from '../types';
 
@@ -26,14 +25,18 @@ import type {
 
 // ElevenLabs commands use the Active Account: its API key never leaves Rust.
 
-export async function generateSpeech(
-  tts: TtsText,
-  voiceId: string,
-  languageCode: string,
+/**
+ * Generates the Word or the Digit of `number` with `voice`, in its Accent, and saves its
+ * Original Audio and Trimmed Audio, replacing any already there.
+ */
+export async function generateAudio(
+  number: number,
+  voice: Voice,
+  mode: BingoModeId,
+  part: AudioPart,
   settings: VoiceSettings
-): Promise<Uint8Array> {
-  const result = await invoke<number[]>('generate_speech', { tts, voiceId, languageCode, settings });
-  return new Uint8Array(result);
+): Promise<AudioFile> {
+  return invoke<AudioFile>('generate_audio', { number, voice, mode, part, settings });
 }
 
 export async function listDefaultVoices(
@@ -75,24 +78,6 @@ export async function addSharedVoice(
 // ============================================================================
 // Storage Commands
 // ============================================================================
-
-export async function saveAudioFile(
-  data: Uint8Array,
-  number: number,
-  accent: AccentId,
-  voice: Voice,
-  mode: BingoModeId,
-  part: AudioPart
-): Promise<AudioFile> {
-  return invoke<AudioFile>('save_audio_file', {
-    data: Array.from(data),
-    number,
-    accent,
-    voice,
-    mode,
-    part,
-  });
-}
 
 export async function loadAudioFiles(
   accent: AccentId,
@@ -245,15 +230,6 @@ export async function setActiveAccount(accountId: string | null): Promise<Accoun
 // ============================================================================
 // Utility Commands
 // ============================================================================
-
-export async function buildTtsText(
-  number: number,
-  accent: AccentId,
-  mode: BingoModeId,
-  part: AudioPart
-): Promise<TtsText> {
-  return invoke<TtsText>('build_tts_text', { number, accent, mode, part });
-}
 
 export async function getAccents(): Promise<Accent[]> {
   return invoke<Accent[]>('get_accents');

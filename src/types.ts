@@ -27,13 +27,6 @@ export interface BingoMode {
 // Audio part types
 export type AudioPart = 'word' | 'digit';
 
-// What is sent to ElevenLabs for one part: the spoken text and its unspoken context
-export interface TtsText {
-  text: string;
-  previousText: string;
-  nextText: string | null;
-}
-
 // Voice types
 /** Default Voice or Library Voice; see GLOSSARY.md. */
 export type VoiceKind = 'default' | 'library';
@@ -208,7 +201,11 @@ export interface AppState {
   playingPart: AudioPart | null;
 }
 
-/** Serialized `ElevenLabsError` from src-tauri/src/commands/elevenlabs.rs. */
+/**
+ * Serialized `ElevenLabsError` (src-tauri/src/commands/elevenlabs/client.rs), or a
+ * `GenerationError` (src-tauri/src/commands/generation.rs), which adds `NO_DIGIT` and
+ * `STORAGE_ERROR`.
+ */
 export type ElevenLabsError =
-  | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR'; message: string }
+  | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR' | 'NO_DIGIT' | 'STORAGE_ERROR'; message: string }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };
