@@ -38,7 +38,7 @@ _Avoid_: Premade voice (ElevenLabs' term for it in the API), stock voice
 
 **Library Voice**:
 A Voice whose ElevenLabs voice another ElevenLabs user shares in the Voice Library. An account on the Free Plan cannot generate with it, even if the voice is saved in that account. It can disappear if its owner stops sharing it.
-_Avoid_: Shared voice, community voice, professional voice
+_Avoid_: Shared voice (ElevenLabs' term for it in the API), community voice, professional voice
 
 **Plan**:
 The ElevenLabs subscription of an ElevenLabs Account: Free, Starter, Creator, Pro, Scale, Business or Enterprise. It sets the account's character quota, whether it can use Library Voices, which audio formats it can request and how many requests it can make at once.

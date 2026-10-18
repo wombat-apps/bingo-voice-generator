@@ -5,7 +5,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use super::types::{
-    AddSharedVoiceResponse, ElevenLabsVoice, SharedVoiceSort, SharedVoicesResponse,
+    AddSharedVoiceResponse, ElevenLabsVoice, LibraryVoiceSort, SharedVoicesResponse,
     SubscriptionInfo, VoicesResponse,
 };
 use crate::commands::accounts;
@@ -288,13 +288,13 @@ impl ElevenLabsClient {
     }
 
     /// Library Voices in the Language of `accent`, under `accent_label` if given.
-    pub async fn shared_voices(
+    pub async fn library_voices(
         &self,
         accent: Accent,
         accent_label: Option<&str>,
         gender: Option<&str>,
         search: Option<&str>,
-        sort: SharedVoiceSort,
+        sort: LibraryVoiceSort,
         page_size: u32,
     ) -> Result<SharedVoicesResponse, ElevenLabsError> {
         let path = shared_voices_path(accent, accent_label, gender, search, sort, page_size);
@@ -306,7 +306,7 @@ impl ElevenLabsClient {
     }
 
     /// Saves a Library Voice in the account and returns its new voice id.
-    pub async fn add_shared_voice(
+    pub async fn add_library_voice(
         &self,
         public_owner_id: &str,
         voice_id: &str,
@@ -379,7 +379,7 @@ fn shared_voices_path(
     accent_label: Option<&str>,
     gender: Option<&str>,
     search: Option<&str>,
-    sort: SharedVoiceSort,
+    sort: LibraryVoiceSort,
     page_size: u32,
 ) -> String {
     let mut path = format!(
@@ -543,7 +543,7 @@ pub(crate) mod tests {
             Some("latin american"),
             Some("female"),
             None,
-            SharedVoiceSort::ClonedByCount,
+            LibraryVoiceSort::ClonedByCount,
             50,
         );
 
@@ -560,7 +560,7 @@ pub(crate) mod tests {
             None,
             None,
             Some(""),
-            SharedVoiceSort::default(),
+            LibraryVoiceSort::default(),
             20,
         );
 

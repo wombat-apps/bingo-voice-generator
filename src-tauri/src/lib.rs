@@ -97,9 +97,9 @@ pub fn run() {
             // ElevenLabs commands
             generate_audio,
             list_default_voices,
-            search_shared_voices,
+            search_library_voices,
             get_account_subscription,
-            add_shared_voice,
+            add_library_voice,
             // Storage commands
             load_audio_files,
             delete_audio_file,

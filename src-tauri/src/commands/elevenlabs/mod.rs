@@ -37,18 +37,18 @@ pub async fn list_default_voices(
 }
 
 #[tauri::command]
-pub async fn search_shared_voices(
+pub async fn search_library_voices(
     elevenlabs: State<'_, ElevenLabs>,
     dirs: State<'_, AppDirs>,
     accent: Accent,
     gender: Option<String>,
     search: Option<String>,
-    sort: Option<SharedVoiceSort>,
+    sort: Option<LibraryVoiceSort>,
     page_size: Option<u32>,
 ) -> Result<SharedVoicesResponse, ElevenLabsError> {
     let client = elevenlabs.active_client(&dirs).await?;
     let fetch = |accent_label| {
-        client.shared_voices(
+        client.library_voices(
             accent,
             accent_label,
             gender.as_deref(),
@@ -65,7 +65,7 @@ pub async fn search_shared_voices(
     // Some Accents have few or no voices under their label (or a label the Voice Library
     // does not use): the user picks from the whole Language by ear instead.
     log::info!(
-        "[search_shared_voices] No voices with accent {:?}, searching all of {}",
+        "[search_library_voices] No voices with accent {:?}, searching all of {}",
         accent.elevenlabs_accent(),
         accent.elevenlabs_code()
     );
@@ -88,7 +88,7 @@ pub async fn get_account_subscription(
 }
 
 #[tauri::command]
-pub async fn add_shared_voice(
+pub async fn add_library_voice(
     elevenlabs: State<'_, ElevenLabs>,
     dirs: State<'_, AppDirs>,
     public_owner_id: String,
@@ -98,8 +98,8 @@ pub async fn add_shared_voice(
     let new_voice_id = elevenlabs
         .active_client(&dirs)
         .await?
-        .add_shared_voice(&public_owner_id, &voice_id, &new_name)
+        .add_library_voice(&public_owner_id, &voice_id, &new_name)
         .await?;
-    log::info!("[add_shared_voice] Saved {} as {}", voice_id, new_voice_id);
+    log::info!("[add_library_voice] Saved {} as {}", voice_id, new_voice_id);
     Ok(new_voice_id)
 }

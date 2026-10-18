@@ -83,7 +83,7 @@ export interface SharedVoice {
 }
 
 /** The orders the Voice Library can return its voices in. */
-export type SharedVoiceSort = 'trending' | 'cloned_by_count' | 'usage_character_count_1y' | 'created_date';
+export type LibraryVoiceSort = 'trending' | 'cloned_by_count' | 'usage_character_count_1y' | 'created_date';
 
 export interface SharedVoicesResponse {
   voices: SharedVoice[];

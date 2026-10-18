@@ -115,7 +115,7 @@ pub struct SharedVoice {
 /// The orders the Voice Library can return its voices in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum SharedVoiceSort {
+pub enum LibraryVoiceSort {
     #[default]
     Trending,
     ClonedByCount,
@@ -124,7 +124,7 @@ pub enum SharedVoiceSort {
     CreatedDate,
 }
 
-impl SharedVoiceSort {
+impl LibraryVoiceSort {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Trending => "trending",
@@ -222,12 +222,12 @@ mod tests {
     }
 
     #[test]
-    fn shared_voice_sort_matches_the_api_values() {
+    fn library_voice_sort_matches_the_api_values() {
         for sort in [
-            SharedVoiceSort::Trending,
-            SharedVoiceSort::ClonedByCount,
-            SharedVoiceSort::UsageCharacterCount1y,
-            SharedVoiceSort::CreatedDate,
+            LibraryVoiceSort::Trending,
+            LibraryVoiceSort::ClonedByCount,
+            LibraryVoiceSort::UsageCharacterCount1y,
+            LibraryVoiceSort::CreatedDate,
         ] {
             let json = serde_json::to_string(&sort).unwrap();
             assert_eq!(json, format!("\"{}\"", sort.as_str()));

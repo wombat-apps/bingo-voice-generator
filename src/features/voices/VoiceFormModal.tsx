@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lucide-react';
-import type { SharedVoice, SharedVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
-import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
+import type { SharedVoice, LibraryVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
+import { searchLibraryVoices, createVoice, updateVoice, addLibraryVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
 import { unavailableReason as planUnavailableReason, worksOnEveryPlan } from '../../domain/plan';
 import './VoiceFormModal.css';
 
-const SORT_OPTIONS: { value: SharedVoiceSort; label: string }[] = [
+const SORT_OPTIONS: { value: LibraryVoiceSort; label: string }[] = [
   { value: 'trending', label: 'Trending' },
   { value: 'cloned_by_count', label: 'Most added' },
   { value: 'usage_character_count_1y', label: 'Most used' },
@@ -53,7 +53,7 @@ export function VoiceFormModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('');
   // Orders only the Library Voices: Default Voices stay first, as they are
-  const [sort, setSort] = useState<SharedVoiceSort>('trending');
+  const [sort, setSort] = useState<LibraryVoiceSort>('trending');
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
@@ -120,7 +120,7 @@ export function VoiceFormModal({
       // Fetch both Default Voices and Library Voices in parallel
       const [defaultVoices, sharedResponse] = await Promise.all([
         listDefaultVoices(currentAccent, genderFilter || undefined),
-        searchSharedVoices(
+        searchLibraryVoices(
           currentAccent,
           genderFilter || undefined,
           query || undefined,
@@ -239,7 +239,7 @@ export function VoiceFormModal({
             console.error('[VoiceFormModal] Library Voice has no public owner ID, not saving it in the account');
           } else {
             try {
-              voiceIdToUse = await addSharedVoice(
+              voiceIdToUse = await addLibraryVoice(
                 selectedVoice.publicOwnerId,
                 selectedVoice.voiceId,
                 trimmedName
@@ -359,7 +359,7 @@ export function VoiceFormModal({
               <select
                 className="select sort-select"
                 value={sort}
-                onChange={(e) => setSort(e.target.value as SharedVoiceSort)}
+                onChange={(e) => setSort(e.target.value as LibraryVoiceSort)}
                 title="Order of the Library Voices"
               >
                 {SORT_OPTIONS.map((option) => (

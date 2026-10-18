@@ -13,7 +13,7 @@ import type {
   AudioPart,
   DefaultVoice,
   SharedVoicesResponse,
-  SharedVoiceSort,
+  LibraryVoiceSort,
   SubscriptionInfo,
   VoiceSettings,
 } from '../types';
@@ -45,14 +45,14 @@ export async function listDefaultVoices(
   return invoke<DefaultVoice[]>('list_default_voices', { accent, gender });
 }
 
-export async function searchSharedVoices(
+export async function searchLibraryVoices(
   accent: AccentId,
   gender?: string,
   search?: string,
-  sort?: SharedVoiceSort,
+  sort?: LibraryVoiceSort,
   pageSize?: number
 ): Promise<SharedVoicesResponse> {
-  return invoke<SharedVoicesResponse>('search_shared_voices', {
+  return invoke<SharedVoicesResponse>('search_library_voices', {
     accent,
     gender,
     search,
@@ -66,12 +66,12 @@ export async function getAccountSubscription(accountId: string): Promise<Subscri
   return invoke<SubscriptionInfo>('get_account_subscription', { accountId });
 }
 
-export async function addSharedVoice(
+export async function addLibraryVoice(
   publicOwnerId: string,
   voiceId: string,
   newName: string
 ): Promise<string> {
-  return invoke<string>('add_shared_voice', { publicOwnerId, voiceId, newName });
+  return invoke<string>('add_library_voice', { publicOwnerId, voiceId, newName });
 }
 
 // ============================================================================
