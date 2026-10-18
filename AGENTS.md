@@ -76,7 +76,7 @@ src/domain/                         ├── audio_store.rs (file names, Origin
     └── plan.ts (Plan rules)
 ```
 
-The Active Account's API key never reaches the frontend: ElevenLabs commands resolve it in Rust (`ElevenLabs::active_client`). `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
+API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
 
 **IPC Pattern**: Frontend calls `invoke()` from `@tauri-apps/api` → Rust commands in `src-tauri/src/commands/` → Results serialized back to TypeScript.
 
