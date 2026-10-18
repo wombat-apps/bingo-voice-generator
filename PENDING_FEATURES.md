@@ -66,10 +66,12 @@ En la app Tauri la lista es fija en `src/types.ts` (`TTS_MODELS`). Turbo v2.5 se
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (propiedad `selectedModel`)
 
 ### 2.3 Selección de formato de salida
-- MP3 44.1kHz 128kbps (estándar)
-- MP3 44.1kHz 192kbps (alta calidad)
+- MP3 44.1kHz 128kbps (estándar, todos los planes)
+- MP3 44.1kHz 192kbps (alta calidad, plan Creator o superior)
 - MP3 22kHz 32kbps (tamaño pequeño)
-- Formatos PCM: 16kHz, 22kHz, 44.1kHz
+- Formatos PCM: 16kHz, 22kHz, 44.1kHz (44.1kHz requiere plan Pro o superior)
+
+Si se implementa, solo se deben ofrecer los formatos que permita el Plan de la Active Account. Ver `docs/elevenlabs-plans.md`.
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (propiedad `selectedOutputFormat`)
 

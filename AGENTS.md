@@ -59,6 +59,7 @@ src/features/                       ├── storage.rs (file I/O)
     ├── grid/                       ├── voices.rs (voice CRUD)
     ├── sidebar/                    └── accounts.rs (ElevenLabs Accounts, keys in Keychain)
     ├── player/
+    ├── settings-panel/
     └── voices/
 ```
 
@@ -84,9 +85,9 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 ## Data Flow
 
 1. User selects language/mode/voice in Sidebar
-2. Clicks cell or "Generate All" → `App.tsx` orchestrates
+2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` orchestrates
 3. Backend builds TTS text (`number_words.rs`) and calls ElevenLabs API
-4. Audio saved to `~/.local/share/BingoVoiceGenerator/` (organized by language/voice/mode)
+4. Audio saved to `~/Library/Application Support/BingoVoiceGenerator/<language>/<voice uuid>/` (mode and part are in the file name)
 5. Frontend loads audio bytes and plays via Web Audio API
 
 ## Types
@@ -100,7 +101,7 @@ Key types: `LanguageId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `Audi
 ## Conventions
 
 - Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
-- Rust commands use `#[tauri::command]` attribute and return `Result<T, String>`
+- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, so the frontend receives a plain object, not an `Error`)
 - API keys stored securely via system keychain (not in config files)
 - TypeScript strict mode enabled
 
@@ -117,3 +118,7 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### ElevenLabs Plans
+
+`docs/elevenlabs-plans.md` lists what each ElevenLabs Plan allows (quota, Library Voices, formats, concurrency), the API key permissions the app needs and the API error codes. Read it before touching ElevenLabs error handling or voice availability, and update it, with sources and date, when you learn something new.

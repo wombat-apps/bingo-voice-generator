@@ -9,7 +9,8 @@ Desktop application (macOS, Apple Silicon) that generates audio files for bingo 
 - **Multiple Languages**: Spanish, English (US/UK), French, Portuguese, Italian
 - **Two Audio Formats**: Word (full number) and Digit (individual digits)
 - **Web Audio API**: Real-time playback and waveform visualization
-- **Secure Storage**: API keys stored in system keychain
+- **Multiple ElevenLabs Accounts**: Save several accounts and switch the active one; API keys stored in system keychain
+- **ElevenLabs Plans**: What each plan allows and the errors it produces are in `docs/elevenlabs-plans.md`
 
 ## Tech Stack
 
@@ -68,8 +69,10 @@ bingo-voice-generator/
 │   ├── types.ts              # TypeScript types
 │   ├── features/             # React components
 │   │   ├── grid/            # BingoGrid, BingoCell
-│   │   ├── player/          # NowPlayingBar
-│   │   └── sidebar/         # Sidebar
+│   │   ├── player/          # NowPlayingBar, ActionBar
+│   │   ├── settings-panel/  # Settings, ElevenLabs Accounts
+│   │   ├── sidebar/         # Sidebar, subscription info
+│   │   └── voices/          # Voice form and voice limit modals
 │   ├── services/            # API wrappers
 │   │   ├── tauri.ts         # Tauri command wrappers
 │   │   └── audioPlayer.ts   # Web Audio API
@@ -83,7 +86,7 @@ bingo-voice-generator/
 │       │   ├── elevenlabs.rs
 │       │   ├── storage.rs
 │       │   ├── voices.rs
-│       │   └── keychain.rs
+│       │   └── accounts.rs  # ElevenLabs Accounts, keys in Keychain
 │       └── models/          # Data models
 ├── package.json
 └── vite.config.ts
