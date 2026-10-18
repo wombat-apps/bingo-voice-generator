@@ -101,12 +101,6 @@ export async function playAudioFile(filePath: string): Promise<void> {
   await startPlayback(audioData, token);
 }
 
-export async function playAudioData(data: Uint8Array): Promise<void> {
-  // Stop any currently playing audio
-  stop();
-  await startPlayback(data, playToken);
-}
-
 export function stop(): void {
   playToken++;
   isCurrentlyPlaying = false;
@@ -127,21 +121,6 @@ export function pause(): void {
   currentAudio.pause();
 }
 
-export function resume(): void {
-  if (isCurrentlyPlaying || !currentAudio) return;
-
-  const audio = currentAudio;
-  isCurrentlyPlaying = true;
-  audio.play().catch((err) => {
-    console.error('[audioPlayer] Failed to resume playback:', err);
-    if (audio === currentAudio) {
-      isCurrentlyPlaying = false;
-      stopTimeUpdateTimer();
-    }
-  });
-  startTimeUpdateTimer();
-}
-
 export function seek(time: number): void {
   if (!currentAudio) return;
 
@@ -155,20 +134,12 @@ export function seek(time: number): void {
   }
 }
 
-export function getCurrentTime(): number {
+function getCurrentTime(): number {
   return currentAudio?.currentTime ?? 0;
-}
-
-export function getDuration(): number {
-  return currentDuration;
 }
 
 export function setOnTimeUpdate(callback: ((time: number) => void) | null): void {
   onTimeUpdateCallback = callback;
-}
-
-export function isPlaying(): boolean {
-  return isCurrentlyPlaying;
 }
 
 export function setOnPlaybackEnd(callback: (() => void) | null): void {
@@ -182,11 +153,6 @@ export async function getAudioDuration(filePath: string): Promise<number> {
   return audioBuffer.duration;
 }
 
-export async function getAudioDurationFromData(data: Uint8Array): Promise<number> {
-  const audioBuffer = await decode(data);
-  return audioBuffer.duration;
-}
-
 // Waveform generation
 export async function generateWaveform(
   filePath: string,
@@ -194,15 +160,6 @@ export async function generateWaveform(
 ): Promise<number[]> {
   const audioData = await readAudioFile(filePath);
   const audioBuffer = await decode(audioData);
-
-  return extractWaveform(audioBuffer, samples);
-}
-
-export async function generateWaveformFromData(
-  data: Uint8Array,
-  samples: number = 100
-): Promise<number[]> {
-  const audioBuffer = await decode(data);
 
   return extractWaveform(audioBuffer, samples);
 }
@@ -271,8 +228,4 @@ export async function playPreview(filePath: string, nextFilePath?: string): Prom
   };
 
   await audio.play();
-}
-
-export function isPreviewPlaying(): boolean {
-  return previewAudio !== null;
 }

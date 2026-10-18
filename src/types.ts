@@ -123,16 +123,6 @@ export interface SubscriptionInfo {
   nextCharacterCountResetUnix: number | null;
 }
 
-// Generation state
-export interface GenerationProgress {
-  current: number;
-  total: number;
-  isGenerating: boolean;
-  currentNumber: number | null;
-  currentPart: AudioPart | null;
-  error: string | null;
-}
-
 // TTS Model types
 export type TtsModelId =
   | 'eleven_v4'
@@ -183,16 +173,6 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   speed: 1.0,
   modelId: 'eleven_v4',
 };
-
-// App state
-export interface AppState {
-  accent: AccentId;
-  mode: BingoModeId;
-  selectedVoice: Voice | null;
-  audioFiles: Map<number, NumberAudioPair>;
-  playingNumber: number | null;
-  playingPart: AudioPart | null;
-}
 
 /**
  * Serialized `ElevenLabsError` (src-tauri/src/commands/elevenlabs/client.rs), or a

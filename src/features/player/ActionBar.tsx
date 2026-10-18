@@ -3,6 +3,7 @@ import { Play, Pause, Volume2, SkipBack, SkipForward, FileAudio, RefreshCw, Tras
 import type { AudioPart, BingoModeId } from '../../types';
 import { generateWaveform } from '../../services/audioPlayer';
 import { displayNumber } from '../../domain/bingo';
+import type { PlayerPanel } from './usePlayer';
 import { WaveformSlider } from './WaveformSlider';
 import './ActionBar.css';
 
@@ -124,26 +125,14 @@ interface ActionBarProps {
   playingNumber: number | null;
   playingPart: AudioPart | null;
   mode: BingoModeId;
-  filePath: string | null;
   isPlaying: boolean;
-  hasWord: boolean;
-  hasDigit: boolean;
-  needsDigit: boolean;
-  currentTime: number;
-  duration: number;
-  // Dual panel state
-  wordFilePath: string | null;
-  digitFilePath: string | null;
-  wordDuration: number;
-  digitDuration: number;
-  wordCurrentTime: number;
-  digitCurrentTime: number;
+  // The selected number's Word and Digit
+  word: PlayerPanel;
+  digit: PlayerPanel;
   // Playback actions
-  onPlay: () => void;
   onPause: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  onSwitchPart: (part: AudioPart) => void;
   onSeek: (time: number) => void;
   canNavigate: boolean;
   // Dual panel playback actions
@@ -172,13 +161,8 @@ export function ActionBar({
   playingPart,
   mode,
   isPlaying,
-  // Dual panel state
-  wordFilePath,
-  digitFilePath,
-  wordDuration,
-  digitDuration,
-  wordCurrentTime,
-  digitCurrentTime,
+  word,
+  digit,
   // Playback actions
   onPause,
   onPrevious,
@@ -237,9 +221,9 @@ export function ActionBar({
           <PartPanel
             type="word"
             label={selectedLabel || 'W'}
-            filePath={wordFilePath}
-            duration={wordDuration}
-            currentTime={wordCurrentTime}
+            filePath={word.filePath}
+            duration={word.duration}
+            currentTime={word.time}
             isPlaying={isPlaying}
             isActive={playingPart === 'word'}
             hasAudio={selectedHasWord}
@@ -284,9 +268,9 @@ export function ActionBar({
         <PartPanel
           type="word"
           label={wordLabel}
-          filePath={wordFilePath}
-          duration={wordDuration}
-          currentTime={wordCurrentTime}
+          filePath={word.filePath}
+          duration={word.duration}
+          currentTime={word.time}
           isPlaying={isPlaying}
           isActive={playingPart === 'word'}
           hasAudio={selectedHasWord}
@@ -303,9 +287,9 @@ export function ActionBar({
         <PartPanel
           type="digit"
           label={digitLabel}
-          filePath={digitFilePath}
-          duration={digitDuration}
-          currentTime={digitCurrentTime}
+          filePath={digit.filePath}
+          duration={digit.duration}
+          currentTime={digit.time}
           isPlaying={isPlaying}
           isActive={playingPart === 'digit'}
           hasAudio={selectedHasDigit}
