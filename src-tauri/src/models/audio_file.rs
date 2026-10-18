@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{Accent, AudioPart, BingoMode, Voice};
+use uuid::Uuid;
+
+use super::{Accent, AudioPart, BingoMode};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,7 +15,6 @@ pub struct AudioFile {
     pub mode: BingoMode,
     pub file_path: String,
     pub created_at: DateTime<Utc>,
-    pub duration: f64,
 }
 
 impl AudioFile {
@@ -21,20 +22,19 @@ impl AudioFile {
         number: u32,
         part: AudioPart,
         accent: Accent,
-        voice: &Voice,
+        voice: Uuid,
         mode: BingoMode,
         file_path: String,
-        duration: f64,
+        created_at: DateTime<Utc>,
     ) -> Self {
         Self {
             number,
             part,
             accent,
-            voice_uuid: voice.uuid.to_string(),
+            voice_uuid: voice.to_string(),
             mode,
             file_path,
-            created_at: Utc::now(),
-            duration,
+            created_at,
         }
     }
 }

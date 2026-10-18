@@ -21,6 +21,9 @@ npm run tauri build
 # Frontend-only dev server (no Rust backend)
 npm run dev
 
+# Frontend tests (vitest)
+npm test
+
 # Rust commands (run from src-tauri/)
 # Note: May need to set PATH first: export PATH="$HOME/.cargo/bin:$PATH"
 cargo build                    # Build Rust backend
@@ -44,7 +47,7 @@ The identity is the "Developer ID Application" certificate of the release team (
 
 ## CI / Release
 
-- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
+- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `npm test`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
 - `.github/workflows/release.yml`: runs on `v*` tags, on macOS. tauri-action builds for `aarch64-apple-darwin`, signs with Developer ID, notarizes, and publishes a GitHub Release containing `latest.json` for `tauri-plugin-updater` plus a stable-name `BingoVoiceGenerator.dmg`. The version comes from the tag and is injected into `tauri.conf.json`, so never bump it by hand. Running it with `workflow_dispatch` is a dry run that uploads the bundle as an artifact.
 - The updater public key is in `tauri.conf.json`. The private key is the `TAURI_SIGNING_PRIVATE_KEY` secret; if it is lost, existing installs can no longer update.
 
@@ -56,18 +59,24 @@ The former native SwiftUI app is preserved at the `swift-final` tag (`git show s
 
 ```
 Frontend (React/TypeScript)     Backend (Rust/Tauri)
-─────────────────────────────   ────────────────────────────
-src/App.tsx                     src-tauri/src/lib.rs
+─────────────────────────────   ────────────────────────────────────────
+src/App.tsx                     src-tauri/src/lib.rs (manages AppDirs, ElevenLabs)
     ↓                               ↓
 src/services/tauri.ts  ←IPC→   src-tauri/src/commands/
-    ↓                               ├── elevenlabs.rs (TTS API)
-src/features/                       ├── storage.rs (file I/O)
-    ├── grid/                       ├── voices.rs (voice CRUD)
-    ├── sidebar/                    └── accounts.rs (ElevenLabs Accounts, keys in Keychain)
-    ├── player/
-    ├── settings-panel/
-    └── voices/
+    ↓                               ├── generation.rs (generate_audio: text → TTS → save)
+src/features/                       ├── elevenlabs/ (client.rs: one client per key, errors;
+    ├── grid/                       │                types.rs: DTOs; mod.rs: commands)
+    ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
+    ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
+    │   player.ts reducer)          └── accounts.rs (ElevenLabs Accounts, keys in Keychain)
+    ├── settings-panel/         src-tauri/src/services/
+    └── voices/                     ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
+src/domain/                         ├── audio_store.rs (file names, Original/Trimmed Audio)
+    ├── bingo.ts (Bingo Mode rules) └── audio_trimmer.rs
+    └── plan.ts (Plan rules)
 ```
+
+API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
 
 **IPC Pattern**: Frontend calls `invoke()` from `@tauri-apps/api` → Rust commands in `src-tauri/src/commands/` → Results serialized back to TypeScript.
 
@@ -81,9 +90,13 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 
 | File | Purpose |
 |------|---------|
-| `src/App.tsx` | Main state management, audio generation orchestration |
+| `src/App.tsx` | Main state: selection, Voices, accounts, generation and deletion |
+| `src/features/player/player.ts` | Player state machine (Word then Digit, navigation), tested with vitest |
+| `src/domain/bingo.ts`, `src/domain/plan.ts` | Bingo Mode and Plan rules the UI needs |
+| `src-tauri/src/commands/generation.rs` | Generates a Word or Digit end to end |
+| `src-tauri/src/services/audio_store.rs` | Where audio lives and how files are named |
 | `src/services/tauri.ts` | All Tauri command wrappers (type-safe IPC bridge) |
-| `src/services/audioPlayer.ts` | Web Audio API playback and waveform |
+| `src/services/audioPlayer.ts` | `<audio>` playback, decoding and waveform |
 | `src-tauri/src/lib.rs` | Tauri app setup, command registration |
 | `src-tauri/src/models/accent.rs` | Accents: locale tag, name, flag, Voice Library label, scene |
 | `src-tauri/src/models/number_words.rs` | Number words, Bingo 75 letters and phrasing per Language |
@@ -92,10 +105,10 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 ## Data Flow
 
 1. User selects Accent/mode/voice in Sidebar (an Accent belongs to a Language, which sets the number words; see `GLOSSARY.md`)
-2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` orchestrates
-3. Backend builds TTS text (`number_words.rs` for the Language's words, `accent.rs` for the scene) and calls ElevenLabs API
-4. `save_audio_file` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<accent>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<accent>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
-5. Frontend loads audio bytes and plays via Web Audio API
+2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` calls `generate_audio` once
+3. `generate_audio` builds the TTS text for the Voice's Accent (`number_words.rs` for the Language's words, `accent.rs` for the scene) and calls ElevenLabs with the Active Account
+4. `audio_store` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<accent>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<accent>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
+5. The Player (`usePlayer`) loads the Trimmed Audio bytes and plays them through `<audio>`
 
 ## Types
 
@@ -108,7 +121,8 @@ Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioF
 ## Conventions
 
 - Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
-- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
+- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, `StorageError` to `{code: "STORAGE_ERROR", message}`, and `GenerationError` adds `NO_DIGIT`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
+- Commands take `State<AppDirs>` and `State<ElevenLabs>` instead of building paths or HTTP clients themselves
 - API keys stored securely via system keychain (not in config files)
 - TypeScript strict mode enabled
 

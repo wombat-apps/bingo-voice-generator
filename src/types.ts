@@ -17,22 +17,8 @@ export interface Accent {
 // Bingo mode types
 export type BingoModeId = 'bingo90' | 'bingo75';
 
-export interface BingoMode {
-  id: BingoModeId;
-  displayName: string;
-  maxNumber: number;
-  gridColumns: number;
-}
-
 // Audio part types
 export type AudioPart = 'word' | 'digit';
-
-// What is sent to ElevenLabs for one part: the spoken text and its unspoken context
-export interface TtsText {
-  text: string;
-  previousText: string;
-  nextText: string | null;
-}
 
 // Voice types
 /** Default Voice or Library Voice; see GLOSSARY.md. */
@@ -59,7 +45,6 @@ export interface AudioFile {
   mode: BingoModeId;
   filePath: string;
   createdAt: string;
-  duration: number;
 }
 
 export interface NumberAudioPair {
@@ -91,7 +76,6 @@ export interface SharedVoice {
   previewUrl: string | null;
   category: string | null;
   useCase: string | null;
-  freeUsersAllowed: boolean | null;
   publicOwnerId: string | null;
   /** How many ElevenLabs users have added the voice: the Voice Library has no rating. */
   clonedByCount: number | null;
@@ -99,7 +83,7 @@ export interface SharedVoice {
 }
 
 /** The orders the Voice Library can return its voices in. */
-export type SharedVoiceSort = 'trending' | 'cloned_by_count' | 'usage_character_count_1y' | 'created_date';
+export type LibraryVoiceSort = 'trending' | 'cloned_by_count' | 'usage_character_count_1y' | 'created_date';
 
 export interface SharedVoicesResponse {
   voices: SharedVoice[];
@@ -112,6 +96,8 @@ export interface SharedVoicesResponse {
 export interface ElevenLabsAccount {
   id: string;
   name: string;
+  /** The last characters of the API key, e.g. `••••a1b2`. */
+  keyHint: string | null;
 }
 
 export interface AccountsState {
@@ -134,16 +120,6 @@ export interface SubscriptionInfo {
   characterLimit: number;
   status: string;
   nextCharacterCountResetUnix: number | null;
-}
-
-// Generation state
-export interface GenerationProgress {
-  current: number;
-  total: number;
-  isGenerating: boolean;
-  currentNumber: number | null;
-  currentPart: AudioPart | null;
-  error: string | null;
 }
 
 // TTS Model types
@@ -197,17 +173,11 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   modelId: 'eleven_v4',
 };
 
-// App state
-export interface AppState {
-  accent: AccentId;
-  mode: BingoModeId;
-  selectedVoice: Voice | null;
-  audioFiles: Map<number, NumberAudioPair>;
-  playingNumber: number | null;
-  playingPart: AudioPart | null;
-}
-
-/** Serialized `ElevenLabsError` from src-tauri/src/commands/elevenlabs.rs. */
+/**
+ * Serialized `ElevenLabsError` (src-tauri/src/commands/elevenlabs/client.rs), or a
+ * `GenerationError` (src-tauri/src/commands/generation.rs), which adds `NO_DIGIT` and
+ * `STORAGE_ERROR`.
+ */
 export type ElevenLabsError =
-  | { code: 'NO_API_KEY' | 'NETWORK_ERROR'; message: string }
+  | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR' | 'NO_DIGIT' | 'STORAGE_ERROR'; message: string }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };

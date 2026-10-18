@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lucide-react';
-import type { SharedVoice, SharedVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
-import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
+import type { SharedVoice, LibraryVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
+import { searchLibraryVoices, createVoice, updateVoice, addLibraryVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
-import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
+import { unavailableReason as planUnavailableReason, worksOnEveryPlan } from '../../domain/plan';
 import './VoiceFormModal.css';
 
-const SORT_OPTIONS: { value: SharedVoiceSort; label: string }[] = [
+const SORT_OPTIONS: { value: LibraryVoiceSort; label: string }[] = [
   { value: 'trending', label: 'Trending' },
   { value: 'cloned_by_count', label: 'Most added' },
   { value: 'usage_character_count_1y', label: 'Most used' },
@@ -25,7 +25,8 @@ interface VoiceFormModalProps {
   mode: 'add' | 'edit';
   voice: Voice | null;
   currentAccent: AccentId;
-  apiKey: string;
+  /** Searches again when the Active Account changes. */
+  activeAccountId: string | null;
   subscription: SubscriptionInfo | null;
   onClose: () => void;
   onVoiceSaved: (voices: Voice[]) => void;
@@ -38,7 +39,7 @@ export function VoiceFormModal({
   mode,
   voice,
   currentAccent,
-  apiKey,
+  activeAccountId,
   subscription,
   onClose,
   onVoiceSaved,
@@ -52,7 +53,7 @@ export function VoiceFormModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('');
   // Orders only the Library Voices: Default Voices stay first, as they are
-  const [sort, setSort] = useState<SharedVoiceSort>('trending');
+  const [sort, setSort] = useState<LibraryVoiceSort>('trending');
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
@@ -108,7 +109,7 @@ export function VoiceFormModal({
   const latestSearchRef = useRef(0);
 
   const fetchVoices = useCallback(async () => {
-    if (!apiKey) return;
+    if (!activeAccountId) return;
     const query = searchQueryRef.current;
     const searchId = ++latestSearchRef.current;
 
@@ -118,10 +119,9 @@ export function VoiceFormModal({
     try {
       // Fetch both Default Voices and Library Voices in parallel
       const [defaultVoices, sharedResponse] = await Promise.all([
-        listDefaultVoices(currentAccent, apiKey, genderFilter || undefined),
-        searchSharedVoices(
+        listDefaultVoices(currentAccent, genderFilter || undefined),
+        searchLibraryVoices(
           currentAccent,
-          apiKey,
           genderFilter || undefined,
           query || undefined,
           sort,
@@ -138,7 +138,6 @@ export function VoiceFormModal({
           locale: null,
           category: 'premade',
           useCase: null,
-          freeUsersAllowed: true, // Any Plan can generate with Default Voices
           publicOwnerId: null,
           clonedByCount: null,
           featured: null,
@@ -164,7 +163,7 @@ export function VoiceFormModal({
     } finally {
       if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentAccent, apiKey, genderFilter, sort]);
+  }, [currentAccent, activeAccountId, genderFilter, sort]);
 
   // Search again when the modal opens and whenever the gender filter or the order changes
   useEffect(() => {
@@ -201,7 +200,7 @@ export function VoiceFormModal({
 
   // Why the Active Account's Plan cannot generate with the selected voice, or null if it can
   const selectedUnavailableReason = selectedVoice
-    ? voiceKindUnavailableReason(selectedVoice.kind, subscription)
+    ? planUnavailableReason(selectedVoice.kind, subscription)
     : null;
 
   const handleSelectVoice = useCallback((voiceOption: VoiceOption) => {
@@ -240,11 +239,10 @@ export function VoiceFormModal({
             console.error('[VoiceFormModal] Library Voice has no public owner ID, not saving it in the account');
           } else {
             try {
-              voiceIdToUse = await addSharedVoice(
+              voiceIdToUse = await addLibraryVoice(
                 selectedVoice.publicOwnerId,
                 selectedVoice.voiceId,
-                trimmedName,
-                apiKey
+                trimmedName
               );
             } catch (err) {
               console.error('[VoiceFormModal] Failed to save the Library Voice in the account:', err);
@@ -361,7 +359,7 @@ export function VoiceFormModal({
               <select
                 className="select sort-select"
                 value={sort}
-                onChange={(e) => setSort(e.target.value as SharedVoiceSort)}
+                onChange={(e) => setSort(e.target.value as LibraryVoiceSort)}
                 title="Order of the Library Voices"
               >
                 {SORT_OPTIONS.map((option) => (
@@ -399,7 +397,7 @@ export function VoiceFormModal({
               ) : (
                 <div className="voice-picker-list">
                   {searchResults.map((voiceOption) => {
-                    const unavailableReason = voiceKindUnavailableReason(voiceOption.kind, subscription);
+                    const unavailableReason = planUnavailableReason(voiceOption.kind, subscription);
                     return (
                       <div
                         key={voiceOption.voiceId}
@@ -432,8 +430,7 @@ export function VoiceFormModal({
                                   {compactNumber.format(voiceOption.clonedByCount)}
                                 </span>
                               )}
-                              {/* Only Default Voices work on the Free Plan through the API */}
-                              {voiceOption.kind === 'default' && (
+                              {worksOnEveryPlan(voiceOption.kind) && (
                                 <span className="badge badge-free">Free</span>
                               )}
                             </span>

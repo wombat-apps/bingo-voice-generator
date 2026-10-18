@@ -8,7 +8,7 @@ Desktop application (macOS, Apple Silicon) that generates audio files for bingo 
 - **Bingo 75** (American): B-I-N-G-O letters with numbers
 - **Multiple Languages**: Spanish, English (US/UK), French, Portuguese, Italian
 - **Two Audio Formats**: Word (full number) and Digit (individual digits)
-- **Web Audio API**: Real-time playback and waveform visualization
+- **Web Audio API**: Decoding and waveform visualization; playback goes through `<audio>`
 - **Multiple ElevenLabs Accounts**: Save several accounts and switch the active one; API keys stored in system keychain
 - **ElevenLabs Plans**: What each plan allows and the errors it produces are in `docs/elevenlabs-plans.md`
 
@@ -69,13 +69,14 @@ bingo-voice-generator/
 │   ├── types.ts              # TypeScript types
 │   ├── features/             # React components
 │   │   ├── grid/            # BingoGrid, BingoCell
-│   │   ├── player/          # NowPlayingBar, ActionBar
+│   │   ├── player/          # ActionBar, usePlayer and its state machine
 │   │   ├── settings-panel/  # Settings, ElevenLabs Accounts
 │   │   ├── sidebar/         # Sidebar, subscription info
 │   │   └── voices/          # Voice form modal
+│   ├── domain/              # Bingo Mode and Plan rules
 │   ├── services/            # API wrappers
 │   │   ├── tauri.ts         # Tauri command wrappers
-│   │   └── audioPlayer.ts   # Web Audio API
+│   │   └── audioPlayer.ts   # <audio> playback, waveform
 │   └── styles/              # CSS
 ├── src-tauri/                # Backend Rust
 │   ├── Cargo.toml
@@ -83,10 +84,12 @@ bingo-voice-generator/
 │   └── src/
 │       ├── lib.rs           # Tauri app setup
 │       ├── commands/        # Tauri commands
-│       │   ├── elevenlabs.rs
+│       │   ├── generation.rs # generate_audio
+│       │   ├── elevenlabs/  # ElevenLabs client and commands
 │       │   ├── storage.rs
 │       │   ├── voices.rs
 │       │   └── accounts.rs  # ElevenLabs Accounts, keys in Keychain
+│       ├── services/        # AppDirs, audio_store, audio_trimmer
 │       └── models/          # Data models
 ├── package.json
 └── vite.config.ts

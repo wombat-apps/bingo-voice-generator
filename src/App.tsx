@@ -15,31 +15,18 @@ import {
   backfillVoiceKinds,
   loadAudioFiles,
   listAccounts,
-  getAccountApiKey,
   setActiveAccount,
-  generateSpeech,
-  saveAudioFile,
-  buildTtsText,
-  getSubscription,
+  generateAudio as generateAudioFile,
+  getAccountSubscription,
   updateVoice,
   deleteAudioFile,
   deleteAllAudioFilesForNumber,
   deleteLocalVoice,
   getPlatformInfo,
   revealVoiceInFileManager,
+  voicesWithTrimmedAudio,
 } from './services/tauri';
-import {
-  playAudioFile,
-  stop as stopAudio,
-  pause as pauseAudio,
-  resume as resumeAudio,
-  seek as seekAudio,
-  setOnPlaybackEnd,
-  setOnTimeUpdate,
-  getAudioDuration,
-  playPreview,
-  stopPreview,
-} from './services/audioPlayer';
+import { playPreview, stopPreview } from './services/audioPlayer';
 import type {
   AccountsState,
   Accent,
@@ -52,8 +39,10 @@ import type {
   SubscriptionInfo,
 } from './types';
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
+import { hasDigit } from './domain/bingo';
+import { usePlayer } from './features/player/usePlayer';
 import { describeGenerationError } from './services/errors';
-import { voiceUnavailableReason } from './services/voiceAvailability';
+import { unavailableReason } from './domain/plan';
 import './styles/index.css';
 import './App.css';
 
@@ -67,12 +56,18 @@ function App() {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
 
-  // ElevenLabs accounts; apiKey is the Active Account's key ('' when there is none)
+  // ElevenLabs accounts; Rust reads the Active Account's key itself
   const [accountsState, setAccountsState] = useState<AccountsState>({ accounts: [], activeAccountId: null });
-  const [apiKey, setApiKey] = useState('');
-  const hasActiveAccount = apiKey !== '';
-  const activeAccountName =
-    accountsState.accounts.find((a) => a.id === accountsState.activeAccountId)?.name ?? '';
+  const activeAccountId = accountsState.activeAccountId;
+  const activeAccount = accountsState.accounts.find((a) => a.id === activeAccountId);
+  const activeAccountName = activeAccount?.name ?? '';
+  // keyHint is null when the Keychain has no key for the account
+  const hasActiveAccount = activeAccount?.keyHint != null;
+  const accountUnavailableReason = !activeAccount
+    ? 'Pick an ElevenLabs Account in Settings'
+    : activeAccount.keyHint === null
+      ? `No API key in the Keychain for "${activeAccount.name}"`
+      : null;
 
   // Subscription info
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
@@ -88,28 +83,6 @@ function App() {
 
   // Selection state
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
-
-  // Playback state
-  const [playingNumber, setPlayingNumber] = useState<number | null>(null);
-  const [playingPart, setPlayingPart] = useState<AudioPart | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  // Sequential playback state
-  const [_isSequentialPlaying, setIsSequentialPlaying] = useState(false);
-  const [sequentialQueue, setSequentialQueue] = useState<AudioPart[]>([]);
-  // For voice sample playback - stores the next file path directly
-  const [pendingNextFilePath, setPendingNextFilePath] = useState<string | null>(null);
-
-  // Dual panel state - track word and digit files separately
-  const [wordFilePath, setWordFilePath] = useState<string | null>(null);
-  const [digitFilePath, setDigitFilePath] = useState<string | null>(null);
-  const [wordDuration, setWordDuration] = useState(0);
-  const [digitDuration, setDigitDuration] = useState(0);
-  const [wordCurrentTime, setWordCurrentTime] = useState(0);
-  const [digitCurrentTime, setDigitCurrentTime] = useState(0);
 
   // Generation state
   const [isGeneratingWord, setIsGeneratingWord] = useState(false);
@@ -172,36 +145,23 @@ function App() {
 
   // Refresh subscription info. Only the latest request applies, so switching accounts quickly
   // never leaves another account's Plan in place.
-  const subscriptionKeyRef = useRef('');
-  const refreshSubscription = useCallback(async (key: string) => {
-    subscriptionKeyRef.current = key;
+  const subscriptionAccountRef = useRef<string | null>(null);
+  const refreshSubscription = useCallback(async (accountId: string | null) => {
+    subscriptionAccountRef.current = accountId;
     setSubscription(null);
-    if (!key) return;
+    if (!accountId) return;
     try {
-      const sub = await getSubscription(key);
-      if (subscriptionKeyRef.current === key) setSubscription(sub);
+      const sub = await getAccountSubscription(accountId);
+      if (subscriptionAccountRef.current === accountId) setSubscription(sub);
     } catch (err) {
       console.error('Failed to fetch subscription info:', err);
     }
   }, []);
 
-  // Apply a new accounts state, loading the Active Account's key and subscription
+  // Apply a new accounts state, loading the Active Account's subscription
   const applyAccountsState = useCallback(async (state: AccountsState) => {
     setAccountsState(state);
-    if (!state.activeAccountId) {
-      setApiKey('');
-      refreshSubscription('');
-      return;
-    }
-    try {
-      const key = await getAccountApiKey(state.activeAccountId);
-      setApiKey(key);
-      refreshSubscription(key);
-    } catch (err) {
-      console.error('Failed to load the active account API key:', err);
-      setApiKey('');
-      refreshSubscription('');
-    }
+    refreshSubscription(state.activeAccountId);
   }, [refreshSubscription]);
 
   const handleActiveAccountChange = useCallback(async (accountId: string | null) => {
@@ -307,13 +267,13 @@ function App() {
     loadData();
   }, [applyAccountsState]);
 
-  // Store the kind of Voices saved before kinds existed (once per Active Account key)
+  // Store the kind of Voices saved before kinds existed (once per Active Account)
   const needsKindBackfill = voices.some((v) => v.kind === null);
-  const backfilledKeyRef = useRef<string | null>(null);
+  const backfilledAccountRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!apiKey || !needsKindBackfill || backfilledKeyRef.current === apiKey) return;
-    backfilledKeyRef.current = apiKey;
-    backfillVoiceKinds(apiKey)
+    if (!activeAccountId || !needsKindBackfill || backfilledAccountRef.current === activeAccountId) return;
+    backfilledAccountRef.current = activeAccountId;
+    backfillVoiceKinds()
       .then((updatedVoices) => {
         setVoices(updatedVoices);
         setSelectedVoice((current) =>
@@ -322,13 +282,13 @@ function App() {
       })
       .catch((err) => {
         console.error('Failed to backfill voice kinds:', err);
-        backfilledKeyRef.current = null; // retry on the next account change
+        backfilledAccountRef.current = null; // retry on the next account change
       });
-  }, [apiKey, needsKindBackfill]);
+  }, [activeAccountId, needsKindBackfill]);
 
   // Whether the Active Account's Plan can generate with the selected Voice
   const selectedVoiceUnavailableReason = selectedVoice
-    ? voiceUnavailableReason(selectedVoice, subscription)
+    ? unavailableReason(selectedVoice.kind, subscription)
     : null;
 
   // Auto-open settings panel if there is no Active Account
@@ -360,144 +320,20 @@ function App() {
 
   // Check which voices have recordings for the current Accent/mode
   useEffect(() => {
-    async function checkVoiceRecordings() {
-      const voicesForAccent = voices.filter((v) => v.accent === selectedAccent);
-      const recordingsMap = new Map<string, boolean>();
-
-      for (const voice of voicesForAccent) {
-        try {
-          const files = await loadAudioFiles(selectedAccent, voice, selectedMode);
-          const hasAny = Array.from(files.values()).some(
-            (pair) => pair.wordAudio !== null || pair.digitAudio !== null
-          );
-          recordingsMap.set(voice.uuid, hasAny);
-        } catch {
-          recordingsMap.set(voice.uuid, false);
-        }
-      }
-
-      setVoiceHasRecordings(recordingsMap);
-    }
-
-    if (voices.length > 0) {
-      checkVoiceRecordings();
-    }
+    if (voices.length === 0) return;
+    voicesWithTrimmedAudio(selectedAccent, selectedMode)
+      .then((uuids) => {
+        const withRecordings = new Set(uuids);
+        setVoiceHasRecordings(
+          new Map(
+            voices
+              .filter((v) => v.accent === selectedAccent)
+              .map((v) => [v.uuid, withRecordings.has(v.uuid)])
+          )
+        );
+      })
+      .catch((error) => console.error('Failed to check voice recordings:', error));
   }, [voices, selectedAccent, selectedMode]);
-
-  // Set up playback end callback with sequential queue support
-  useEffect(() => {
-    setOnPlaybackEnd(() => {
-      // Check for pending next file (used by voice sample playback)
-      if (pendingNextFilePath) {
-        const nextPath = pendingNextFilePath;
-        setPendingNextFilePath(null);
-        setPlayingPart('digit');
-        setCurrentFilePath(nextPath);
-        playAudioFile(nextPath).catch(console.error);
-        return;
-      }
-
-      // Check if there's a sequential queue to process
-      if (sequentialQueue.length > 0) {
-        const nextPart = sequentialQueue[0];
-        const remainingQueue = sequentialQueue.slice(1);
-        setSequentialQueue(remainingQueue);
-
-        // Play the next part in queue
-        if (selectedNumber !== null) {
-          const audioPair = audioFiles.get(selectedNumber);
-          const nextFile = nextPart === 'word' ? audioPair?.wordAudio : audioPair?.digitAudio;
-
-          if (nextFile) {
-            setPlayingPart(nextPart);
-            setCurrentFilePath(nextFile.filePath);
-            // Reset the time for the next part
-            if (nextPart === 'word') {
-              setWordCurrentTime(0);
-            } else {
-              setDigitCurrentTime(0);
-            }
-            playAudioFile(nextFile.filePath).catch(console.error);
-            return; // Keep playing
-          }
-        }
-      }
-
-      // No more items in queue or failed to play next
-      setIsPlaying(false);
-      setIsSequentialPlaying(false);
-      setCurrentTime(0);
-      setPendingNextFilePath(null);
-      // Reset panel times when playback ends
-      if (playingPart === 'word') {
-        setWordCurrentTime(0);
-      } else if (playingPart === 'digit') {
-        setDigitCurrentTime(0);
-      }
-    });
-
-    return () => {
-      setOnPlaybackEnd(null);
-    };
-  }, [sequentialQueue, selectedNumber, audioFiles, playingPart, pendingNextFilePath]);
-
-  // Set up time update callback - track time per panel
-  useEffect(() => {
-    setOnTimeUpdate((time) => {
-      setCurrentTime(time);
-      // Also update the per-panel current time
-      if (playingPart === 'word') {
-        setWordCurrentTime(time);
-      } else if (playingPart === 'digit') {
-        setDigitCurrentTime(time);
-      }
-    });
-    return () => setOnTimeUpdate(null);
-  }, [playingPart]);
-
-  // Get duration when file changes
-  useEffect(() => {
-    if (currentFilePath) {
-      getAudioDuration(currentFilePath)
-        .then(setDuration)
-        .catch(console.error);
-    } else {
-      setDuration(0);
-      setCurrentTime(0);
-    }
-  }, [currentFilePath]);
-
-  // Update dual panel file paths when selected number changes
-  useEffect(() => {
-    if (selectedNumber !== null) {
-      const audioPair = audioFiles.get(selectedNumber);
-      const wordPath = audioPair?.wordAudio?.filePath || null;
-      const digitPath = audioPair?.digitAudio?.filePath || null;
-
-      setWordFilePath(wordPath);
-      setDigitFilePath(digitPath);
-
-      // Get durations for each file
-      if (wordPath) {
-        getAudioDuration(wordPath).then(setWordDuration).catch(console.error);
-      } else {
-        setWordDuration(0);
-      }
-
-      if (digitPath) {
-        getAudioDuration(digitPath).then(setDigitDuration).catch(console.error);
-      } else {
-        setDigitDuration(0);
-      }
-    } else {
-      setWordFilePath(null);
-      setDigitFilePath(null);
-      setWordDuration(0);
-      setDigitDuration(0);
-    }
-    setWordCurrentTime(0);
-    setDigitCurrentTime(0);
-  }, [selectedNumber, audioFiles]);
 
   // Update selected voice when the Accent changes
   useEffect(() => {
@@ -509,50 +345,21 @@ function App() {
     }
   }, [selectedAccent, voices, selectedVoice]);
 
-  // Cell click handler - plays complete audio (word + digit) sequentially
+  const player = usePlayer({ audioFiles, selectedNumber, selectNumber: setSelectedNumber });
+
+  // A click selects the number and plays its Word, then its Digit
   const handleCellClick = useCallback(
-    async (number: number) => {
+    (number: number) => {
       setSelectedNumber(number);
-
-      const audioPair = audioFiles.get(number);
-      const wordFile = audioPair?.wordAudio;
-      const digitFile = audioPair?.digitAudio;
-
-      if (!wordFile && !digitFile) return;
-
-      try {
-        if (wordFile) {
-          setIsSequentialPlaying(true);
-          setPlayingNumber(number);
-          setPlayingPart('word');
-          setCurrentFilePath(wordFile.filePath);
-
-          if (digitFile) {
-            setSequentialQueue(['digit']);
-          }
-
-          setIsPlaying(true);
-          await playAudioFile(wordFile.filePath);
-        } else if (digitFile) {
-          setPlayingNumber(number);
-          setPlayingPart('digit');
-          setCurrentFilePath(digitFile.filePath);
-          setIsPlaying(true);
-          await playAudioFile(digitFile.filePath);
-        }
-      } catch (error) {
-        console.error('Failed to play audio:', error);
-        setIsPlaying(false);
-        setIsSequentialPlaying(false);
-      }
+      player.playNumber(number);
     },
-    [audioFiles]
+    [player.playNumber]
   );
 
   // Generate audio for the selected number
   const generateAudio = useCallback(
     async (part: AudioPart) => {
-      if (!selectedNumber || !selectedVoice || !apiKey) {
+      if (!selectedNumber || !selectedVoice || !hasActiveAccount) {
         return;
       }
 
@@ -560,32 +367,7 @@ function App() {
       setGenerating(true);
 
       try {
-        const currentAccentInfo = accents.find((l) => l.id === selectedAccent);
-        const languageCode = currentAccentInfo?.elevenlabsCode || 'es';
-
-        // Build TTS text
-        const tts = await buildTtsText(selectedNumber, selectedAccent, selectedMode, part);
-
-        // Generate speech
-        const audioData = await generateSpeech(
-          tts,
-          selectedVoice.elevenlabsId,
-          languageCode,
-          apiKey,
-          voiceSettings.modelId,
-          undefined,
-          voiceSettings
-        );
-
-        // Save audio file
-        const savedFile = await saveAudioFile(
-          audioData,
-          selectedNumber,
-          selectedAccent,
-          selectedVoice,
-          selectedMode,
-          part
-        );
+        const savedFile = await generateAudioFile(selectedNumber, selectedVoice, selectedMode, part, voiceSettings);
 
         // Update local state
         setAudioFiles((prev) => {
@@ -600,11 +382,7 @@ function App() {
         });
 
         // Play the newly generated audio
-        setPlayingNumber(selectedNumber);
-        setPlayingPart(part);
-        setCurrentFilePath(savedFile.filePath);
-        setIsPlaying(true);
-        await playAudioFile(savedFile.filePath);
+        player.playPart(part, selectedNumber);
       } catch (err) {
         console.error(`Failed to generate audio for ${selectedNumber} ${part}:`, err);
         setError(describeGenerationError(err, activeAccountName));
@@ -612,7 +390,7 @@ function App() {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedAccent, selectedMode, accents, voiceSettings]
+    [selectedNumber, selectedVoice, hasActiveAccount, activeAccountName, selectedMode, voiceSettings, player.playPart]
   );
 
   const handleGenerateWord = useCallback(() => {
@@ -660,186 +438,16 @@ function App() {
         }
 
         // Stop playback if we deleted the currently playing file
-        if (playingNumber === selectedNumber) {
-          stopAudio();
-          setPlayingNumber(null);
-          setPlayingPart(null);
-          setCurrentFilePath(null);
-          setIsPlaying(false);
+        if (player.playingNumber === selectedNumber) {
+          player.stop();
         }
       } catch (err) {
         console.error('Failed to delete audio:', err);
         setError('Error al eliminar el audio');
       }
     },
-    [selectedNumber, selectedVoice, selectedAccent, selectedMode, playingNumber]
+    [selectedNumber, selectedVoice, selectedAccent, selectedMode, player.playingNumber, player.stop]
   );
-
-  const handlePlay = useCallback(async () => {
-    if (currentFilePath) {
-      try {
-        setIsPlaying(true);
-        // Try to resume first; if that doesn't work, play from beginning
-        if (currentTime > 0 && currentTime < duration) {
-          resumeAudio();
-        } else {
-          await playAudioFile(currentFilePath);
-        }
-      } catch (error) {
-        console.error('Failed to play audio:', error);
-        setIsPlaying(false);
-      }
-    }
-  }, [currentFilePath, currentTime, duration]);
-
-  const handlePause = useCallback(() => {
-    pauseAudio();
-    setIsPlaying(false);
-  }, []);
-
-  const handleSeek = useCallback((time: number) => {
-    seekAudio(time);
-    setCurrentTime(time);
-  }, []);
-
-  const getNumbersWithAudio = useCallback((): number[] => {
-    const numbersWithAudio: number[] = [];
-    audioFiles.forEach((pair, number) => {
-      if (pair.wordAudio || pair.digitAudio) {
-        numbersWithAudio.push(number);
-      }
-    });
-    return numbersWithAudio.sort((a, b) => a - b);
-  }, [audioFiles]);
-
-  const handlePrevious = useCallback(async () => {
-    if (playingNumber === null) return;
-
-    const numbersWithAudio = getNumbersWithAudio();
-    if (numbersWithAudio.length === 0) return;
-
-    const currentIndex = numbersWithAudio.indexOf(playingNumber);
-    if (currentIndex === -1) return;
-
-    // Circular: wrap to end if at beginning
-    const prevIndex = currentIndex === 0
-      ? numbersWithAudio.length - 1
-      : currentIndex - 1;
-
-    const prevNumber = numbersWithAudio[prevIndex];
-    const audioPair = audioFiles.get(prevNumber);
-    const audioFile = audioPair?.wordAudio || audioPair?.digitAudio;
-    const part: AudioPart = audioPair?.wordAudio ? 'word' : 'digit';
-
-    if (audioFile) {
-      setSelectedNumber(prevNumber);
-      setPlayingNumber(prevNumber);
-      setPlayingPart(part);
-      setCurrentFilePath(audioFile.filePath);
-      setIsPlaying(true);
-      await playAudioFile(audioFile.filePath);
-    }
-  }, [playingNumber, audioFiles, getNumbersWithAudio]);
-
-  const handleNext = useCallback(async () => {
-    if (playingNumber === null) return;
-
-    const numbersWithAudio = getNumbersWithAudio();
-    if (numbersWithAudio.length === 0) return;
-
-    const currentIndex = numbersWithAudio.indexOf(playingNumber);
-    if (currentIndex === -1) return;
-
-    // Circular: wrap to beginning if at end
-    const nextIndex = currentIndex === numbersWithAudio.length - 1
-      ? 0
-      : currentIndex + 1;
-
-    const nextNumber = numbersWithAudio[nextIndex];
-    const audioPair = audioFiles.get(nextNumber);
-    const audioFile = audioPair?.wordAudio || audioPair?.digitAudio;
-    const part: AudioPart = audioPair?.wordAudio ? 'word' : 'digit';
-
-    if (audioFile) {
-      setSelectedNumber(nextNumber);
-      setPlayingNumber(nextNumber);
-      setPlayingPart(part);
-      setCurrentFilePath(audioFile.filePath);
-      setIsPlaying(true);
-      await playAudioFile(audioFile.filePath);
-    }
-  }, [playingNumber, audioFiles, getNumbersWithAudio]);
-
-  const handleSwitchPart = useCallback(async (part: AudioPart) => {
-    if (playingNumber === null) return;
-
-    const audioPair = audioFiles.get(playingNumber);
-    const audioFile = part === 'word' ? audioPair?.wordAudio : audioPair?.digitAudio;
-
-    if (audioFile) {
-      try {
-        setPlayingPart(part);
-        setCurrentFilePath(audioFile.filePath);
-        setIsPlaying(true);
-        await playAudioFile(audioFile.filePath);
-      } catch (error) {
-        console.error('Failed to play audio:', error);
-        setIsPlaying(false);
-      }
-    }
-  }, [playingNumber, audioFiles]);
-
-  // Play just the word part
-  const handlePlayWord = useCallback(async () => {
-    if (selectedNumber === null) return;
-
-    const audioPair = audioFiles.get(selectedNumber);
-    const wordFile = audioPair?.wordAudio;
-
-    if (wordFile) {
-      try {
-        // Clear any sequential queue
-        setSequentialQueue([]);
-        setIsSequentialPlaying(false);
-
-        setPlayingNumber(selectedNumber);
-        setPlayingPart('word');
-        setCurrentFilePath(wordFile.filePath);
-        setWordCurrentTime(0);
-        setIsPlaying(true);
-        await playAudioFile(wordFile.filePath);
-      } catch (error) {
-        console.error('Failed to play word audio:', error);
-        setIsPlaying(false);
-      }
-    }
-  }, [selectedNumber, audioFiles]);
-
-  // Play just the digit part
-  const handlePlayDigit = useCallback(async () => {
-    if (selectedNumber === null) return;
-
-    const audioPair = audioFiles.get(selectedNumber);
-    const digitFile = audioPair?.digitAudio;
-
-    if (digitFile) {
-      try {
-        // Clear any sequential queue
-        setSequentialQueue([]);
-        setIsSequentialPlaying(false);
-
-        setPlayingNumber(selectedNumber);
-        setPlayingPart('digit');
-        setCurrentFilePath(digitFile.filePath);
-        setDigitCurrentTime(0);
-        setIsPlaying(true);
-        await playAudioFile(digitFile.filePath);
-      } catch (error) {
-        console.error('Failed to play digit audio:', error);
-        setIsPlaying(false);
-      }
-    }
-  }, [selectedNumber, audioFiles]);
 
   const handleOpenVoiceForm = useCallback((voice?: Voice) => {
     if (voice) {
@@ -967,13 +575,7 @@ function App() {
   const selectedAudioPair = selectedNumber !== null ? audioFiles.get(selectedNumber) : null;
   const selectedHasWord = !!selectedAudioPair?.wordAudio;
   const selectedHasDigit = !!selectedAudioPair?.digitAudio;
-  const selectedNeedsDigit = selectedNumber !== null && selectedNumber >= 10;
-
-  // Get audio state for playing number
-  const playingAudioPair = playingNumber !== null ? audioFiles.get(playingNumber) : null;
-  const playingHasWord = !!playingAudioPair?.wordAudio;
-  const playingHasDigit = !!playingAudioPair?.digitAudio;
-  const playingNeedsDigit = playingNumber !== null && playingNumber >= 10;
+  const selectedNeedsDigit = selectedNumber !== null && hasDigit(selectedNumber);
 
   const appClassName = `app${isSidebarCollapsed ? ' sidebar-collapsed' : ''}${isSettingsPanelOpen ? ' settings-panel-open' : ''}`;
 
@@ -1103,41 +705,26 @@ function App() {
         <footer className="app-footer">
         <ActionBar
           selectedNumber={selectedNumber}
-          playingNumber={playingNumber}
-          playingPart={playingPart}
+          playingNumber={player.playingNumber}
+          playingPart={player.playingPart}
           mode={selectedMode}
-          filePath={currentFilePath}
-          isPlaying={isPlaying}
-          hasWord={playingHasWord}
-          hasDigit={playingHasDigit}
-          needsDigit={playingNeedsDigit}
-          currentTime={currentTime}
-          duration={duration}
-          // Dual panel state
-          wordFilePath={wordFilePath}
-          digitFilePath={digitFilePath}
-          wordDuration={wordDuration}
-          digitDuration={digitDuration}
-          wordCurrentTime={wordCurrentTime}
-          digitCurrentTime={digitCurrentTime}
-          // Playback actions
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onSwitchPart={handleSwitchPart}
-          onSeek={handleSeek}
-          canNavigate={getNumbersWithAudio().length > 1}
-          // Dual panel playback actions
-          onPlayWord={handlePlayWord}
-          onPlayDigit={handlePlayDigit}
+          isPlaying={player.isPlaying}
+          word={player.word}
+          digit={player.digit}
+          onPause={player.pause}
+          onPrevious={player.previous}
+          onNext={player.next}
+          onSeek={player.seek}
+          canNavigate={player.canNavigate}
+          onPlayWord={() => player.playPart('word')}
+          onPlayDigit={() => player.playPart('digit')}
           // Generation actions
           onGenerateWord={handleGenerateWord}
           onGenerateDigit={handleGenerateDigit}
           onDelete={handleDeleteAudio}
           isGeneratingWord={isGeneratingWord}
           isGeneratingDigit={isGeneratingDigit}
-          apiKeyConfigured={hasActiveAccount}
+          accountUnavailableReason={accountUnavailableReason}
           voiceSelected={selectedVoice !== null}
           voiceUnavailableReason={selectedVoiceUnavailableReason}
           selectedHasWord={selectedHasWord}
@@ -1162,7 +749,7 @@ function App() {
         mode={voiceFormState.mode}
         voice={voiceFormState.voice}
         currentAccent={selectedAccent}
-        apiKey={apiKey}
+        activeAccountId={activeAccountId}
         subscription={subscription}
         onClose={handleCloseVoiceForm}
         onVoiceSaved={handleVoiceSaved}

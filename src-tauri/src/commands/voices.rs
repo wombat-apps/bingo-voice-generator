@@ -1,12 +1,11 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
+use tauri::State;
 use thiserror::Error;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
 
-use crate::commands::{list_premade_voices, ElevenLabsError};
+use crate::commands::{ElevenLabs, ElevenLabsError};
 use crate::models::{Voice, VoiceKind};
+use crate::services::app_dirs::AppDirs;
 
 #[derive(Debug, Error)]
 pub enum VoicesError {
@@ -29,53 +28,27 @@ impl Serialize for VoicesError {
     }
 }
 
-fn get_voices_file_path() -> PathBuf {
-    let app_support = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    app_support.join("BingoVoiceGenerator").join("voices.json")
-}
-
-#[tauri::command]
-pub async fn load_voices() -> Result<Vec<Voice>, VoicesError> {
-    let path = get_voices_file_path();
-
+async fn read_voices(dirs: &AppDirs) -> Result<Vec<Voice>, VoicesError> {
+    let path = dirs.voices_file();
     if !path.exists() {
         return Ok(Vec::new());
     }
-
     let content = fs::read_to_string(&path).await?;
-    let voices: Vec<Voice> = serde_json::from_str(&content)?;
-    Ok(voices)
+    Ok(serde_json::from_str(&content)?)
 }
 
-#[tauri::command]
-pub async fn save_voices(voices: Vec<Voice>) -> Result<(), VoicesError> {
-    let path = get_voices_file_path();
-
-    // Create parent directory if needed
+async fn write_voices(dirs: &AppDirs, voices: &[Voice]) -> Result<(), VoicesError> {
+    let path = dirs.voices_file();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).await?;
     }
-
-    let content = serde_json::to_string_pretty(&voices)?;
-    let mut file = fs::File::create(&path).await?;
-    file.write_all(content.as_bytes()).await?;
-
+    fs::write(&path, serde_json::to_string_pretty(voices)?).await?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn add_voice(voice: Voice) -> Result<Vec<Voice>, VoicesError> {
-    let mut voices = load_voices().await?;
-
-    // Check if voice already exists (by UUID)
-    if voices.iter().any(|v| v.uuid == voice.uuid) {
-        return Ok(voices);
-    }
-
-    voices.push(voice);
-    save_voices(voices.clone()).await?;
-
-    Ok(voices)
+pub async fn load_voices(dirs: State<'_, AppDirs>) -> Result<Vec<Voice>, VoicesError> {
+    read_voices(&dirs).await
 }
 
 /// Input for creating a new voice
@@ -92,7 +65,10 @@ pub struct CreateVoiceInput {
 
 /// Creates a new voice with the given parameters (UUID generated server-side)
 #[tauri::command]
-pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesError> {
+pub async fn create_voice(
+    dirs: State<'_, AppDirs>,
+    input: CreateVoiceInput,
+) -> Result<Vec<Voice>, VoicesError> {
     log::debug!("[create_voice] Received input: {:?}", input);
     log::debug!("[create_voice] elevenlabs_id: {}", input.elevenlabs_id);
     log::debug!("[create_voice] elevenlabs_name: {}", input.elevenlabs_name);
@@ -111,7 +87,7 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
 
     log::debug!("[create_voice] Created voice: {:?}", voice);
 
-    let mut voices = load_voices().await?;
+    let mut voices = read_voices(&dirs).await?;
     log::debug!("[create_voice] Loaded {} existing voices", voices.len());
 
     // Check if voice already exists (by elevenlabs_id and accent)
@@ -124,21 +100,24 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
     }
 
     voices.push(voice);
-    save_voices(voices.clone()).await?;
+    write_voices(&dirs, &voices).await?;
     log::debug!("[create_voice] Saved {} voices", voices.len());
 
     Ok(voices)
 }
 
 #[tauri::command]
-pub async fn update_voice(voice: Voice) -> Result<Vec<Voice>, VoicesError> {
-    let mut voices = load_voices().await?;
+pub async fn update_voice(
+    dirs: State<'_, AppDirs>,
+    voice: Voice,
+) -> Result<Vec<Voice>, VoicesError> {
+    let mut voices = read_voices(&dirs).await?;
 
     if let Some(existing) = voices.iter_mut().find(|v| v.uuid == voice.uuid) {
         // A copy taken before the backfill must not erase the stored kind.
         let kind = voice.kind.or(existing.kind);
         *existing = Voice { kind, ..voice };
-        save_voices(voices.clone()).await?;
+        write_voices(&dirs, &voices).await?;
         Ok(voices)
     } else {
         Err(VoicesError::VoiceNotFound(voice.uuid.to_string()))
@@ -146,8 +125,11 @@ pub async fn update_voice(voice: Voice) -> Result<Vec<Voice>, VoicesError> {
 }
 
 #[tauri::command]
-pub async fn delete_local_voice(voice_uuid: String) -> Result<Vec<Voice>, VoicesError> {
-    let mut voices = load_voices().await?;
+pub async fn delete_local_voice(
+    dirs: State<'_, AppDirs>,
+    voice_uuid: String,
+) -> Result<Vec<Voice>, VoicesError> {
+    let mut voices = read_voices(&dirs).await?;
 
     let uuid = uuid::Uuid::parse_str(&voice_uuid)
         .map_err(|_| VoicesError::VoiceNotFound(voice_uuid.clone()))?;
@@ -159,20 +141,8 @@ pub async fn delete_local_voice(voice_uuid: String) -> Result<Vec<Voice>, Voices
         return Err(VoicesError::VoiceNotFound(voice_uuid));
     }
 
-    save_voices(voices.clone()).await?;
+    write_voices(&dirs, &voices).await?;
     Ok(voices)
-}
-
-#[tauri::command]
-pub async fn get_voice(voice_uuid: String) -> Result<Option<Voice>, VoicesError> {
-    let voices = load_voices().await?;
-
-    let uuid = match uuid::Uuid::parse_str(&voice_uuid) {
-        Ok(u) => u,
-        Err(_) => return Ok(None),
-    };
-
-    Ok(voices.into_iter().find(|v| v.uuid == uuid))
 }
 
 /// Sets the kind of each Voice that has none: Default Voice if its ElevenLabs voice is one of
@@ -192,22 +162,28 @@ fn fill_missing_kinds(voices: &mut [Voice], default_voice_ids: &[String]) -> boo
 
 /// Stores the kind of Voices saved before kinds existed, asking ElevenLabs for its Default Voices.
 #[tauri::command]
-pub async fn backfill_voice_kinds(api_key: String) -> Result<Vec<Voice>, VoicesError> {
-    let voices = load_voices().await?;
+pub async fn backfill_voice_kinds(
+    elevenlabs: State<'_, ElevenLabs>,
+    dirs: State<'_, AppDirs>,
+) -> Result<Vec<Voice>, VoicesError> {
+    let voices = read_voices(&dirs).await?;
     if voices.iter().all(|v| v.kind.is_some()) {
         return Ok(voices);
     }
 
-    let default_voice_ids: Vec<String> = list_premade_voices(api_key)
+    let default_voice_ids: Vec<String> = elevenlabs
+        .active_client(&dirs)
+        .await?
+        .default_voices(None)
         .await?
         .into_iter()
         .map(|v| v.voice_id)
         .collect();
     // Reload after the request so edits made while it was in flight are kept.
-    let mut voices = load_voices().await?;
+    let mut voices = read_voices(&dirs).await?;
     if fill_missing_kinds(&mut voices, &default_voice_ids) {
         log::info!("[backfill_voice_kinds] Stored the kind of Voices saved without one");
-        save_voices(voices.clone()).await?;
+        write_voices(&dirs, &voices).await?;
     }
     Ok(voices)
 }

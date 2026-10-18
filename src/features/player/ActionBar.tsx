@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Play, Pause, Volume2, SkipBack, SkipForward, FileAudio, RefreshCw, Trash2 } from 'lucide-react';
 import type { AudioPart, BingoModeId } from '../../types';
 import { generateWaveform } from '../../services/audioPlayer';
+import { displayNumber } from '../../domain/bingo';
+import type { PlayerPanel } from './usePlayer';
 import { WaveformSlider } from './WaveformSlider';
 import './ActionBar.css';
 
@@ -123,26 +125,14 @@ interface ActionBarProps {
   playingNumber: number | null;
   playingPart: AudioPart | null;
   mode: BingoModeId;
-  filePath: string | null;
   isPlaying: boolean;
-  hasWord: boolean;
-  hasDigit: boolean;
-  needsDigit: boolean;
-  currentTime: number;
-  duration: number;
-  // Dual panel state
-  wordFilePath: string | null;
-  digitFilePath: string | null;
-  wordDuration: number;
-  digitDuration: number;
-  wordCurrentTime: number;
-  digitCurrentTime: number;
+  // The selected number's Word and Digit
+  word: PlayerPanel;
+  digit: PlayerPanel;
   // Playback actions
-  onPlay: () => void;
   onPause: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  onSwitchPart: (part: AudioPart) => void;
   onSeek: (time: number) => void;
   canNavigate: boolean;
   // Dual panel playback actions
@@ -155,7 +145,8 @@ interface ActionBarProps {
   // State for action buttons
   isGeneratingWord: boolean;
   isGeneratingDigit: boolean;
-  apiKeyConfigured: boolean;
+  /** Why the Active Account cannot generate at all (none, or no key), or null. */
+  accountUnavailableReason: string | null;
   voiceSelected: boolean;
   /** Why the Active Account's Plan cannot generate with the selected Voice, or null. */
   voiceUnavailableReason: string | null;
@@ -165,27 +156,14 @@ interface ActionBarProps {
   selectedNeedsDigit: boolean;
 }
 
-function getBingo75Letter(number: number): string {
-  if (number >= 1 && number <= 15) return 'B';
-  if (number >= 16 && number <= 30) return 'I';
-  if (number >= 31 && number <= 45) return 'N';
-  if (number >= 46 && number <= 60) return 'G';
-  return 'O';
-}
-
 export function ActionBar({
   selectedNumber,
   playingNumber,
   playingPart,
   mode,
   isPlaying,
-  // Dual panel state
-  wordFilePath,
-  digitFilePath,
-  wordDuration,
-  digitDuration,
-  wordCurrentTime,
-  digitCurrentTime,
+  word,
+  digit,
   // Playback actions
   onPause,
   onPrevious,
@@ -201,7 +179,7 @@ export function ActionBar({
   onDelete,
   isGeneratingWord,
   isGeneratingDigit,
-  apiKeyConfigured,
+  accountUnavailableReason,
   voiceSelected,
   voiceUnavailableReason,
   selectedHasWord,
@@ -210,18 +188,14 @@ export function ActionBar({
 }: ActionBarProps) {
   // Determine button states
   const canGenerate =
-    apiKeyConfigured && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
+    accountUnavailableReason === null && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
 
   // Format display number for selected cell
-  const displayNumber = selectedNumber !== null
-    ? (mode === 'bingo75'
-        ? `${getBingo75Letter(selectedNumber)}${selectedNumber}`
-        : selectedNumber.toString())
-    : null;
+  const selectedLabel = selectedNumber !== null ? displayNumber(selectedNumber, mode) : null;
 
   // Labels for panels
-  const wordLabel = displayNumber ? `${displayNumber}-W` : 'W';
-  const digitLabel = displayNumber ? `${displayNumber}-D` : 'D';
+  const wordLabel = selectedLabel ? `${selectedLabel}-W` : 'W';
+  const digitLabel = selectedLabel ? `${selectedLabel}-D` : 'D';
 
   // Empty state
   if (selectedNumber === null && playingNumber === null) {
@@ -239,7 +213,7 @@ export function ActionBar({
       <div className="action-bar action-bar-single">
         <div className="action-bar-single-content">
           <div className="action-bar-info">
-            <span className="action-bar-number">{displayNumber}</span>
+            <span className="action-bar-number">{selectedLabel}</span>
             <span className={`part-indicator ${selectedHasWord ? 'available' : 'unavailable'}`}>
               WORD
             </span>
@@ -247,16 +221,16 @@ export function ActionBar({
 
           <PartPanel
             type="word"
-            label={displayNumber || 'W'}
-            filePath={wordFilePath}
-            duration={wordDuration}
-            currentTime={wordCurrentTime}
+            label={selectedLabel || 'W'}
+            filePath={word.filePath}
+            duration={word.duration}
+            currentTime={word.time}
             isPlaying={isPlaying}
             isActive={playingPart === 'word'}
             hasAudio={selectedHasWord}
             isGenerating={isGeneratingWord}
             canGenerate={canGenerate}
-            generateDisabledReason={voiceUnavailableReason}
+            generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
             onGenerate={onGenerateWord}
             onPlay={onPlayWord}
             onPause={onPause}
@@ -295,15 +269,15 @@ export function ActionBar({
         <PartPanel
           type="word"
           label={wordLabel}
-          filePath={wordFilePath}
-          duration={wordDuration}
-          currentTime={wordCurrentTime}
+          filePath={word.filePath}
+          duration={word.duration}
+          currentTime={word.time}
           isPlaying={isPlaying}
           isActive={playingPart === 'word'}
           hasAudio={selectedHasWord}
           isGenerating={isGeneratingWord}
           canGenerate={canGenerate}
-          generateDisabledReason={voiceUnavailableReason}
+          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
           onGenerate={onGenerateWord}
           onPlay={onPlayWord}
           onPause={onPause}
@@ -314,15 +288,15 @@ export function ActionBar({
         <PartPanel
           type="digit"
           label={digitLabel}
-          filePath={digitFilePath}
-          duration={digitDuration}
-          currentTime={digitCurrentTime}
+          filePath={digit.filePath}
+          duration={digit.duration}
+          currentTime={digit.time}
           isPlaying={isPlaying}
           isActive={playingPart === 'digit'}
           hasAudio={selectedHasDigit}
           isGenerating={isGeneratingDigit}
           canGenerate={canGenerate}
-          generateDisabledReason={voiceUnavailableReason}
+          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
           onGenerate={onGenerateDigit}
           onPlay={onPlayDigit}
           onPause={onPause}
