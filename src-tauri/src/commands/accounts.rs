@@ -4,7 +4,7 @@ use thiserror::Error;
 use tokio::fs;
 use uuid::Uuid;
 
-use super::elevenlabs::get_subscription;
+use super::elevenlabs::{get_subscription, has_voices_read};
 
 const SERVICE_NAME: &str = "BingoVoiceGenerator";
 const API_KEY_ACCOUNT_PREFIX: &str = "elevenlabs_api_key";
@@ -110,6 +110,22 @@ impl AccountsState {
     }
 }
 
+/// An API key permission the app checks when an account is added.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ApiKeyPermission {
+    VoicesRead,
+}
+
+/// The result of adding an account: the new state plus the API key permissions it lacks.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddAccountResult {
+    pub state: AccountsState,
+    /// Checked permissions the key lacks, e.g. `voices_read`. The account is saved anyway.
+    pub missing_permissions: Vec<ApiKeyPermission>,
+}
+
 fn get_accounts_file_path() -> PathBuf {
     let app_support = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
     app_support
@@ -150,9 +166,12 @@ pub async fn get_account_api_key(account_id: Uuid) -> Result<String, AccountsErr
     Ok(keychain_entry(account_id)?.get_password()?)
 }
 
-/// Saves a new account after checking the key against ElevenLabs.
+/// Saves a new account after checking the key against ElevenLabs. `user_read` is required;
+/// `voices_read` is probed without side effects and reported if missing.
+/// `text_to_speech` and `voices_write` cannot be checked without spending characters or
+/// saving a voice, so they are not tested.
 #[tauri::command]
-pub async fn add_account(name: String, api_key: String) -> Result<AccountsState, AccountsError> {
+pub async fn add_account(name: String, api_key: String) -> Result<AddAccountResult, AccountsError> {
     let api_key = api_key.trim().to_string();
     if name.trim().is_empty() {
         return Err(AccountsError::EmptyName);
@@ -172,10 +191,25 @@ pub async fn add_account(name: String, api_key: String) -> Result<AccountsState,
         .await
         .map_err(|e| AccountsError::InvalidApiKey(e.to_string()))?;
 
+    let mut missing_permissions = Vec::new();
+    if !has_voices_read(&api_key).await {
+        missing_permissions.push(ApiKeyPermission::VoicesRead);
+    }
+
     let id = state.add(&name)?;
     keychain_entry(id)?.set_password(&api_key)?;
     save_state(&state).await?;
-    Ok(state)
+    if !missing_permissions.is_empty() {
+        log::warn!(
+            "[add_account] Saved account \"{}\" without permissions: {:?}",
+            name.trim(),
+            missing_permissions
+        );
+    }
+    Ok(AddAccountResult {
+        state,
+        missing_permissions,
+    })
 }
 
 #[tauri::command]

@@ -214,6 +214,48 @@ fn error_from_response(status: reqwest::StatusCode, body: &str) -> ElevenLabsErr
     }
 }
 
+/// Whether `error` says the key lacks a permission: a `401` with code `unauthorized`
+/// ("missing the permission …"), or no code. `invalid_api_key` is a wrong key instead.
+fn is_missing_permission(error: &ElevenLabsError) -> bool {
+    match error {
+        ElevenLabsError::ApiError {
+            status_code: 401,
+            api_code,
+            ..
+        } => matches!(api_code.as_deref(), None | Some("unauthorized")),
+        _ => false,
+    }
+}
+
+/// Checks `voices_read` with the cheapest voice listing (one Default Voice, no side effects).
+/// Returns `false` only when the permission is missing: other failures are logged and ignored.
+pub async fn has_voices_read(api_key: &str) -> bool {
+    let url = "https://api.elevenlabs.io/v2/voices?page_size=1&voice_type=default";
+    let result = async {
+        let response = reqwest::Client::new()
+            .get(url)
+            .header("xi-api-key", api_key)
+            .send()
+            .await?;
+        let status = response.status();
+        if !status.is_success() {
+            // A missing permission is an expected outcome here, so it is not logged as an error.
+            let body = response.text().await.unwrap_or_default();
+            return Err(error_from_response(status, &body));
+        }
+        Ok(())
+    }
+    .await;
+    match result {
+        Ok(()) => true,
+        Err(e) if is_missing_permission(&e) => false,
+        Err(e) => {
+            log::warn!("[has_voices_read] Could not check voices_read: {}", e);
+            true
+        }
+    }
+}
+
 // Tauri Commands
 
 // Arguments map 1:1 to the `invoke()` payload in src/services/tauri.ts.
@@ -558,5 +600,36 @@ mod tests {
             ElevenLabsError::ApiError { status_code: 400, api_code: Some(ref code), ref message }
                 if code == "voice_limit_reached" && message == "Limit reached"
         ));
+    }
+
+    #[test]
+    fn unauthorized_probe_means_missing_permission() {
+        let body = r#"{"detail":{"type":"authentication_error","code":"unauthorized","message":"The API key you used is missing the permission voices_read to execute this operation.","status":"authentication_error"}}"#;
+
+        let error = error_from_response(reqwest::StatusCode::UNAUTHORIZED, body);
+
+        assert!(is_missing_permission(&error));
+    }
+
+    #[test]
+    fn other_probe_failures_are_not_missing_permission() {
+        let busy = error_from_response(
+            reqwest::StatusCode::SERVICE_UNAVAILABLE,
+            r#"{"detail":{"code":"service_unavailable","message":"Down"}}"#,
+        );
+        let rate_limited = error_from_response(
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            r#"{"detail":{"code":"rate_limit_exceeded","message":"Slow down"}}"#,
+        );
+
+        let wrong_key = error_from_response(
+            reqwest::StatusCode::UNAUTHORIZED,
+            r#"{"detail":{"code":"invalid_api_key","message":"Invalid API key"}}"#,
+        );
+
+        assert!(!is_missing_permission(&busy));
+        assert!(!is_missing_permission(&wrong_key));
+        assert!(!is_missing_permission(&rate_limited));
+        assert!(!is_missing_permission(&ElevenLabsError::NoApiKey));
     }
 }

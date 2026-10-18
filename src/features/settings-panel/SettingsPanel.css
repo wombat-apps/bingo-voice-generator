@@ -204,6 +204,39 @@
   color: var(--status-error);
 }
 
+.account-add-help {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+
+.account-add-warning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--status-warning-bg);
+  color: var(--status-warning);
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+.account-add-warning-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+}
+
+.account-add-warning ul,
+.account-add-warning p {
+  margin: 0;
+}
+
+.account-add-warning ul {
+  padding-left: var(--spacing-lg);
+}
+
 /* Subscription section in panel */
 .settings-panel .subscription-info {
   margin-top: var(--spacing-md);

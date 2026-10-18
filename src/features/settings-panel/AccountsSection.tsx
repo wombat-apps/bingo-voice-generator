@@ -8,12 +8,22 @@ import {
   renameAccount,
 } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
-import type { AccountsState, ElevenLabsAccount } from '../../types';
+import type { AccountsState, ApiKeyPermission, ElevenLabsAccount } from '../../types';
 import '../sidebar/SubscriptionInfo.css';
 
 interface AccountsSectionProps {
   accountsState: AccountsState;
   onAccountsChange: (state: AccountsState) => void;
+}
+
+/** What does not work without each checked permission. See docs/elevenlabs-plans.md. */
+const PERMISSION_EFFECTS: Record<ApiKeyPermission, string> = {
+  voices_read: 'no se podrán listar las voces predeterminadas ni las de la biblioteca al añadir una voz',
+};
+
+interface PermissionWarning {
+  accountName: string;
+  missingPermissions: ApiKeyPermission[];
 }
 
 function maskApiKey(apiKey: string): string {
@@ -28,6 +38,7 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
   const [showNewApiKey, setShowNewApiKey] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [permissionWarning, setPermissionWarning] = useState<PermissionWarning | null>(null);
 
   // Keys loaded from the Keychain, and which ones are unmasked
   const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
@@ -56,8 +67,12 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
   const handleAdd = async () => {
     setIsAdding(true);
     setAddError(null);
+    setPermissionWarning(null);
     try {
-      const state = await addAccount(newName, newApiKey);
+      const { state, missingPermissions } = await addAccount(newName, newApiKey);
+      if (missingPermissions.length > 0) {
+        setPermissionWarning({ accountName: newName.trim(), missingPermissions });
+      }
       setNewName('');
       setNewApiKey('');
       setShowNewApiKey(false);
@@ -216,7 +231,40 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
             </button>
           </div>
         </div>
+        <p className="account-add-help">
+          La API key necesita los permisos <code>text_to_speech</code> (generar audio),{' '}
+          <code>voices_read</code> (listar voces), <code>voices_write</code> (guardar en la cuenta
+          las voces de la biblioteca; sin él se añaden igualmente, pero sin preaviso si su autor deja
+          de compartirlas) y <code>user_read</code> (ver el plan). Al añadir la cuenta solo se
+          comprueban <code>user_read</code> y <code>voices_read</code>: comprobar los demás gastaría
+          caracteres o guardaría una voz.
+        </p>
         {addError && <div className="account-add-error">{addError}</div>}
+        {permissionWarning && (
+          <div className="account-add-warning" role="alert">
+            <div className="account-add-warning-header">
+              <span>
+                La cuenta "{permissionWarning.accountName}" se ha guardado, pero a su API key le faltan
+                permisos:
+              </span>
+              <button
+                type="button"
+                className="btn btn-icon btn-sm"
+                title="Cerrar aviso"
+                onClick={() => setPermissionWarning(null)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <ul>
+              {permissionWarning.missingPermissions.map((permission) => (
+                <li key={permission}>
+                  <code>{permission}</code>: {PERMISSION_EFFECTS[permission]}.
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </form>
     </div>
   );

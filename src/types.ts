@@ -96,6 +96,15 @@ export interface AccountsState {
   activeAccountId: string | null;
 }
 
+/** API key permissions the app checks when an account is added. */
+export type ApiKeyPermission = 'voices_read';
+
+export interface AddAccountResult {
+  state: AccountsState;
+  /** Checked permissions the key lacks. The account is saved anyway. */
+  missingPermissions: ApiKeyPermission[];
+}
+
 export interface SubscriptionInfo {
   tier: string;
   characterCount: number;

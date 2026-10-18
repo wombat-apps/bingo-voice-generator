@@ -79,7 +79,7 @@ ElevenLabs API keys can be restricted. The app needs:
 | `voices_write` | Saving Library Voices in the account (the app never deletes voices) |
 | `user_read` | Showing the Plan and quota, and checking the key when an account is added |
 
-Verified live: a key without `voices_read` gets `401 authentication_error` / `unauthorized` ("missing the permission voices_read"). The app only checks `user_read` when an account is added.
+Verified live: a key without `voices_read` gets `401 authentication_error` / `unauthorized` ("missing the permission voices_read"). When an account is added, the app requires `user_read` (`GET /v1/user/subscription`) and probes `voices_read` with `GET /v2/voices?page_size=1&voice_type=default` (no side effects). A missing `voices_read` saves the account with a warning. `text_to_speech` and `voices_write` are only named in the warning: checking them would spend characters or save a voice.
 
 ## Errors
 

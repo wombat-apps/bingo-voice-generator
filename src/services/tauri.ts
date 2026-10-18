@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import type {
   AccountsState,
+  AddAccountResult,
   Language,
   BingoMode,
   Voice,
@@ -248,8 +249,8 @@ export async function getAccountApiKey(accountId: string): Promise<string> {
 }
 
 /** Validates the key against ElevenLabs before saving it. */
-export async function addAccount(name: string, apiKey: string): Promise<AccountsState> {
-  return invoke<AccountsState>('add_account', { name, apiKey });
+export async function addAccount(name: string, apiKey: string): Promise<AddAccountResult> {
+  return invoke<AddAccountResult>('add_account', { name, apiKey });
 }
 
 export async function renameAccount(accountId: string, name: string): Promise<AccountsState> {
