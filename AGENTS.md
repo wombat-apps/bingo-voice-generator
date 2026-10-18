@@ -32,6 +32,16 @@ cargo test                     # Run Rust tests
 
 Build outputs: `src-tauri/target/release/bundle/` (`.app` and `.dmg`).
 
+## Keychain prompts in dev
+
+Debug builds are ad-hoc signed and their signature changes on every rebuild, so macOS asks for Keychain access on each launch even after "Always Allow". To avoid it, export a code-signing identity before `npm run tauri dev`:
+
+```bash
+export BINGO_DEV_SIGNING_IDENTITY="Developer ID Application: <Name> (<TEAMID>)"   # see: security find-identity -v -p codesigning
+```
+
+`src-tauri/.cargo/config.toml` sets `src-tauri/scripts/dev-codesign-run.sh` as the Cargo runner on macOS. It re-signs the app binary with that identity and the release bundle identifier, so "Always Allow" is remembered across rebuilds and is shared with the signed release app. Without the variable, or for test binaries, it just runs them. Release builds and CI do not go through it.
+
 ## Logs
 
 `tauri-plugin-log` writes Rust `log::*` output, plus the webview's `console.error`/`console.warn` and uncaught errors, to stdout and to `~/Library/Logs/com.wombatapps.bingovoicegenerator/bingo-voice-generator.log`, in dev and in release builds. Failed ElevenLabs calls log the HTTP status and the raw response body. Use `log::*` macros, never `println!`. Keep `tauri-plugin-log` (Cargo) and `@tauri-apps/plugin-log` (npm) on the same minor version.

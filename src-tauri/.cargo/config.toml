@@ -1,0 +1,4 @@
+# Re-signs the debug app binary with a stable identity so macOS Keychain "Always Allow"
+# survives rebuilds. Opt-in through BINGO_DEV_SIGNING_IDENTITY; see scripts/dev-codesign-run.sh.
+[target.'cfg(target_os = "macos")']
+runner = "scripts/dev-codesign-run.sh"
