@@ -32,15 +32,15 @@ export function gridOrder(mode: BingoModeId): number[] {
   return result;
 }
 
-/** The Bingo 75 letter of `number` (`'N'` for 45). */
-export function columnLetter(number: number): string {
-  const column = Math.floor((number - 1) / NUMBERS_PER_COLUMN);
-  return COLUMN_LETTERS[Math.min(Math.max(column, 0), COLUMN_LETTERS.length - 1)];
+/** The Bingo 75 letter of `number` (`'N'` for 45), or undefined outside 1–75, like `BingoMode::column` in Rust. */
+export function columnLetter(number: number): string | undefined {
+  if (number < 1) return undefined;
+  return COLUMN_LETTERS[Math.floor((number - 1) / NUMBERS_PER_COLUMN)];
 }
 
 /** How a caller names the number: `'N45'` in Bingo 75, `'45'` in Bingo 90. */
 export function displayNumber(number: number, mode: BingoModeId): string {
-  return mode === 'bingo75' ? `${columnLetter(number)}${number}` : number.toString();
+  return mode === 'bingo75' ? `${columnLetter(number) ?? ''}${number}` : number.toString();
 }
 
 /** Numbers below 10 have no Digit: their Word is enough. */

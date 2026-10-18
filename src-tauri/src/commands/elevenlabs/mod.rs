@@ -81,8 +81,7 @@ pub async fn get_account_subscription(
     account_id: Uuid,
 ) -> Result<SubscriptionInfo, ElevenLabsError> {
     elevenlabs
-        .client_for_account(account_id)
-        .await?
+        .client_for_account(account_id)?
         .subscription()
         .await
 }

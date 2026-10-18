@@ -174,7 +174,7 @@ impl ElevenLabs {
     }
 
     /// A client for any saved ElevenLabs Account.
-    pub async fn client_for_account(
+    pub fn client_for_account(
         &self,
         account_id: Uuid,
     ) -> Result<ElevenLabsClient, ElevenLabsError> {

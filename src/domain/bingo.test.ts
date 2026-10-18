@@ -4,6 +4,7 @@ import { columnLetter, displayNumber, gridOrder, hasDigit, numberStatus } from '
 describe('Bingo Mode rules', () => {
   it('splits Bingo 75 into five columns of fifteen, like BingoMode in Rust', () => {
     expect([1, 15, 16, 45, 46, 75].map(columnLetter)).toEqual(['B', 'B', 'I', 'N', 'G', 'O']);
+    expect([0, 76].map(columnLetter)).toEqual([undefined, undefined]);
     expect(displayNumber(45, 'bingo75')).toBe('N45');
     expect(displayNumber(45, 'bingo90')).toBe('45');
   });

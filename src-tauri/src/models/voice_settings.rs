@@ -14,6 +14,8 @@ pub struct VoiceSettings {
     pub speed: f64,
 }
 
+/// The frontend's defaults (`DEFAULT_VOICE_SETTINGS`), for tests.
+#[cfg(test)]
 impl Default for VoiceSettings {
     fn default() -> Self {
         Self {

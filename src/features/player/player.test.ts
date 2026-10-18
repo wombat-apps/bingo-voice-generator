@@ -49,6 +49,15 @@ describe('playing a number', () => {
     expect(done.times.digit).toBe(0);
   });
 
+  it("plays the queued Digit of the number playing, even if another number is selected meanwhile", () => {
+    const word = run([playNumberEvent(45, pair(45, ['word', 'digit']))!]);
+
+    // Selecting 12 while the Word of 45 plays only resets the times
+    const digit = run([{ type: 'resetTimes' }, { type: 'ended' }], word);
+
+    expect(digit).toMatchObject({ number: 45, part: 'digit', isPlaying: true });
+  });
+
   it('plays only the Digit when there is no Word, and nothing when there is no audio', () => {
     expect(playNumberEvent(45, pair(45, ['digit']))).toEqual({ type: 'play', number: 45, part: 'digit' });
     expect(playNumberEvent(7, pair(7, ['word']))).toMatchObject({ part: 'word', queue: [] });
