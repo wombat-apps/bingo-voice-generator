@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Play, Pause, Volume2, SkipBack, SkipForward, FileAudio, RefreshCw, Trash2 } from 'lucide-react';
 import type { AudioPart, BingoModeId } from '../../types';
 import { generateWaveform } from '../../services/audioPlayer';
+import { displayNumber } from '../../domain/bingo';
 import { WaveformSlider } from './WaveformSlider';
 import './ActionBar.css';
 
@@ -165,14 +166,6 @@ interface ActionBarProps {
   selectedNeedsDigit: boolean;
 }
 
-function getBingo75Letter(number: number): string {
-  if (number >= 1 && number <= 15) return 'B';
-  if (number >= 16 && number <= 30) return 'I';
-  if (number >= 31 && number <= 45) return 'N';
-  if (number >= 46 && number <= 60) return 'G';
-  return 'O';
-}
-
 export function ActionBar({
   selectedNumber,
   playingNumber,
@@ -213,15 +206,11 @@ export function ActionBar({
     apiKeyConfigured && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
 
   // Format display number for selected cell
-  const displayNumber = selectedNumber !== null
-    ? (mode === 'bingo75'
-        ? `${getBingo75Letter(selectedNumber)}${selectedNumber}`
-        : selectedNumber.toString())
-    : null;
+  const selectedLabel = selectedNumber !== null ? displayNumber(selectedNumber, mode) : null;
 
   // Labels for panels
-  const wordLabel = displayNumber ? `${displayNumber}-W` : 'W';
-  const digitLabel = displayNumber ? `${displayNumber}-D` : 'D';
+  const wordLabel = selectedLabel ? `${selectedLabel}-W` : 'W';
+  const digitLabel = selectedLabel ? `${selectedLabel}-D` : 'D';
 
   // Empty state
   if (selectedNumber === null && playingNumber === null) {
@@ -239,7 +228,7 @@ export function ActionBar({
       <div className="action-bar action-bar-single">
         <div className="action-bar-single-content">
           <div className="action-bar-info">
-            <span className="action-bar-number">{displayNumber}</span>
+            <span className="action-bar-number">{selectedLabel}</span>
             <span className={`part-indicator ${selectedHasWord ? 'available' : 'unavailable'}`}>
               WORD
             </span>
@@ -247,7 +236,7 @@ export function ActionBar({
 
           <PartPanel
             type="word"
-            label={displayNumber || 'W'}
+            label={selectedLabel || 'W'}
             filePath={wordFilePath}
             duration={wordDuration}
             currentTime={wordCurrentTime}

@@ -50,6 +50,7 @@ import type {
   SubscriptionInfo,
 } from './types';
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
+import { hasDigit } from './domain/bingo';
 import { describeGenerationError } from './services/errors';
 import { voiceUnavailableReason } from './services/voiceAvailability';
 import './styles/index.css';
@@ -918,13 +919,13 @@ function App() {
   const selectedAudioPair = selectedNumber !== null ? audioFiles.get(selectedNumber) : null;
   const selectedHasWord = !!selectedAudioPair?.wordAudio;
   const selectedHasDigit = !!selectedAudioPair?.digitAudio;
-  const selectedNeedsDigit = selectedNumber !== null && selectedNumber >= 10;
+  const selectedNeedsDigit = selectedNumber !== null && hasDigit(selectedNumber);
 
   // Get audio state for playing number
   const playingAudioPair = playingNumber !== null ? audioFiles.get(playingNumber) : null;
   const playingHasWord = !!playingAudioPair?.wordAudio;
   const playingHasDigit = !!playingAudioPair?.digitAudio;
-  const playingNeedsDigit = playingNumber !== null && playingNumber >= 10;
+  const playingNeedsDigit = playingNumber !== null && hasDigit(playingNumber);
 
   const appClassName = `app${isSidebarCollapsed ? ' sidebar-collapsed' : ''}${isSettingsPanelOpen ? ' settings-panel-open' : ''}`;
 

@@ -9,7 +9,7 @@ use tokio::fs;
 use uuid::Uuid;
 
 use super::audio_trimmer::{trim_trailing_silence, AudioTrimError, TrimConfig};
-use crate::models::{bingo75_letter, Accent, AudioFile, AudioPart, BingoMode, NumberAudioPair};
+use crate::models::{Accent, AudioFile, AudioPart, BingoMode, NumberAudioPair};
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -251,12 +251,12 @@ impl AudioStore {
 /// `n45_word.mp3` for the Bingo 75 Word, `45_word.mp3` for the Bingo 90 Word and
 /// `45_digit.mp3` for the Digit, which both Bingo Modes share.
 fn file_name(number: u32, mode: BingoMode, part: AudioPart) -> String {
-    let stem = match (part, mode) {
-        (AudioPart::Word, BingoMode::Bingo75) => {
-            format!("{}{}", bingo75_letter(number).to_lowercase(), number)
-        }
-        _ => number.to_string(),
+    // Only the Word carries the letter: the Digit is shared by both Bingo Modes.
+    let letter = match part {
+        AudioPart::Word => mode.column_letter(number).unwrap_or(""),
+        AudioPart::Digit => "",
     };
+    let stem = format!("{}{}", letter.to_lowercase(), number);
     format!("{}_{}.mp3", stem, part.file_suffix())
 }
 
@@ -284,11 +284,7 @@ fn parse_file_name(path: &Path, mode: BingoMode) -> Option<(u32, AudioPart)> {
         _ => stem.parse().ok()?,
     };
 
-    let in_mode = match mode {
-        BingoMode::Bingo90 => (1..=90).contains(&number),
-        BingoMode::Bingo75 => (1..=75).contains(&number),
-    };
-    if !in_mode
+    if !mode.contains(number)
         || !part.exists_for(number)
         || file_name(number, mode, part) != path.file_name()?.to_str()?
     {
@@ -533,7 +529,7 @@ mod tests {
     fn file_names_round_trip_and_reject_what_the_app_did_not_write() {
         let parse = |name: &str, mode| parse_file_name(Path::new(name), mode);
 
-        for mode in [BingoMode::Bingo90, BingoMode::Bingo75] {
+        for mode in BingoMode::ALL {
             for number in 1..=75 {
                 for part in AudioPart::all()
                     .into_iter()

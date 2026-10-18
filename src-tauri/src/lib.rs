@@ -122,7 +122,6 @@ pub fn run() {
             set_active_account,
             // Utility commands
             get_accents,
-            get_bingo_modes,
             // Platform detection
             get_platform_info,
         ])
@@ -155,31 +154,4 @@ fn get_accents() -> Vec<AccentInfo> {
             elevenlabs_accent: accent.elevenlabs_accent().to_string(),
         })
         .collect()
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct BingoModeInfo {
-    id: String,
-    display_name: String,
-    max_number: u32,
-    grid_columns: u32,
-}
-
-#[tauri::command]
-fn get_bingo_modes() -> Vec<BingoModeInfo> {
-    vec![
-        BingoModeInfo {
-            id: "bingo90".to_string(),
-            display_name: "Bingo 90".to_string(),
-            max_number: 90,
-            grid_columns: 10,
-        },
-        BingoModeInfo {
-            id: "bingo75".to_string(),
-            display_name: "Bingo 75".to_string(),
-            max_number: 75,
-            grid_columns: 5,
-        },
-    ]
 }

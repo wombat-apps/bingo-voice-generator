@@ -17,13 +17,6 @@ export interface Accent {
 // Bingo mode types
 export type BingoModeId = 'bingo90' | 'bingo75';
 
-export interface BingoMode {
-  id: BingoModeId;
-  displayName: string;
-  maxNumber: number;
-  gridColumns: number;
-}
-
 // Audio part types
 export type AudioPart = 'word' | 'digit';
 

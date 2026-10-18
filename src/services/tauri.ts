@@ -4,7 +4,6 @@ import type {
   AccountsState,
   AddAccountResult,
   Accent,
-  BingoMode,
   Voice,
   VoiceKind,
   AudioFile,
@@ -233,10 +232,6 @@ export async function setActiveAccount(accountId: string | null): Promise<Accoun
 
 export async function getAccents(): Promise<Accent[]> {
   return invoke<Accent[]>('get_accents');
-}
-
-export async function getBingoModes(): Promise<BingoMode[]> {
-  return invoke<BingoMode[]>('get_bingo_modes');
 }
 
 // ============================================================================

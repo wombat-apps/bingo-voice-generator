@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::{Accent, AudioPart, BingoMode, Language};
+use super::{Accent, AudioPart, BingoMode, Language, COLUMN_LETTERS};
 
 pub struct SpeechPatterns {
     pub word_single_digit_90: &'static str,
@@ -11,10 +11,6 @@ pub struct SpeechPatterns {
     /// The Digit is the same in every Bingo Mode.
     pub digit: &'static str,
 }
-
-/// The Bingo 75 column letters as written to ElevenLabs. The letter itself ("B", not "be"):
-/// a spelled-out name sounds like a word ("o" as "oh").
-const LATIN_LETTERS: [&str; 5] = ["B", "I", "N", "G", "O"];
 
 pub struct LanguageConfig {
     pub numbers: HashMap<u32, &'static str>,
@@ -149,7 +145,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "\u{a1}{num_word}!",
                 word_two_digit_90: "\u{a1}{num_word}!",
@@ -261,7 +257,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -373,7 +369,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -485,7 +481,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -597,7 +593,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -709,7 +705,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -821,7 +817,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -933,7 +929,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -1045,7 +1041,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            letters: LATIN_LETTERS,
+            letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -1264,7 +1260,10 @@ fn build_word_text_75(number: u32, accent: Accent) -> String {
     } else {
         config.patterns.word_two_digit_75
     };
-    let letter = config.letters[((number.clamp(1, 75) - 1) / 15) as usize];
+    let column = BingoMode::Bingo75
+        .column(number.clamp(1, 75))
+        .expect("every number from 1 to 75 has a column");
+    let letter = config.letters[column];
     pattern
         .replace("{letter}", letter)
         .replace("{num_word}", &number_word(&config, number))
