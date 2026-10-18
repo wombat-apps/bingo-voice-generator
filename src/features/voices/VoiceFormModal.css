@@ -123,8 +123,9 @@
   pointer-events: none;
 }
 
-.search-input {
-  padding-left: calc(var(--spacing-sm) + 20px);
+/* Raised over the global .input, whose padding would otherwise win and put the text under the icon */
+.input.search-input {
+  padding-left: calc(var(--spacing-sm) * 2 + 16px);
 }
 
 .gender-select,
