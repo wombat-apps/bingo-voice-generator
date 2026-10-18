@@ -93,7 +93,13 @@ export interface SharedVoice {
   useCase: string | null;
   freeUsersAllowed: boolean | null;
   publicOwnerId: string | null;
+  /** How many ElevenLabs users have added the voice: the Voice Library has no rating. */
+  clonedByCount: number | null;
+  featured: boolean | null;
 }
+
+/** The orders the Voice Library can return its voices in. */
+export type SharedVoiceSort = 'trending' | 'cloned_by_count' | 'usage_character_count_1y' | 'created_date';
 
 export interface SharedVoicesResponse {
   voices: SharedVoice[];

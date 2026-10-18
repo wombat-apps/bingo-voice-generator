@@ -51,6 +51,10 @@ The accent of the audio comes only from the voice: the TTS API has no accent or 
 - Guesses, not seen anywhere: `new zealand`, `indian`, `canadian`, `european` (Portuguese). Languages with one Accent use `standard`.
 - When an Accent's label returns no voices, the app searches the whole Language and says so in the voice picker. Untested: whether `locale=es-AR` (or `en-NZ`) narrows better than `accent`.
 
+### Popularity in the Voice Library
+
+Library Voices have no rating, stars, likes or score. The closest signals in each voice of `GET /v1/shared-voices` are `cloned_by_count` (how many users added it, the "Added by" of the website), `usage_character_count_7d`, `usage_character_count_1y` and `featured`. The `sort` parameter takes `created_date` (the default, newest first), `trending`, `cloned_by_count` and `usage_character_count_1y`; the score behind `trending` is not documented. Source: [Get shared voices](https://elevenlabs.io/docs/api-reference/voices/voice-library/get-shared), 2026-10-18.
+
 ## TTS Models
 
 | Model id | Characters per request | Notes |

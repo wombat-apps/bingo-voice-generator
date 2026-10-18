@@ -199,6 +199,34 @@ pub struct SharedVoice {
     pub free_users_allowed: Option<bool>,
     #[serde(rename(deserialize = "public_owner_id"))]
     pub public_owner_id: Option<String>,
+    /// How many ElevenLabs users have added the voice: the Voice Library has no rating.
+    #[serde(default, rename(deserialize = "cloned_by_count"))]
+    pub cloned_by_count: Option<u64>,
+    #[serde(default)]
+    pub featured: Option<bool>,
+}
+
+/// The orders the Voice Library can return its voices in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SharedVoiceSort {
+    #[default]
+    Trending,
+    ClonedByCount,
+    #[serde(rename = "usage_character_count_1y")]
+    UsageCharacterCount1y,
+    CreatedDate,
+}
+
+impl SharedVoiceSort {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Trending => "trending",
+            Self::ClonedByCount => "cloned_by_count",
+            Self::UsageCharacterCount1y => "usage_character_count_1y",
+            Self::CreatedDate => "created_date",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -490,6 +518,7 @@ pub async fn search_shared_voices(
     api_key: String,
     gender: Option<String>,
     search: Option<String>,
+    sort: Option<SharedVoiceSort>,
     page_size: Option<u32>,
 ) -> Result<SharedVoicesResponse, ElevenLabsError> {
     if api_key.is_empty() {
@@ -502,6 +531,7 @@ pub async fn search_shared_voices(
             accent_label,
             gender.as_deref(),
             search.as_deref(),
+            sort.unwrap_or_default(),
             page_size.unwrap_or(20),
         )
     };
@@ -527,13 +557,15 @@ fn shared_voices_url(
     accent_label: Option<&str>,
     gender: Option<&str>,
     search: Option<&str>,
+    sort: SharedVoiceSort,
     page_size: u32,
 ) -> String {
     let mut url = format!(
-        "{}/shared-voices?language={}&page_size={}",
+        "{}/shared-voices?language={}&page_size={}&sort={}",
         BASE_URL,
         accent.elevenlabs_code(),
-        page_size
+        page_size,
+        sort.as_str()
     );
     let mut push = |key: &str, value: Option<&str>| {
         if let Some(v) = value.filter(|v| !v.is_empty()) {
@@ -694,13 +726,14 @@ mod tests {
             Some("latin american"),
             Some("female"),
             None,
+            SharedVoiceSort::ClonedByCount,
             50,
         );
 
         assert_eq!(
             url,
             format!(
-                "{}/shared-voices?language=es&page_size=50&accent=latin%20american&gender=female",
+                "{}/shared-voices?language=es&page_size=50&sort=cloned_by_count&accent=latin%20american&gender=female",
                 BASE_URL
             )
         );
@@ -708,12 +741,46 @@ mod tests {
 
     #[test]
     fn shared_voices_url_without_label_searches_the_whole_language() {
-        let url = shared_voices_url(Accent::NewZealandEnglish, None, None, Some(""), 20);
+        let url = shared_voices_url(
+            Accent::NewZealandEnglish,
+            None,
+            None,
+            Some(""),
+            SharedVoiceSort::default(),
+            20,
+        );
 
         assert_eq!(
             url,
-            format!("{}/shared-voices?language=en&page_size=20", BASE_URL)
+            format!(
+                "{}/shared-voices?language=en&page_size=20&sort=trending",
+                BASE_URL
+            )
         );
+    }
+
+    #[test]
+    fn shared_voice_sort_matches_the_api_values() {
+        for sort in [
+            SharedVoiceSort::Trending,
+            SharedVoiceSort::ClonedByCount,
+            SharedVoiceSort::UsageCharacterCount1y,
+            SharedVoiceSort::CreatedDate,
+        ] {
+            let json = serde_json::to_string(&sort).unwrap();
+            assert_eq!(json, format!("\"{}\"", sort.as_str()));
+        }
+    }
+
+    #[test]
+    fn shared_voice_reads_its_popularity() {
+        let voice: SharedVoice = serde_json::from_str(
+            r#"{"voice_id":"v","name":"Ana","cloned_by_count":1234,"featured":true}"#,
+        )
+        .unwrap();
+
+        assert_eq!(voice.cloned_by_count, Some(1234));
+        assert_eq!(voice.featured, Some(true));
     }
 
     #[test]

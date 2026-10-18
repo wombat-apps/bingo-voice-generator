@@ -127,7 +127,8 @@
   padding-left: calc(var(--spacing-sm) + 20px);
 }
 
-.gender-select {
+.gender-select,
+.sort-select {
   width: auto;
   min-width: 120px;
 }
@@ -232,6 +233,14 @@
   display: flex;
   gap: var(--spacing-xs);
   flex-wrap: wrap;
+}
+
+.voice-added-by {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-subtle);
 }
 
 .voice-tag {

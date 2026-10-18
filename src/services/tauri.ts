@@ -14,6 +14,7 @@ import type {
   AudioPart,
   DefaultVoice,
   SharedVoicesResponse,
+  SharedVoiceSort,
   SubscriptionInfo,
   TtsModelId,
   TtsText,
@@ -64,6 +65,7 @@ export async function searchSharedVoices(
   apiKey: string,
   gender?: string,
   search?: string,
+  sort?: SharedVoiceSort,
   pageSize?: number
 ): Promise<SharedVoicesResponse> {
   return invoke<SharedVoicesResponse>('search_shared_voices', {
@@ -71,6 +73,7 @@ export async function searchSharedVoices(
     apiKey,
     gender,
     search,
+    sort,
     pageSize,
   });
 }

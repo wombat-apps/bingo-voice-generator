@@ -1,10 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
-import type { SharedVoice, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
+import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lucide-react';
+import type { SharedVoice, SharedVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
 import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
 import './VoiceFormModal.css';
+
+const SORT_OPTIONS: { value: SharedVoiceSort; label: string }[] = [
+  { value: 'trending', label: 'Trending' },
+  { value: 'cloned_by_count', label: 'Most added' },
+  { value: 'usage_character_count_1y', label: 'Most used' },
+  { value: 'created_date', label: 'Newest' },
+];
+
+const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
 // Extended type for combined voice list
 interface VoiceOption extends SharedVoice {
@@ -42,6 +51,8 @@ export function VoiceFormModal({
   const [wholeLanguage, setWholeLanguage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('');
+  // Orders only the Library Voices: Default Voices stay first, as they are
+  const [sort, setSort] = useState<SharedVoiceSort>('trending');
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
@@ -71,6 +82,7 @@ export function VoiceFormModal({
         setFormGender('');
         setSearchQuery('');
         setGenderFilter('');
+        setSort('trending');
         setSearchResults([]);
         setWholeLanguage(false);
       }
@@ -112,6 +124,7 @@ export function VoiceFormModal({
           apiKey,
           genderFilter || undefined,
           query || undefined,
+          sort,
           50
         ),
       ]);
@@ -127,6 +140,8 @@ export function VoiceFormModal({
           useCase: null,
           freeUsersAllowed: true, // Any Plan can generate with Default Voices
           publicOwnerId: null,
+          clonedByCount: null,
+          featured: null,
           kind: 'default',
         }));
 
@@ -149,9 +164,9 @@ export function VoiceFormModal({
     } finally {
       if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentAccent, apiKey, genderFilter]);
+  }, [currentAccent, apiKey, genderFilter, sort]);
 
-  // Search again when the modal opens and whenever the gender filter changes
+  // Search again when the modal opens and whenever the gender filter or the order changes
   useEffect(() => {
     if (isOpen && mode === 'add') {
       fetchVoices();
@@ -274,6 +289,7 @@ export function VoiceFormModal({
     setPlayingVoiceId(null);
     setSearchQuery('');
     setGenderFilter('');
+    setSort('trending');
     setAddStep('search');
     setSelectedVoice(null);
     setFormError(null);
@@ -342,6 +358,19 @@ export function VoiceFormModal({
                 <option value="neutral">Neutral</option>
               </select>
 
+              <select
+                className="select sort-select"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SharedVoiceSort)}
+                title="Order of the Library Voices"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -381,11 +410,28 @@ export function VoiceFormModal({
                             <User size={20} />
                           </div>
                           <div className="voice-picker-details">
-                            <span className="voice-picker-name">{voiceOption.name}</span>
+                            <span className="voice-picker-name">
+                              {voiceOption.name}
+                              {voiceOption.featured && (
+                                <span className="badge badge-featured" title="Featured by ElevenLabs">
+                                  <Star size={10} />
+                                  Featured
+                                </span>
+                              )}
+                            </span>
                             <span className="voice-picker-meta">
                               {voiceOption.gender && <span className={`badge badge-${voiceOption.gender}`}>{voiceOption.gender}</span>}
                               {voiceOption.accent && <span className="voice-tag">{voiceOption.accent}</span>}
                               {voiceOption.age && <span className="voice-tag">{voiceOption.age}</span>}
+                              {voiceOption.clonedByCount != null && (
+                                <span
+                                  className="voice-added-by"
+                                  title={`Added by ${voiceOption.clonedByCount.toLocaleString('en')} ElevenLabs users`}
+                                >
+                                  <Users size={12} />
+                                  {compactNumber.format(voiceOption.clonedByCount)}
+                                </span>
+                              )}
                               {/* Only Default Voices work on the Free Plan through the API */}
                               {voiceOption.kind === 'default' && (
                                 <span className="badge badge-free">Free</span>

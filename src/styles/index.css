@@ -584,6 +584,15 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   border-color: rgba(34, 197, 94, 0.3);
 }
 
+.badge-featured {
+  gap: 2px;
+  margin-left: var(--spacing-2xs);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(202, 138, 4, 0.3) 100%);
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.3);
+  vertical-align: middle;
+}
+
 /* ========================================
    Utilities
    ======================================== */
