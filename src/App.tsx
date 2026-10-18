@@ -59,9 +59,15 @@ function App() {
   // ElevenLabs accounts; Rust reads the Active Account's key itself
   const [accountsState, setAccountsState] = useState<AccountsState>({ accounts: [], activeAccountId: null });
   const activeAccountId = accountsState.activeAccountId;
-  const hasActiveAccount = activeAccountId !== null;
-  const activeAccountName =
-    accountsState.accounts.find((a) => a.id === accountsState.activeAccountId)?.name ?? '';
+  const activeAccount = accountsState.accounts.find((a) => a.id === activeAccountId);
+  const activeAccountName = activeAccount?.name ?? '';
+  // keyHint is null when the Keychain has no key for the account
+  const hasActiveAccount = activeAccount?.keyHint != null;
+  const accountUnavailableReason = !activeAccount
+    ? 'Pick an ElevenLabs Account in Settings'
+    : activeAccount.keyHint === null
+      ? `No API key in the Keychain for "${activeAccount.name}"`
+      : null;
 
   // Subscription info
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
@@ -718,7 +724,7 @@ function App() {
           onDelete={handleDeleteAudio}
           isGeneratingWord={isGeneratingWord}
           isGeneratingDigit={isGeneratingDigit}
-          apiKeyConfigured={hasActiveAccount}
+          accountUnavailableReason={accountUnavailableReason}
           voiceSelected={selectedVoice !== null}
           voiceUnavailableReason={selectedVoiceUnavailableReason}
           selectedHasWord={selectedHasWord}

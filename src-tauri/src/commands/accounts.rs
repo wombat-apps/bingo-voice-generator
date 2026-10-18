@@ -177,13 +177,24 @@ fn keychain_entry(id: Uuid) -> Result<keyring::Entry, AccountsError> {
 pub async fn list_accounts(dirs: State<'_, AppDirs>) -> Result<AccountsState, AccountsError> {
     let mut state = load_state(&dirs).await?;
     let mut changed = false;
-    for account in state.accounts.iter_mut().filter(|a| a.key_hint.is_none()) {
-        match account_api_key(account.id) {
-            Ok(key) => {
-                account.key_hint = Some(key_hint(&key));
-                changed = true;
+    // The Active Account's key is checked every time, so a key gone from the
+    // Keychain clears its hint and the UI stops offering to generate.
+    let active_id = state.active_account_id;
+    for account in state
+        .accounts
+        .iter_mut()
+        .filter(|a| a.key_hint.is_none() || Some(a.id) == active_id)
+    {
+        let hint = match account_api_key(account.id) {
+            Ok(key) => Some(key_hint(&key)),
+            Err(e) => {
+                log::warn!("[list_accounts] No key for \"{}\": {}", account.name, e);
+                None
             }
-            Err(e) => log::warn!("[list_accounts] No key for \"{}\": {}", account.name, e),
+        };
+        if account.key_hint != hint {
+            account.key_hint = hint;
+            changed = true;
         }
     }
     if changed {

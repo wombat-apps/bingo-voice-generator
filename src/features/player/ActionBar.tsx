@@ -145,7 +145,8 @@ interface ActionBarProps {
   // State for action buttons
   isGeneratingWord: boolean;
   isGeneratingDigit: boolean;
-  apiKeyConfigured: boolean;
+  /** Why the Active Account cannot generate at all (none, or no key), or null. */
+  accountUnavailableReason: string | null;
   voiceSelected: boolean;
   /** Why the Active Account's Plan cannot generate with the selected Voice, or null. */
   voiceUnavailableReason: string | null;
@@ -178,7 +179,7 @@ export function ActionBar({
   onDelete,
   isGeneratingWord,
   isGeneratingDigit,
-  apiKeyConfigured,
+  accountUnavailableReason,
   voiceSelected,
   voiceUnavailableReason,
   selectedHasWord,
@@ -187,7 +188,7 @@ export function ActionBar({
 }: ActionBarProps) {
   // Determine button states
   const canGenerate =
-    apiKeyConfigured && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
+    accountUnavailableReason === null && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
 
   // Format display number for selected cell
   const selectedLabel = selectedNumber !== null ? displayNumber(selectedNumber, mode) : null;
@@ -229,7 +230,7 @@ export function ActionBar({
             hasAudio={selectedHasWord}
             isGenerating={isGeneratingWord}
             canGenerate={canGenerate}
-            generateDisabledReason={voiceUnavailableReason}
+            generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
             onGenerate={onGenerateWord}
             onPlay={onPlayWord}
             onPause={onPause}
@@ -276,7 +277,7 @@ export function ActionBar({
           hasAudio={selectedHasWord}
           isGenerating={isGeneratingWord}
           canGenerate={canGenerate}
-          generateDisabledReason={voiceUnavailableReason}
+          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
           onGenerate={onGenerateWord}
           onPlay={onPlayWord}
           onPause={onPause}
@@ -295,7 +296,7 @@ export function ActionBar({
           hasAudio={selectedHasDigit}
           isGenerating={isGeneratingDigit}
           canGenerate={canGenerate}
-          generateDisabledReason={voiceUnavailableReason}
+          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
           onGenerate={onGenerateDigit}
           onPlay={onPlayDigit}
           onPause={onPause}
