@@ -572,16 +572,16 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   border-color: rgba(236, 72, 153, 0.3);
 }
 
+.badge-neutral {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.2) 0%, rgba(100, 116, 139, 0.3) 100%);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
 .badge-free {
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.3) 100%);
   color: #22c55e;
   border-color: rgba(34, 197, 94, 0.3);
-}
-
-.badge-paid {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.3) 100%);
-  color: #f59e0b;
-  border-color: rgba(251, 191, 36, 0.3);
 }
 
 /* ========================================

@@ -94,7 +94,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
             generate_speech,
-            list_premade_voices,
+            list_default_voices,
             search_shared_voices,
             get_subscription,
             add_shared_voice,

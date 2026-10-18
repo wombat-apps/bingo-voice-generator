@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -67,6 +69,69 @@ pub struct ElevenLabsVoice {
     pub category: String,
     #[serde(rename(deserialize = "created_at_unix"))]
     pub created_at_unix: Option<i64>,
+    /// `gender`, `accent`, `age`, `use_case`, among others.
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
+    pub description: Option<String>,
+    #[serde(rename(deserialize = "preview_url"))]
+    pub preview_url: Option<String>,
+    #[serde(default, rename(deserialize = "verified_languages"))]
+    pub verified_languages: Vec<VerifiedLanguage>,
+}
+
+/// A language ElevenLabs has checked the voice speaks, with a preview in it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifiedLanguage {
+    pub language: String,
+    pub accent: Option<String>,
+    pub locale: Option<String>,
+    #[serde(rename(deserialize = "preview_url"))]
+    pub preview_url: Option<String>,
+}
+
+/// A Default Voice as the voice picker shows it, for one language.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DefaultVoice {
+    pub voice_id: String,
+    pub name: String,
+    pub gender: Option<String>,
+    pub accent: Option<String>,
+    pub age: Option<String>,
+    pub description: Option<String>,
+    pub preview_url: Option<String>,
+}
+
+impl DefaultVoice {
+    /// The voice for `language`, or `None` when ElevenLabs has not verified it speaks it.
+    /// The preview is the one in the language's accent if there is one, then any in the
+    /// language, then the generic one.
+    pub fn for_language(voice: &ElevenLabsVoice, language: Language) -> Option<Self> {
+        let in_language: Vec<&VerifiedLanguage> = voice
+            .verified_languages
+            .iter()
+            .filter(|v| v.language == language.elevenlabs_code())
+            .collect();
+        let verified = in_language
+            .iter()
+            .find(|v| v.accent.as_deref() == Some(language.elevenlabs_accent()))
+            .or_else(|| in_language.first())?;
+        let label = |key: &str| voice.labels.get(key).cloned();
+        Some(DefaultVoice {
+            voice_id: voice.voice_id.clone(),
+            name: voice.name.clone(),
+            gender: label("gender"),
+            accent: verified.accent.clone().or_else(|| label("accent")),
+            age: label("age"),
+            description: voice.description.clone().or_else(|| label("description")),
+            preview_url: verified
+                .preview_url
+                .clone()
+                .or_else(|| in_language.iter().find_map(|v| v.preview_url.clone()))
+                .or_else(|| voice.preview_url.clone()),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -355,33 +420,65 @@ pub async fn generate_speech(
     Ok(raw_bytes)
 }
 
-#[tauri::command]
-pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, ElevenLabsError> {
+/// Every Default Voice, optionally only those of one gender.
+async fn fetch_default_voices(
+    api_key: &str,
+    gender: Option<&str>,
+) -> Result<Vec<ElevenLabsVoice>, ElevenLabsError> {
     if api_key.is_empty() {
         return Err(ElevenLabsError::NoApiKey);
     }
 
-    let url = "https://api.elevenlabs.io/v2/voices?page_size=100&voice_type=default".to_string();
+    let mut url =
+        "https://api.elevenlabs.io/v2/voices?page_size=100&voice_type=default".to_string();
+    if let Some(g) = gender.filter(|g| !g.is_empty()) {
+        url.push_str(&format!("&gender={}", urlencoding::encode(g)));
+    }
 
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
-        .header("xi-api-key", &api_key)
+        .header("xi-api-key", api_key)
         .send()
         .await?;
 
     let status = response.status();
 
     if !status.is_success() {
-        return Err(api_error("list_premade_voices", status, response).await);
+        return Err(api_error("fetch_default_voices", status, response).await);
     }
 
     let voices_response: VoicesResponse = response.json().await?;
     log::debug!(
-        "[list_premade_voices] Found {} premade voices",
+        "[fetch_default_voices] Found {} Default Voices",
         voices_response.voices.len()
     );
     Ok(voices_response.voices)
+}
+
+pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, ElevenLabsError> {
+    fetch_default_voices(&api_key, None).await
+}
+
+/// The Default Voices ElevenLabs has verified for `language`.
+#[tauri::command]
+pub async fn list_default_voices(
+    language: Language,
+    api_key: String,
+    gender: Option<String>,
+) -> Result<Vec<DefaultVoice>, ElevenLabsError> {
+    let voices = fetch_default_voices(&api_key, gender.as_deref()).await?;
+    let in_language: Vec<DefaultVoice> = voices
+        .iter()
+        .filter_map(|v| DefaultVoice::for_language(v, language))
+        .collect();
+    log::info!(
+        "[list_default_voices] {} of {} Default Voices are verified for {}",
+        in_language.len(),
+        voices.len(),
+        language.elevenlabs_code()
+    );
+    Ok(in_language)
 }
 
 #[tauri::command]
@@ -503,6 +600,56 @@ pub async fn add_shared_voice(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn default_voice(verified: &str) -> ElevenLabsVoice {
+        serde_json::from_str(&format!(
+            r#"{{"voice_id":"v1","name":"Sarah","category":"premade",
+                "labels":{{"gender":"female","age":"young","accent":"american"}},
+                "preview_url":"generic.mp3","verified_languages":[{verified}]}}"#
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn default_voice_not_verified_for_the_language_is_left_out() {
+        let voice = default_voice(r#"{"language":"en","model_id":"m","preview_url":"en.mp3"}"#);
+
+        assert_eq!(DefaultVoice::for_language(&voice, Language::Spanish), None);
+    }
+
+    #[test]
+    fn default_voice_takes_the_preview_in_the_language_accent() {
+        let voice = default_voice(
+            r#"{"language":"es","model_id":"m","accent":"latin american","preview_url":"latam.mp3"},
+               {"language":"es","model_id":"m","accent":"peninsular","preview_url":"es.mp3"}"#,
+        );
+
+        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+
+        assert_eq!(picked.preview_url.as_deref(), Some("es.mp3"));
+        assert_eq!(picked.accent.as_deref(), Some("peninsular"));
+        assert_eq!(picked.gender.as_deref(), Some("female"));
+    }
+
+    #[test]
+    fn default_voice_in_another_accent_still_counts_for_the_language() {
+        let voice = default_voice(
+            r#"{"language":"es","model_id":"m","accent":"latin american","preview_url":"latam.mp3"}"#,
+        );
+
+        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+
+        assert_eq!(picked.preview_url.as_deref(), Some("latam.mp3"));
+    }
+
+    #[test]
+    fn default_voice_without_a_preview_in_the_language_falls_back_to_the_generic_one() {
+        let voice = default_voice(r#"{"language":"es","model_id":"m"}"#);
+
+        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+
+        assert_eq!(picked.preview_url.as_deref(), Some("generic.mp3"));
+    }
 
     #[test]
     fn parses_code_and_message_from_current_shape() {

@@ -64,11 +64,14 @@ export interface NumberAudioPair {
 }
 
 // ElevenLabs types
-export interface ElevenLabsVoice {
+export interface DefaultVoice {
   voiceId: string;
   name: string;
-  category: string;
-  createdAtUnix: number | null;
+  gender: string | null;
+  accent: string | null;
+  age: string | null;
+  description: string | null;
+  previewUrl: string | null;
 }
 
 export interface SharedVoice {

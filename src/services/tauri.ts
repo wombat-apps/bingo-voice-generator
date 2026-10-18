@@ -12,7 +12,7 @@ import type {
   LanguageId,
   BingoModeId,
   AudioPart,
-  ElevenLabsVoice,
+  DefaultVoice,
   SharedVoicesResponse,
   SubscriptionInfo,
   TtsModelId,
@@ -51,8 +51,12 @@ export async function generateSpeech(
   return new Uint8Array(result);
 }
 
-export async function listPremadeVoices(apiKey: string): Promise<ElevenLabsVoice[]> {
-  return invoke<ElevenLabsVoice[]>('list_premade_voices', { apiKey });
+export async function listDefaultVoices(
+  language: LanguageId,
+  apiKey: string,
+  gender?: string
+): Promise<DefaultVoice[]> {
+  return invoke<DefaultVoice[]>('list_default_voices', { language, apiKey, gender });
 }
 
 export async function searchSharedVoices(

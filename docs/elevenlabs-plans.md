@@ -30,6 +30,16 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 - Saving or editing a voice uses one of the Plan's monthly voice add/edit operations.
 - When an owner stops sharing a Library Voice, accounts that saved it keep it for the notice period (30 days to 2 years); it then disappears. `GET /v1/voices/{voice_id}` shows the date in `disable_at_unix`.
 - Some Library Voices are paid-only or have a credit multiplier (a 2x voice costs twice the characters).
+- **`free_users_allowed` on a Library Voice does not mean the Free Plan can use it via the API.** The 402 above applies to every Library Voice, so the app shows "Free" only on Default Voices.
+
+### Default Voices in `GET /v2/voices`
+
+`GET /v2/voices?voice_type=default` returns, per voice, `labels` (`gender`, `accent`, `age`, `use_case`…), `description`, a generic `preview_url` (in English) and `verified_languages`: one entry per language and model, each with `language`, `accent`, `locale` and its own `preview_url` in that language. It accepts `gender` (and `age`, `accent`) as filters on the labels. [Search voices](https://elevenlabs.io/docs/api-reference/voices/search).
+
+Verified live on 2026-10-18:
+- 21 Default Voices: 7 `female`, 13 `male`, 1 `neutral` (River).
+- Outside English, `verified_languages` only uses the `standard` accent (`es/standard`, `pt/standard`…), never the accents the Voice Library search uses (`peninsular`, `brazilian`). So the app matches Default Voices by language only. English voices are `american`, `british` or `australian`.
+- Verified per language: `es` 7 (Charlie, Eric, George, Matilda, Roger, Sarah, Will), `en` 20, `fr`, `it`, `pt` several each. Adam has no `verified_languages` at all, so the app does not offer him in any language.
 
 ## TTS Models
 

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
 import type { SharedVoice, LanguageId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
-import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listPremadeVoices } from '../../services/tauri';
+import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
 import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
 import './VoiceFormModal.css';
@@ -70,7 +70,6 @@ export function VoiceFormModal({
         setSearchQuery('');
         setGenderFilter('');
         setSearchResults([]);
-        fetchVoices();
       }
       setFormError(null);
       setSearchError(null);
@@ -87,71 +86,72 @@ export function VoiceFormModal({
     };
   }, [audioElement]);
 
+  // The text is searched on demand, so a fetch reads its latest value without depending on it
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+  // Only the latest search may show its results
+  const latestSearchRef = useRef(0);
+
   const fetchVoices = useCallback(async () => {
     if (!apiKey) return;
+    const query = searchQueryRef.current;
+    const searchId = ++latestSearchRef.current;
 
     setIsSearching(true);
     setSearchError(null);
 
     try {
-      // Fetch both premade and shared voices in parallel
-      const [premadeVoices, sharedResponse] = await Promise.all([
-        listPremadeVoices(apiKey),
+      // Fetch both Default Voices and Library Voices in parallel
+      const [defaultVoices, sharedResponse] = await Promise.all([
+        listDefaultVoices(currentLanguage, apiKey, genderFilter || undefined),
         searchSharedVoices(
           currentLanguage,
           apiKey,
           genderFilter || undefined,
-          searchQuery || undefined,
+          query || undefined,
           50
         ),
       ]);
 
-      // Convert premade voices to VoiceOption format
-      const premadeOptions: VoiceOption[] = premadeVoices
-        .filter((v) => {
-          // Apply gender filter if set
-          if (genderFilter) {
-            const voiceGender = v.name.toLowerCase().includes('female') ? 'female' : 'male';
-            if (voiceGender !== genderFilter) return false;
-          }
-          // Apply search filter if set
-          if (searchQuery && !v.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-            return false;
-          }
-          return true;
-        })
+      // Convert Default Voices to VoiceOption format
+      const defaultOptions: VoiceOption[] = defaultVoices
+        .filter((v) => !query || v.name.toLowerCase().includes(query.toLowerCase()))
         .map((v) => ({
-          voiceId: v.voiceId,
-          name: v.name,
-          accent: null,
-          gender: null,
-          age: null,
+          ...v,
           language: null,
           locale: null,
-          description: null,
-          previewUrl: null,
-          category: v.category,
+          category: 'premade',
           useCase: null,
-          freeUsersAllowed: true, // Premade voices are free
+          freeUsersAllowed: true, // Any Plan can generate with Default Voices
           publicOwnerId: null,
           kind: 'default',
         }));
 
       // Convert shared voices to VoiceOption format
+      if (searchId !== latestSearchRef.current) return;
+
       const sharedOptions: VoiceOption[] = sharedResponse.voices.map((v) => ({
         ...v,
         kind: 'library',
       }));
 
-      // Combine: premade first (free), then shared
-      setSearchResults([...premadeOptions, ...sharedOptions]);
+      // Combine: Default Voices first (free), then Library Voices
+      setSearchResults([...defaultOptions, ...sharedOptions]);
     } catch (err) {
+      if (searchId !== latestSearchRef.current) return;
       setSearchError(`Failed to fetch voices: ${errorMessage(err)}`);
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentLanguage, apiKey, genderFilter, searchQuery]);
+  }, [currentLanguage, apiKey, genderFilter]);
+
+  // Search again when the modal opens and whenever the gender filter changes
+  useEffect(() => {
+    if (isOpen && mode === 'add') {
+      fetchVoices();
+    }
+  }, [isOpen, mode, fetchVoices]);
 
   const handlePreview = useCallback(
     (voiceOption: VoiceOption) => {
@@ -320,6 +320,9 @@ export function VoiceFormModal({
                   placeholder="Search voices..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') fetchVoices();
+                  }}
                 />
               </div>
 
@@ -331,6 +334,7 @@ export function VoiceFormModal({
                 <option value="">All Genders</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
+                <option value="neutral">Neutral</option>
               </select>
 
               <button
@@ -371,13 +375,10 @@ export function VoiceFormModal({
                               {voiceOption.gender && <span className={`badge badge-${voiceOption.gender}`}>{voiceOption.gender}</span>}
                               {voiceOption.accent && <span className="voice-tag">{voiceOption.accent}</span>}
                               {voiceOption.age && <span className="voice-tag">{voiceOption.age}</span>}
-                              {/* When the Plan cannot use the voice, the reason below replaces the badge */}
-                              {!unavailableReason &&
-                                (voiceOption.kind === 'default' || voiceOption.freeUsersAllowed ? (
-                                  <span className="badge badge-free">Free</span>
-                                ) : (
-                                  <span className="badge badge-paid">Paid</span>
-                                ))}
+                              {/* Only Default Voices work on the Free Plan through the API */}
+                              {voiceOption.kind === 'default' && (
+                                <span className="badge badge-free">Free</span>
+                              )}
                             </span>
                             {unavailableReason && (
                               <span className="unavailable-reason">{unavailableReason}</span>
@@ -470,6 +471,7 @@ export function VoiceFormModal({
                   <option value="">Unknown</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
+                  <option value="neutral">Neutral</option>
                 </select>
               </div>
 
