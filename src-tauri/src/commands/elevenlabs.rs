@@ -12,7 +12,13 @@ pub enum ElevenLabsError {
     #[error("No API key configured")]
     NoApiKey,
     #[error("API Error ({status_code}): {message}")]
-    ApiError { status_code: u16, message: String },
+    ApiError {
+        status_code: u16,
+        /// ElevenLabs' error code (`detail.code`, or the legacy `detail.status`), if any.
+        api_code: Option<String>,
+        /// ElevenLabs' message, never the raw body.
+        message: String,
+    },
     #[error("Voice limit reached")]
     VoiceLimitReached,
     #[error("Network error: {0}")]
@@ -32,7 +38,7 @@ impl Serialize for ElevenLabsError {
         S: serde::Serializer,
     {
         use serde::ser::SerializeMap;
-        let mut map = serializer.serialize_map(Some(2))?;
+        let mut map = serializer.serialize_map(None)?;
         let code = match self {
             ElevenLabsError::NoApiKey => "NO_API_KEY",
             ElevenLabsError::ApiError { .. } => "API_ERROR",
@@ -40,7 +46,18 @@ impl Serialize for ElevenLabsError {
             ElevenLabsError::NetworkError(_) => "NETWORK_ERROR",
         };
         map.serialize_entry("code", code)?;
-        map.serialize_entry("message", &self.to_string())?;
+        match self {
+            ElevenLabsError::ApiError {
+                status_code,
+                api_code,
+                message,
+            } => {
+                map.serialize_entry("status", status_code)?;
+                map.serialize_entry("apiCode", api_code)?;
+                map.serialize_entry("message", message)?;
+            }
+            _ => map.serialize_entry("message", &self.to_string())?,
+        }
         map.end()
     }
 }
@@ -64,15 +81,41 @@ pub struct VoicesResponse {
     pub total_count: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ElevenLabsErrorDetail {
-    pub status: Option<String>,
+/// What the app reads from the body of a failed ElevenLabs response.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ErrorBody {
+    /// ElevenLabs' error code, e.g. `paid_plan_required`.
+    pub code: Option<String>,
+    /// ElevenLabs' human-readable message.
     pub message: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ElevenLabsErrorResponse {
-    pub detail: Option<ElevenLabsErrorDetail>,
+/// Parses an ElevenLabs error body. See docs/elevenlabs-plans.md, section Errors.
+fn parse_error_body(body: &str) -> ErrorBody {
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(body) else {
+        return ErrorBody::default();
+    };
+    let detail = &json["detail"];
+    // Validation errors (422): a list of `{loc, msg, type}`.
+    if let Some(items) = detail.as_array() {
+        let messages: Vec<&str> = items.iter().filter_map(|i| i["msg"].as_str()).collect();
+        return ErrorBody {
+            code: None,
+            message: (!messages.is_empty()).then(|| messages.join("; ")),
+        };
+    }
+    if let Some(message) = detail.as_str() {
+        return ErrorBody {
+            code: None,
+            message: Some(message.to_string()),
+        };
+    }
+    let text = |key: &str| detail[key].as_str().map(str::to_string);
+    ErrorBody {
+        // `detail.status` is the legacy code; in the current shape it repeats the type.
+        code: text("code").or_else(|| text("status")),
+        message: text("message"),
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,25 +187,36 @@ impl Default for VoiceSettings {
     }
 }
 
-/// Reads the body of a failed ElevenLabs response, logs it and turns it into an `ApiError`.
+/// Reads the body of a failed ElevenLabs response, logs it and turns it into an `ElevenLabsError`.
 async fn api_error(
     command: &str,
     status: reqwest::StatusCode,
     response: reqwest::Response,
 ) -> ElevenLabsError {
-    let error_text = response
-        .text()
-        .await
-        .unwrap_or_else(|_| "Unknown error".to_string());
+    let error_text = response.text().await.unwrap_or_default();
     log::error!(
         "[{}] ElevenLabs API error ({}): {}",
         command,
         status,
         error_text
     );
+    error_from_response(status, &error_text)
+}
+
+fn error_from_response(status: reqwest::StatusCode, body: &str) -> ElevenLabsError {
+    let ErrorBody { code, message } = parse_error_body(body);
+    if code.as_deref() == Some("voice_limit_reached") {
+        return ElevenLabsError::VoiceLimitReached;
+    }
     ElevenLabsError::ApiError {
         status_code: status.as_u16(),
-        message: error_text,
+        api_code: code,
+        message: message.unwrap_or_else(|| {
+            status
+                .canonical_reason()
+                .unwrap_or("Unknown error")
+                .to_string()
+        }),
     }
 }
 
@@ -240,29 +294,7 @@ pub async fn generate_speech(
     log::debug!("[generate_speech] Response status: {}", status);
 
     if !status.is_success() {
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        log::error!(
-            "[generate_speech] ElevenLabs API error ({}): {}",
-            status,
-            error_text
-        );
-
-        // Check for voice_limit_reached error
-        if let Ok(error_response) = serde_json::from_str::<ElevenLabsErrorResponse>(&error_text) {
-            if let Some(detail) = error_response.detail {
-                if detail.status.as_deref() == Some("voice_limit_reached") {
-                    return Err(ElevenLabsError::VoiceLimitReached);
-                }
-            }
-        }
-
-        return Err(ElevenLabsError::ApiError {
-            status_code: status.as_u16(),
-            message: error_text,
-        });
+        return Err(api_error("generate_speech", status, response).await);
     }
 
     let bytes = response.bytes().await?;
@@ -343,6 +375,7 @@ pub async fn list_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, Eleven
         log::error!("[list_voices] JSON parse error: {}", e);
         ElevenLabsError::ApiError {
             status_code: 500,
+            api_code: None,
             message: format!("JSON parse error: {}", e),
         }
     })?;
@@ -544,4 +577,78 @@ pub async fn add_shared_voice(
         add_response.voice_id
     );
     Ok(add_response.voice_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_code_and_message_from_current_shape() {
+        let body = r#"{"detail":{"type":"payment_required","code":"paid_plan_required","message":"Free users cannot use library voices via the API.","status":"payment_required","request_id":"abc"}}"#;
+
+        let parsed = parse_error_body(body);
+
+        assert_eq!(parsed.code.as_deref(), Some("paid_plan_required"));
+        assert_eq!(
+            parsed.message.as_deref(),
+            Some("Free users cannot use library voices via the API.")
+        );
+    }
+
+    #[test]
+    fn falls_back_to_status_in_legacy_shape() {
+        let body = r#"{"detail":{"status":"voice_limit_reached","message":"You have reached your maximum amount of custom voices."}}"#;
+
+        let parsed = parse_error_body(body);
+
+        assert_eq!(parsed.code.as_deref(), Some("voice_limit_reached"));
+        assert_eq!(
+            parsed.message.as_deref(),
+            Some("You have reached your maximum amount of custom voices.")
+        );
+    }
+
+    #[test]
+    fn joins_messages_from_validation_list_shape() {
+        let body = r#"{"detail":[{"loc":["body","text"],"msg":"field required","type":"value_error.missing"},{"loc":["body","model_id"],"msg":"invalid model","type":"value_error"}]}"#;
+
+        let parsed = parse_error_body(body);
+
+        assert_eq!(parsed.code, None);
+        assert_eq!(
+            parsed.message.as_deref(),
+            Some("field required; invalid model")
+        );
+    }
+
+    #[test]
+    fn reads_message_from_string_detail() {
+        let parsed = parse_error_body(r#"{"detail":"Not Found"}"#);
+
+        assert_eq!(parsed.code, None);
+        assert_eq!(parsed.message.as_deref(), Some("Not Found"));
+    }
+
+    #[test]
+    fn uses_http_reason_when_body_is_not_json() {
+        let error = error_from_response(
+            reqwest::StatusCode::BAD_GATEWAY,
+            "<html><body>502 Bad Gateway</body></html>",
+        );
+
+        assert!(matches!(
+            error,
+            ElevenLabsError::ApiError { status_code: 502, api_code: None, ref message } if message == "Bad Gateway"
+        ));
+    }
+
+    #[test]
+    fn voice_limit_reached_code_becomes_its_own_error() {
+        let body = r#"{"detail":{"status":"voice_limit_reached","message":"Limit reached"}}"#;
+
+        let error = error_from_response(reqwest::StatusCode::BAD_REQUEST, body);
+
+        assert!(matches!(error, ElevenLabsError::VoiceLimitReached));
+    }
 }

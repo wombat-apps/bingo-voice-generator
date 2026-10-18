@@ -101,7 +101,7 @@ Key types: `LanguageId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `Audi
 ## Conventions
 
 - Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
-- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, so the frontend receives a plain object, not an `Error`)
+- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
 - API keys stored securely via system keychain (not in config files)
 - TypeScript strict mode enabled
 

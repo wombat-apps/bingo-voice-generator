@@ -54,33 +54,9 @@ import type {
   ElevenLabsVoice,
 } from './types';
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
+import { describeGenerationError, isElevenLabsError } from './services/errors';
 import './styles/index.css';
 import './App.css';
-
-// Helper para detectar errores de quota/créditos de ElevenLabs
-function isQuotaExceededError(errorMsg: string): boolean {
-  const quotaPatterns = [
-    'quota',
-    'exceeded',
-    'insufficient',
-    'character_limit',
-    'usage_limit',
-    '429', // Rate limit HTTP status
-    '402', // Payment required HTTP status
-  ];
-  const lowerMsg = errorMsg.toLowerCase();
-  return quotaPatterns.some(pattern => lowerMsg.includes(pattern.toLowerCase()));
-}
-
-// Helper para detectar errores de límite de voces (solo este error permite retry)
-function isVoiceLimitError(errorMsg: string): boolean {
-  return errorMsg.includes('VOICE_LIMIT_REACHED');
-}
-
-// Helper para detectar errores de voz no encontrada
-function isVoiceNotFoundError(errorMsg: string): boolean {
-  return errorMsg.includes('voice_does_not_exist');
-}
 
 function App() {
   // Static data
@@ -634,11 +610,7 @@ function App() {
         await playAudioFile(savedFile.filePath);
       } catch (err) {
         console.error(`Failed to generate audio for ${selectedNumber} ${part}:`, err);
-        const errorMsg = typeof err === 'object' && err !== null
-          ? JSON.stringify(err)
-          : (err instanceof Error ? err.message : String(err));
-
-        if (isVoiceLimitError(errorMsg)) {
+        if (isElevenLabsError(err) && err.code === 'VOICE_LIMIT_REACHED') {
           // Show modal to let user choose which voice to delete
           try {
             const elevenLabsVoices = await listElevenLabsVoices(apiKey);
@@ -703,28 +675,12 @@ function App() {
             return;
           } catch (retryError) {
             console.error('Retry failed:', retryError);
-            const retryErrorMsg =
-              typeof retryError === 'object' && retryError !== null
-                ? JSON.stringify(retryError)
-                : retryError instanceof Error
-                  ? retryError.message
-                  : String(retryError);
-            if (isQuotaExceededError(retryErrorMsg)) {
-              setError('Has alcanzado el límite de créditos de ElevenLabs. Actualiza tu plan o espera a que se renueve tu cuota.');
-            } else {
-              setError(`No se pudo generar el audio: ${retryErrorMsg}`);
-            }
+            setError(describeGenerationError(retryError, activeAccountName));
             setGenerating(false);
             return;
           }
-        } else if (errorMsg.includes('No API key')) {
-          setError('Por favor, selecciona una cuenta de ElevenLabs.');
-        } else if (isQuotaExceededError(errorMsg)) {
-          setError('Has alcanzado el límite de créditos de ElevenLabs. Actualiza tu plan o espera a que se renueve tu cuota.');
-        } else if (isVoiceNotFoundError(errorMsg)) {
-          setError(`La voz seleccionada no existe en la cuenta "${activeAccountName}". Cambia de cuenta o selecciona otra voz.`);
         } else {
-          setError(`Error al generar audio: ${errorMsg}`);
+          setError(describeGenerationError(err, activeAccountName));
         }
       } finally {
         setGenerating(false);

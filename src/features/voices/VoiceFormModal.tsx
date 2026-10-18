@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
 import type { SharedVoice, LanguageId, Voice } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listPremadeVoices } from '../../services/tauri';
+import { errorMessage } from '../../services/errors';
 import './VoiceFormModal.css';
 
 // Extended type for combined voice list
@@ -142,7 +143,7 @@ export function VoiceFormModal({
       // Combine: premade first (free), then shared
       setSearchResults([...premadeOptions, ...sharedOptions]);
     } catch (err) {
-      setSearchError(err instanceof Error ? err.message : 'Failed to fetch voices');
+      setSearchError(`Failed to fetch voices: ${errorMessage(err)}`);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -236,8 +237,7 @@ export function VoiceFormModal({
       handleClose();
     } catch (err) {
       console.error('[VoiceFormModal] Failed to save voice:', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setFormError(`Failed to save voice: ${errorMessage}`);
+      setFormError(`Failed to save voice: ${errorMessage(err)}`);
     } finally {
       setIsSaving(false);
     }

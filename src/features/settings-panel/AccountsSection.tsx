@@ -7,16 +7,13 @@ import {
   getSubscription,
   renameAccount,
 } from '../../services/tauri';
+import { errorMessage } from '../../services/errors';
 import type { AccountsState, ElevenLabsAccount } from '../../types';
 import '../sidebar/SubscriptionInfo.css';
 
 interface AccountsSectionProps {
   accountsState: AccountsState;
   onAccountsChange: (state: AccountsState) => void;
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 function maskApiKey(apiKey: string): string {
