@@ -3,7 +3,7 @@ import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lu
 import type { SharedVoice, SharedVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
-import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
+import { unavailableReason as planUnavailableReason, worksOnEveryPlan } from '../../domain/plan';
 import './VoiceFormModal.css';
 
 const SORT_OPTIONS: { value: SharedVoiceSort; label: string }[] = [
@@ -138,7 +138,6 @@ export function VoiceFormModal({
           locale: null,
           category: 'premade',
           useCase: null,
-          freeUsersAllowed: true, // Any Plan can generate with Default Voices
           publicOwnerId: null,
           clonedByCount: null,
           featured: null,
@@ -201,7 +200,7 @@ export function VoiceFormModal({
 
   // Why the Active Account's Plan cannot generate with the selected voice, or null if it can
   const selectedUnavailableReason = selectedVoice
-    ? voiceKindUnavailableReason(selectedVoice.kind, subscription)
+    ? planUnavailableReason(selectedVoice.kind, subscription)
     : null;
 
   const handleSelectVoice = useCallback((voiceOption: VoiceOption) => {
@@ -398,7 +397,7 @@ export function VoiceFormModal({
               ) : (
                 <div className="voice-picker-list">
                   {searchResults.map((voiceOption) => {
-                    const unavailableReason = voiceKindUnavailableReason(voiceOption.kind, subscription);
+                    const unavailableReason = planUnavailableReason(voiceOption.kind, subscription);
                     return (
                       <div
                         key={voiceOption.voiceId}
@@ -431,8 +430,7 @@ export function VoiceFormModal({
                                   {compactNumber.format(voiceOption.clonedByCount)}
                                 </span>
                               )}
-                              {/* Only Default Voices work on the Free Plan through the API */}
-                              {voiceOption.kind === 'default' && (
+                              {worksOnEveryPlan(voiceOption.kind) && (
                                 <span className="badge badge-free">Free</span>
                               )}
                             </span>

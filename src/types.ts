@@ -76,7 +76,6 @@ export interface SharedVoice {
   previewUrl: string | null;
   category: string | null;
   useCase: string | null;
-  freeUsersAllowed: boolean | null;
   publicOwnerId: string | null;
   /** How many ElevenLabs users have added the voice: the Voice Library has no rating. */
   clonedByCount: number | null;

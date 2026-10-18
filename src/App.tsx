@@ -42,7 +42,7 @@ import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
 import { hasDigit } from './domain/bingo';
 import { usePlayer } from './features/player/usePlayer';
 import { describeGenerationError } from './services/errors';
-import { voiceUnavailableReason } from './services/voiceAvailability';
+import { unavailableReason } from './domain/plan';
 import './styles/index.css';
 import './App.css';
 
@@ -282,7 +282,7 @@ function App() {
 
   // Whether the Active Account's Plan can generate with the selected Voice
   const selectedVoiceUnavailableReason = selectedVoice
-    ? voiceUnavailableReason(selectedVoice, subscription)
+    ? unavailableReason(selectedVoice.kind, subscription)
     : null;
 
   // Auto-open settings panel if there is no Active Account

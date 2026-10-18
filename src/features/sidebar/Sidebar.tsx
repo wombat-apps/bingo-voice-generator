@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Music, Star, Play } from 'lucide-react';
 import { SubscriptionInfo } from './SubscriptionInfo';
 import { VoiceContextMenu } from './VoiceContextMenu';
-import { voiceUnavailableReason } from '../../services/voiceAvailability';
+import { unavailableReason as planUnavailableReason } from '../../domain/plan';
 import type { AccountsState, Accent, Voice, AccentId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
 import './Sidebar.css';
 
@@ -119,7 +119,7 @@ export function Sidebar({
             </p>
           ) : (
             filteredVoices.map((voice) => {
-              const unavailableReason = voiceUnavailableReason(voice, subscription);
+              const unavailableReason = planUnavailableReason(voice.kind, subscription);
               return (
                 <div
                   key={voice.uuid}

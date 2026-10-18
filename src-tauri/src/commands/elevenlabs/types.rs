@@ -103,8 +103,6 @@ pub struct SharedVoice {
     pub category: Option<String>,
     #[serde(rename(deserialize = "use_case"))]
     pub use_case: Option<String>,
-    #[serde(rename(deserialize = "free_users_allowed"))]
-    pub free_users_allowed: Option<bool>,
     #[serde(rename(deserialize = "public_owner_id"))]
     pub public_owner_id: Option<String>,
     /// How many ElevenLabs users have added the voice: the Voice Library has no rating.
