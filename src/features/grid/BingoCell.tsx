@@ -34,7 +34,9 @@ export const BingoCell = memo(function BingoCell({
   const getCellClass = () => {
     const classes = ['bingo-cell'];
 
-    if (hasWord && hasDigit) {
+    // Numbers below 10 have no Digit: their Word is enough.
+    const needsDigit = number >= 10;
+    if (hasWord && (hasDigit || !needsDigit)) {
       classes.push('cell-complete');
     } else if (hasWord || hasDigit) {
       classes.push('cell-partial');

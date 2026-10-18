@@ -14,6 +14,14 @@ impl AudioPart {
         vec![AudioPart::Word, AudioPart::Digit]
     }
 
+    /// Numbers below 10 have no Digit: their Word is enough.
+    pub fn exists_for(&self, number: u32) -> bool {
+        match self {
+            AudioPart::Word => true,
+            AudioPart::Digit => number >= 10,
+        }
+    }
+
     pub fn file_suffix(&self) -> &'static str {
         match self {
             AudioPart::Word => "word",

@@ -8,8 +8,8 @@ pub struct SpeechPatterns {
     pub word_two_digit_90: &'static str,
     pub word_single_digit_75: &'static str,
     pub word_two_digit_75: &'static str,
-    pub digit_two_digit_90: &'static str,
-    pub digit_two_digit_75: &'static str,
+    /// The Digit is the same in every Bingo Mode.
+    pub digit: &'static str,
 }
 
 pub struct LanguageConfig {
@@ -137,8 +137,7 @@ impl LanguageConfig {
                 word_two_digit_90: "\u{a1}{num_word}!",
                 word_single_digit_75: "{letter} !{num_word}!",
                 word_two_digit_75: "{letter} !{num_word}!",
-                digit_two_digit_90: "{d1} {d2}",
-                digit_two_digit_75: "{d1} {d2}",
+                digit: "{d1} {d2}",
             },
         }
     }
@@ -250,8 +249,7 @@ impl LanguageConfig {
                 word_two_digit_90: "{num_word}!",
                 word_single_digit_75: "{letter} !{num_word}!",
                 word_two_digit_75: "{letter} !{num_word}!",
-                digit_two_digit_90: "{d1} {d2}",
-                digit_two_digit_75: "{d1} {d2}",
+                digit: "{d1} {d2}",
             },
         }
     }
@@ -363,8 +361,7 @@ impl LanguageConfig {
                 word_two_digit_90: "{num_word}!",
                 word_single_digit_75: "{letter} !{num_word}!",
                 word_two_digit_75: "{letter} !{num_word}!",
-                digit_two_digit_90: "{d1} {d2}",
-                digit_two_digit_75: "{d1} {d2}",
+                digit: "{d1} {d2}",
             },
         }
     }
@@ -476,8 +473,7 @@ impl LanguageConfig {
                 word_two_digit_90: "{num_word}!",
                 word_single_digit_75: "{letter} !{num_word}!",
                 word_two_digit_75: "{letter} !{num_word}!",
-                digit_two_digit_90: "{d1} {d2}",
-                digit_two_digit_75: "{d1} {d2}",
+                digit: "{d1} {d2}",
             },
         }
     }
@@ -589,8 +585,7 @@ impl LanguageConfig {
                 word_two_digit_90: "{num_word}!",
                 word_single_digit_75: "{letter} !{num_word}!",
                 word_two_digit_75: "{letter} !{num_word}!",
-                digit_two_digit_90: "{d1} {d2}",
-                digit_two_digit_75: "{d1} {d2}",
+                digit: "{d1} {d2}",
             },
         }
     }
@@ -607,45 +602,46 @@ pub struct TtsText {
     pub next_text: Option<String>,
 }
 
-/// Builds the text and its context. The Word knows the scene and that the digits follow;
-/// the Digit knows the scene and that the Word has just been said.
+/// Builds the text and its context. The Word knows the scene and that the Digit follows;
+/// the Digit knows the scene and that the Word has just been said. The Digit serves every
+/// Bingo Mode, so its context is the Bingo 90 Word, without the letter.
+/// Returns `None` for the Digit of a number below 10, which has none.
 pub fn build_tts_text(
     number: u32,
     language: Language,
     mode: BingoMode,
     part: AudioPart,
-) -> TtsText {
-    let scene = LanguageConfig::for_language(language).scene;
-    let word = build_text(number, language, mode, AudioPart::Word);
-    // Below 10 the Digit is the same text as the Word, so it gets the same context.
-    if number < 10 {
-        return TtsText {
-            text: word,
-            previous_text: scene.to_string(),
-            next_text: None,
-        };
+) -> Option<TtsText> {
+    if !part.exists_for(number) {
+        return None;
     }
-    let digit = build_text(number, language, mode, AudioPart::Digit);
-    match part {
+    let scene = LanguageConfig::for_language(language).scene;
+    let tts = match part {
         AudioPart::Word => TtsText {
-            text: word,
+            text: build_text(number, language, mode, AudioPart::Word),
             previous_text: scene.to_string(),
-            next_text: Some(digit),
+            next_text: AudioPart::Digit
+                .exists_for(number)
+                .then(|| build_digit_text(number, language)),
         },
         AudioPart::Digit => TtsText {
-            text: digit,
-            previous_text: format!("{} {}", scene, word),
+            text: build_digit_text(number, language),
+            previous_text: format!(
+                "{} {}",
+                scene,
+                build_text(number, language, BingoMode::Bingo90, AudioPart::Word)
+            ),
             next_text: None,
         },
-    }
+    };
+    Some(tts)
 }
 
 pub fn build_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
     let text = match (mode, part) {
         (BingoMode::Bingo90, AudioPart::Word) => build_word_text_90(number, language),
-        (BingoMode::Bingo90, AudioPart::Digit) => build_digit_text_90(number, language),
         (BingoMode::Bingo75, AudioPart::Word) => build_word_text_75(number, language),
-        (BingoMode::Bingo75, AudioPart::Digit) => build_digit_text_75(number, language),
+        (_, AudioPart::Digit) => return build_digit_text(number, language),
     };
     capitalize_first_letter(&text)
 }
@@ -681,18 +677,6 @@ fn build_word_text_90(number: u32, language: Language) -> String {
     pattern.replace("{num_word}", &number_word(&config, number))
 }
 
-fn build_digit_text_90(number: u32, language: Language) -> String {
-    if number < 10 {
-        return build_word_text_90(number, language);
-    }
-    let config = LanguageConfig::for_language(language);
-    config
-        .patterns
-        .digit_two_digit_90
-        .replace("{d1}", &number_word(&config, number / 10))
-        .replace("{d2}", &number_word(&config, number % 10))
-}
-
 fn build_word_text_75(number: u32, language: Language) -> String {
     let config = LanguageConfig::for_language(language);
     let pattern = if number < 10 {
@@ -706,16 +690,14 @@ fn build_word_text_75(number: u32, language: Language) -> String {
         .replace("{num_word}", &number_word(&config, number))
 }
 
-fn build_digit_text_75(number: u32, language: Language) -> String {
-    if number < 10 {
-        return build_word_text_75(number, language);
-    }
+fn build_digit_text(number: u32, language: Language) -> String {
     let config = LanguageConfig::for_language(language);
-    config
+    let text = config
         .patterns
-        .digit_two_digit_75
+        .digit
         .replace("{d1}", &number_word(&config, number / 10))
-        .replace("{d2}", &number_word(&config, number % 10))
+        .replace("{d2}", &number_word(&config, number % 10));
+    capitalize_first_letter(&text)
 }
 
 #[cfg(test)]
@@ -726,7 +708,8 @@ mod tests {
 
     #[test]
     fn word_knows_the_scene_and_that_the_digits_follow() {
-        let tts = build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
+        let tts =
+            build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Word).unwrap();
 
         assert_eq!(
             tts,
@@ -740,7 +723,8 @@ mod tests {
 
     #[test]
     fn digit_knows_the_scene_and_the_word_said_before() {
-        let tts = build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit);
+        let tts =
+            build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit).unwrap();
 
         assert_eq!(
             tts,
@@ -753,13 +737,19 @@ mod tests {
     }
 
     #[test]
-    fn single_digit_number_has_the_same_text_and_context_for_both_parts() {
+    fn digit_is_the_same_in_both_modes_and_its_context_has_no_letter() {
+        let digit = |mode| build_tts_text(45, Language::Spanish, mode, AudioPart::Digit);
+
+        assert_eq!(digit(BingoMode::Bingo75), digit(BingoMode::Bingo90));
+    }
+
+    #[test]
+    fn numbers_below_10_have_no_digit() {
         let word = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
         let digit = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit);
 
-        assert_eq!(word.text, "\u{a1}Siete!");
-        assert_eq!(word.next_text, None);
-        assert_eq!(word, digit);
+        assert_eq!(word.unwrap().next_text, None);
+        assert_eq!(digit, None);
     }
 
     #[test]

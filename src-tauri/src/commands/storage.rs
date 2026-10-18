@@ -35,13 +35,15 @@ fn get_base_directory() -> PathBuf {
     app_support.join("BingoVoiceGenerator")
 }
 
+/// The Bingo 75 Word carries its letter ("n45_word"). The Digit is shared by
+/// both Bingo Modes, so it never does ("45_digit").
 fn audio_file_name(number: u32, mode: &BingoMode, part: &AudioPart) -> String {
-    let base_filename = match mode {
-        BingoMode::Bingo90 => number.to_string(),
-        BingoMode::Bingo75 => {
+    let base_filename = match (part, mode) {
+        (AudioPart::Word, BingoMode::Bingo75) => {
             let letter = bingo75_letter(number).to_lowercase();
             format!("{}{}", letter, number)
         }
+        _ => number.to_string(),
     };
 
     format!("{}_{}.mp3", base_filename, part.file_suffix())
@@ -211,7 +213,7 @@ pub async fn load_audio_files(
             None => continue,
         };
 
-        // Parse filename: "45_word" or "b15_digit"
+        // Parse filename: "45_word", "n45_word" or "45_digit"
         let (number, part) = match parse_filename(&filename, &mode) {
             Some(p) => p,
             None => continue,
@@ -283,10 +285,9 @@ fn parse_filename(filename: &str, mode: &BingoMode) -> Option<(u32, AudioPart)> 
 
     let number_part = parts[0];
 
-    let number = match mode {
-        BingoMode::Bingo90 => number_part.parse::<u32>().ok()?,
-        BingoMode::Bingo75 => {
-            // "b15" -> drop letter, get number
+    let number = match (part, mode) {
+        (AudioPart::Word, BingoMode::Bingo75) => {
+            // "n45" -> drop letter, get number
             if number_part.len() < 2 {
                 return None;
             }
@@ -296,7 +297,12 @@ fn parse_filename(filename: &str, mode: &BingoMode) -> Option<(u32, AudioPart)> 
             }
             number_part[1..].parse::<u32>().ok()?
         }
+        _ => number_part.parse::<u32>().ok()?,
     };
+
+    if !part.exists_for(number) {
+        return None;
+    }
 
     Some((number, part))
 }
@@ -397,5 +403,46 @@ mod tests {
         assert_eq!(trimmed.file_name(), original.file_name());
         assert!(!original.starts_with(voice_directory(&Language::Spanish, &voice)));
         assert!(original.starts_with(get_base_directory().join("Originals")));
+    }
+
+    #[test]
+    fn digit_has_the_same_file_name_in_both_modes() {
+        let digit = |mode| audio_file_name(45, &mode, &AudioPart::Digit);
+
+        assert_eq!(digit(BingoMode::Bingo90), "45_digit.mp3");
+        assert_eq!(digit(BingoMode::Bingo75), "45_digit.mp3");
+        assert_eq!(
+            audio_file_name(45, &BingoMode::Bingo75, &AudioPart::Word),
+            "n45_word.mp3"
+        );
+    }
+
+    #[test]
+    fn each_mode_reads_its_own_words_and_the_shared_digits() {
+        let parse = |name, mode| parse_filename(name, &mode);
+
+        assert_eq!(
+            parse("45_digit", BingoMode::Bingo75),
+            Some((45, AudioPart::Digit))
+        );
+        assert_eq!(
+            parse("45_digit", BingoMode::Bingo90),
+            Some((45, AudioPart::Digit))
+        );
+        assert_eq!(
+            parse("n45_word", BingoMode::Bingo75),
+            Some((45, AudioPart::Word))
+        );
+        assert_eq!(parse("45_word", BingoMode::Bingo75), None);
+        assert_eq!(parse("n45_word", BingoMode::Bingo90), None);
+    }
+
+    #[test]
+    fn numbers_below_10_have_no_digit_file() {
+        assert_eq!(parse_filename("7_digit", &BingoMode::Bingo90), None);
+        assert_eq!(
+            parse_filename("7_word", &BingoMode::Bingo90),
+            Some((7, AudioPart::Word))
+        );
     }
 }

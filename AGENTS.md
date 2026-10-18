@@ -93,7 +93,7 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 1. User selects language/mode/voice in Sidebar
 2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` orchestrates
 3. Backend builds TTS text (`number_words.rs`) and calls ElevenLabs API
-4. `save_audio_file` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<language>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<language>/<voice uuid>/` (mode and part are in the file name; see `GLOSSARY.md`)
+4. `save_audio_file` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<language>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<language>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
 5. Frontend loads audio bytes and plays via Web Audio API
 
 ## Types

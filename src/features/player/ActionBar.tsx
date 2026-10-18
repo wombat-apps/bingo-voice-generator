@@ -233,7 +233,7 @@ export function ActionBar({
     );
   }
 
-  // Single panel layout for Bingo90 or numbers < 10 (no digit needed)
+  // Single panel layout for numbers < 10, which have no Digit
   if (!selectedNeedsDigit) {
     return (
       <div className="action-bar action-bar-single">

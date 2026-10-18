@@ -136,8 +136,28 @@ pub fn run() {
 // Utility commands
 use models::{AudioPart, BingoMode, Language, TtsText};
 
+#[derive(Debug, thiserror::Error)]
+enum TtsTextError {
+    #[error("Number {0} has no Digit: numbers below 10 only have a Word")]
+    NoDigit(u32),
+}
+
+impl serde::Serialize for TtsTextError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 #[tauri::command]
-fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> TtsText {
+fn build_tts_text(
+    number: u32,
+    language: Language,
+    mode: BingoMode,
+    part: AudioPart,
+) -> Result<TtsText, TtsTextError> {
     log::debug!(
         "[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}",
         number,
@@ -145,9 +165,10 @@ fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioP
         mode,
         part
     );
-    let text = models::build_tts_text(number, language, mode, part);
+    let text = models::build_tts_text(number, language, mode, part)
+        .ok_or(TtsTextError::NoDigit(number))?;
     log::debug!("[build_tts_text] result: {:?}", text);
-    text
+    Ok(text)
 }
 
 #[derive(serde::Serialize)]

@@ -36,6 +36,18 @@ _Avoid_: Shared voice, community voice, professional voice
 The ElevenLabs subscription of an ElevenLabs Account: Free, Starter, Creator, Pro, Scale, Business or Enterprise. It sets the account's character quota, whether it can use Library Voices, which audio formats it can request and how many requests it can make at once.
 _Avoid_: Tier, subscription level, free account / paid account
 
+**Bingo Mode**:
+The variant of the game: Bingo 90 (numbers 1 to 90) or Bingo 75 (numbers 1 to 75, split into the columns B, I, N, G, O). It sets which numbers exist and whether the Word carries the column letter.
+_Avoid_: Mode (on its own), game type
+
+**Word**:
+The audio of a number said as a word, the way the caller announces it ("¡Cuarenta y cinco!"). It belongs to one Bingo Mode: in Bingo 75 it carries the column letter ("N ¡cuarenta y cinco!"), in Bingo 90 it does not.
+_Avoid_: Number audio, announcement
+
+**Digit**:
+The audio of a number said digit by digit, right after its Word ("cuatro cinco"). It does not depend on the Bingo Mode: the same Digit serves Bingo 90 and Bingo 75, so it is generated once. Numbers below 10 have no Digit; their Word is enough.
+_Avoid_: Digits audio, spelled number
+
 **Original Audio**:
 The audio of a number exactly as ElevenLabs returned it, before the silence is trimmed. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
 _Avoid_: Raw audio, backup, untrimmed audio, master
