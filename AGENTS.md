@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -99,3 +99,17 @@ Key types: `LanguageId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `Audi
 - Rust commands use `#[tauri::command]` attribute and return `Result<T, String>`
 - API keys stored securely via system keychain (not in config files)
 - TypeScript strict mode enabled
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `wombat-apps/bingo-voice-generator` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
