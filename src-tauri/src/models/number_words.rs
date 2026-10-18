@@ -14,7 +14,6 @@ pub struct SpeechPatterns {
 
 pub struct LanguageConfig {
     pub numbers: HashMap<u32, &'static str>,
-    pub letters: HashMap<&'static str, &'static str>,
     /// Describes the bingo call to ElevenLabs. It is sent as context, never spoken.
     pub scene: &'static str,
     pub patterns: SpeechPatterns,
@@ -130,22 +129,14 @@ impl LanguageConfig {
             numbers.insert(n, w);
         }
 
-        let mut letters = HashMap::new();
-        letters.insert("B", "be");
-        letters.insert("I", "i");
-        letters.insert("N", "ene");
-        letters.insert("G", "ge");
-        letters.insert("O", "o");
-
         Self {
             numbers,
-            letters,
             scene: "En una sala de bingo, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:",
             patterns: SpeechPatterns {
                 word_single_digit_90: "\u{a1}{num_word}!",
                 word_two_digit_90: "\u{a1}{num_word}!",
-                word_single_digit_75: "\u{a1}{letter} ... {num_word}!",
-                word_two_digit_75: "\u{a1}{letter} ... {num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
                 digit_two_digit_90: "{d1} {d2}",
                 digit_two_digit_75: "{d1} {d2}",
             },
@@ -251,22 +242,14 @@ impl LanguageConfig {
             numbers.insert(n, w);
         }
 
-        let mut letters = HashMap::new();
-        letters.insert("B", "bee");
-        letters.insert("I", "eye");
-        letters.insert("N", "en");
-        letters.insert("G", "gee");
-        letters.insert("O", "oh");
-
         Self {
             numbers,
-            letters,
             scene: "In a bingo hall, the caller draws the next ball from the cage and announces it with energy, loud and clear:",
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} {num_word}!",
-                word_two_digit_75: "{letter} {num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
                 digit_two_digit_90: "{d1} {d2}",
                 digit_two_digit_75: "{d1} {d2}",
             },
@@ -372,22 +355,14 @@ impl LanguageConfig {
             numbers.insert(n, w);
         }
 
-        let mut letters = HashMap::new();
-        letters.insert("B", "b\u{e9}");
-        letters.insert("I", "i");
-        letters.insert("N", "\u{e8}ne");
-        letters.insert("G", "g\u{e9}");
-        letters.insert("O", "o");
-
         Self {
             numbers,
-            letters,
             scene: "Dans une salle de bingo, l'animateur tire la boule suivante du boulier et l'annonce avec \u{e9}nergie, haut et fort :",
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} {num_word}!",
-                word_two_digit_75: "{letter} {num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
                 digit_two_digit_90: "{d1} {d2}",
                 digit_two_digit_75: "{d1} {d2}",
             },
@@ -493,22 +468,14 @@ impl LanguageConfig {
             numbers.insert(n, w);
         }
 
-        let mut letters = HashMap::new();
-        letters.insert("B", "b\u{ea}");
-        letters.insert("I", "i");
-        letters.insert("N", "ene");
-        letters.insert("G", "g\u{ea}");
-        letters.insert("O", "\u{f3}");
-
         Self {
             numbers,
-            letters,
             scene: "Em um sal\u{e3}o de bingo, o locutor sorteia a pr\u{f3}xima bola do globo e a anuncia com energia, alto e bom som:",
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} {num_word}!",
-                word_two_digit_75: "{letter} {num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
                 digit_two_digit_90: "{d1} {d2}",
                 digit_two_digit_75: "{d1} {d2}",
             },
@@ -614,22 +581,14 @@ impl LanguageConfig {
             numbers.insert(n, w);
         }
 
-        let mut letters = HashMap::new();
-        letters.insert("B", "bi");
-        letters.insert("I", "i");
-        letters.insert("N", "enne");
-        letters.insert("G", "gi");
-        letters.insert("O", "o");
-
         Self {
             numbers,
-            letters,
             scene: "In una sala bingo, il banditore estrae la prossima pallina dall'urna e la annuncia con energia, forte e chiaro:",
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} {num_word}!",
-                word_two_digit_75: "{letter} {num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
                 digit_two_digit_90: "{d1} {d2}",
                 digit_two_digit_75: "{d1} {d2}",
             },
@@ -712,15 +671,6 @@ fn number_word(config: &LanguageConfig, number: u32) -> String {
         .unwrap_or_else(|| number.to_string())
 }
 
-fn letter_name(config: &LanguageConfig, number: u32) -> String {
-    let letter_key = bingo75_letter(number);
-    config
-        .letters
-        .get(letter_key)
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| letter_key.to_string())
-}
-
 fn build_word_text_90(number: u32, language: Language) -> String {
     let config = LanguageConfig::for_language(language);
     let pattern = if number < 10 {
@@ -751,7 +701,8 @@ fn build_word_text_75(number: u32, language: Language) -> String {
         config.patterns.word_two_digit_75
     };
     pattern
-        .replace("{letter}", &letter_name(&config, number))
+        // The letter itself ("B", not "be"): a spelled-out name sounds like a word ("o" as "oh").
+        .replace("{letter}", bingo75_letter(number))
         .replace("{num_word}", &number_word(&config, number))
 }
 
@@ -763,7 +714,6 @@ fn build_digit_text_75(number: u32, language: Language) -> String {
     config
         .patterns
         .digit_two_digit_75
-        .replace("{letter}", &letter_name(&config, number))
         .replace("{d1}", &number_word(&config, number / 10))
         .replace("{d2}", &number_word(&config, number % 10))
 }
@@ -823,12 +773,18 @@ mod tests {
     }
 
     #[test]
-    fn bingo_75_word_starts_with_the_letter() {
-        let spanish = build_text(7, Language::Spanish, BingoMode::Bingo75, AudioPart::Word);
-        let english = build_text(52, Language::English, BingoMode::Bingo75, AudioPart::Digit);
+    fn bingo_75_word_says_the_letter_itself_outside_the_exclamation() {
+        let word = |n| build_text(n, Language::Spanish, BingoMode::Bingo75, AudioPart::Word);
 
-        assert_eq!(spanish, "\u{a1}Be ... siete!");
-        assert_eq!(english, "Five two");
+        assert_eq!(word(8), "B !ocho!");
+        assert_eq!(word(74), "O !setenta y cuatro!");
+    }
+
+    #[test]
+    fn bingo_75_digit_has_no_letter() {
+        let digit = build_text(52, Language::English, BingoMode::Bingo75, AudioPart::Digit);
+
+        assert_eq!(digit, "Five two");
     }
 
     #[test]

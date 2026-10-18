@@ -40,11 +40,13 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 | `eleven_v3` | 5,000 (another page says 3,000) | |
 | `eleven_multilingual_v2` | 10,000 | Default model of the TTS endpoint. |
 
+`eleven_v4`, `eleven_v3` and `eleven_multilingual_v2` cost the same per character ($0.08 per 1,000 on the API page); `eleven_v4_turbo` and Flash cost half ($0.04). Verified live: `eleven_v4` charges 1 character per spoken character. Source: [pricing/api](https://elevenlabs.io/pricing/api), 2026-10-18.
+
 No Plan restricts which TTS Model can be used. Source: [models](https://elevenlabs.io/docs/overview/models), [changelog 2026-09-28](https://elevenlabs.io/docs/changelog/2026/9/28).
 
 ### Context (`previous_text` / `next_text`)
 
-The app sends each Audio Part with unspoken context: a scene describing the bingo call, plus the other part. `eleven_v3` does not support it ("request stitching"), so the app sends v3 the bare text. ElevenLabs does not say whether context characters count against the quota; the `character-cost` response header tells. SSML `<break>` tags do not work in v3 or v4. Source: [TTS convert](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), [request stitching](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching), [controls](https://elevenlabs.io/docs/best-practices/prompting/controls), 2026-10-18.
+The app sends each Audio Part with unspoken context: a scene describing the bingo call, plus the other part. `eleven_v3` does not support it ("request stitching"), so the app sends v3 the bare text. ElevenLabs does not say whether context characters count against the quota. Verified live with `eleven_v4` on 2026-10-18: they do not; the `character-cost` response header equals the length of the spoken text alone. SSML `<break>` tags do not work in v3 or v4. Source: [TTS convert](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), [request stitching](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching), [controls](https://elevenlabs.io/docs/best-practices/prompting/controls), 2026-10-18.
 
 ## Concurrent requests
 
