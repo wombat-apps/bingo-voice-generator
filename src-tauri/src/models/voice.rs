@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::Language;
+use super::Accent;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,7 +10,9 @@ pub struct Voice {
     pub elevenlabs_id: String,
     pub elevenlabs_name: String,
     pub custom_name: String,
-    pub language: Language,
+    /// Saved as `language` before Accents were split from Languages.
+    #[serde(alias = "language")]
+    pub accent: Accent,
     #[serde(default = "default_gender")]
     pub gender: String,
     #[serde(default)]
@@ -37,7 +39,7 @@ impl Voice {
         elevenlabs_id: String,
         elevenlabs_name: String,
         custom_name: Option<String>,
-        language: Language,
+        accent: Accent,
         gender: Option<String>,
         kind: VoiceKind,
     ) -> Self {
@@ -46,7 +48,7 @@ impl Voice {
             elevenlabs_id,
             elevenlabs_name: elevenlabs_name.clone(),
             custom_name: custom_name.unwrap_or(elevenlabs_name),
-            language,
+            accent,
             gender: gender.unwrap_or_else(|| "male".to_string()),
             favorite: false,
             kind: Some(kind),
@@ -66,5 +68,6 @@ mod tests {
 
         assert_eq!(voice.kind, None);
         assert_eq!(voice.custom_name, "Ana");
+        assert_eq!(voice.accent, Accent::PeninsularSpanish);
     }
 }

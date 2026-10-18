@@ -124,7 +124,7 @@ pub fn run() {
             set_active_account,
             // Utility commands
             build_tts_text,
-            get_languages,
+            get_accents,
             get_bingo_modes,
             // Platform detection
             get_platform_info,
@@ -134,7 +134,7 @@ pub fn run() {
 }
 
 // Utility commands
-use models::{AudioPart, BingoMode, Language, TtsText};
+use models::{Accent, AudioPart, BingoMode, TtsText};
 
 #[derive(Debug, thiserror::Error)]
 enum TtsTextError {
@@ -154,26 +154,26 @@ impl serde::Serialize for TtsTextError {
 #[tauri::command]
 fn build_tts_text(
     number: u32,
-    language: Language,
+    accent: Accent,
     mode: BingoMode,
     part: AudioPart,
 ) -> Result<TtsText, TtsTextError> {
     log::debug!(
-        "[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}",
+        "[build_tts_text] number={}, accent={:?}, mode={:?}, part={:?}",
         number,
-        language,
+        accent,
         mode,
         part
     );
-    let text = models::build_tts_text(number, language, mode, part)
-        .ok_or(TtsTextError::NoDigit(number))?;
+    let text =
+        models::build_tts_text(number, accent, mode, part).ok_or(TtsTextError::NoDigit(number))?;
     log::debug!("[build_tts_text] result: {:?}", text);
     Ok(text)
 }
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-struct LanguageInfo {
+struct AccentInfo {
     id: String,
     display_name: String,
     flag: String,
@@ -182,15 +182,15 @@ struct LanguageInfo {
 }
 
 #[tauri::command]
-fn get_languages() -> Vec<LanguageInfo> {
-    Language::all()
+fn get_accents() -> Vec<AccentInfo> {
+    Accent::all()
         .into_iter()
-        .map(|lang| LanguageInfo {
-            id: lang.raw_value().to_string(),
-            display_name: lang.display_name().to_string(),
-            flag: lang.flag().to_string(),
-            elevenlabs_code: lang.elevenlabs_code().to_string(),
-            elevenlabs_accent: lang.elevenlabs_accent().to_string(),
+        .map(|accent| AccentInfo {
+            id: accent.raw_value().to_string(),
+            display_name: accent.display_name().to_string(),
+            flag: accent.flag().to_string(),
+            elevenlabs_code: accent.elevenlabs_code().to_string(),
+            elevenlabs_accent: accent.elevenlabs_accent().to_string(),
         })
         .collect()
 }

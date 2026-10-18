@@ -41,6 +41,16 @@ Verified live on 2026-10-18:
 - Outside English, `verified_languages` only uses the `standard` accent (`es/standard`, `pt/standard`…), never the accents the Voice Library search uses (`peninsular`, `brazilian`). So the app matches Default Voices by language only. English voices are `american`, `british` or `australian`.
 - Verified per language: `es` 7 (Charlie, Eric, George, Matilda, Roger, Sarah, Will), `en` 20, `fr`, `it`, `pt` several each. Adam has no `verified_languages` at all, so the app does not offer him in any language.
 
+### Accents in the Voice Library
+
+The accent of the audio comes only from the voice: the TTS API has no accent or locale parameter, and `language_code` takes ISO 639-1 codes (`es`, not `es-AR`), which only steer text normalisation ([help center](https://elevenlabs.io/docs/help-center/product/core-capabilities/text-to-speech/how-do-i-select-the-language-and-accent)). So each Accent's scene names its region, and the voice must already have that accent.
+
+`GET /v1/shared-voices` takes `accent` (and `locale`) as free-form strings; the docs list no values ([Get shared voices](https://elevenlabs.io/docs/api-reference/voices/voice-library/get-shared)). Checked on 2026-10-18:
+- Used by the app before and known to work: `peninsular`, `american`, `british`, `brazilian`.
+- Seen in a third-party catalogue of ElevenLabs voices (Famulor), not yet tried live: `latin american` (Spanish), `argentine`, `mexican`, `australian`.
+- Guesses, not seen anywhere: `new zealand`, `indian`, `canadian`, `european` (Portuguese). Languages with one Accent use `standard`.
+- When an Accent's label returns no voices, the app searches the whole Language and says so in the voice picker. Untested: whether `locale=es-AR` (or `en-NZ`) narrows better than `accent`.
+
 ## TTS Models
 
 | Model id | Characters per request | Notes |

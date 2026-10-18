@@ -85,7 +85,7 @@ pub struct CreateVoiceInput {
     pub elevenlabs_id: String,
     pub elevenlabs_name: String,
     pub custom_name: String,
-    pub language: crate::models::Language,
+    pub accent: crate::models::Accent,
     pub gender: String,
     pub kind: crate::models::VoiceKind,
 }
@@ -97,14 +97,14 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
     log::debug!("[create_voice] elevenlabs_id: {}", input.elevenlabs_id);
     log::debug!("[create_voice] elevenlabs_name: {}", input.elevenlabs_name);
     log::debug!("[create_voice] custom_name: {}", input.custom_name);
-    log::debug!("[create_voice] language: {:?}", input.language);
+    log::debug!("[create_voice] accent: {:?}", input.accent);
     log::debug!("[create_voice] gender: {}", input.gender);
 
     let voice = Voice::new(
         input.elevenlabs_id,
         input.elevenlabs_name,
         Some(input.custom_name),
-        input.language,
+        input.accent,
         Some(input.gender),
         input.kind,
     );
@@ -114,10 +114,10 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
     let mut voices = load_voices().await?;
     log::debug!("[create_voice] Loaded {} existing voices", voices.len());
 
-    // Check if voice already exists (by elevenlabs_id and language)
+    // Check if voice already exists (by elevenlabs_id and accent)
     if voices
         .iter()
-        .any(|v| v.elevenlabs_id == voice.elevenlabs_id && v.language == voice.language)
+        .any(|v| v.elevenlabs_id == voice.elevenlabs_id && v.accent == voice.accent)
     {
         log::debug!("[create_voice] Voice already exists, returning existing list");
         return Ok(voices);
@@ -215,14 +215,14 @@ pub async fn backfill_voice_kinds(api_key: String) -> Result<Vec<Voice>, VoicesE
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::Language;
+    use crate::models::Accent;
 
     fn voice(elevenlabs_id: &str, kind: Option<VoiceKind>) -> Voice {
         let mut voice = Voice::new(
             elevenlabs_id.to_string(),
             elevenlabs_id.to_string(),
             None,
-            Language::Spanish,
+            Accent::PeninsularSpanish,
             None,
             VoiceKind::Default,
         );

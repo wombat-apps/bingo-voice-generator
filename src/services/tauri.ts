@@ -3,13 +3,13 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import type {
   AccountsState,
   AddAccountResult,
-  Language,
+  Accent,
   BingoMode,
   Voice,
   VoiceKind,
   AudioFile,
   NumberAudioPair,
-  LanguageId,
+  AccentId,
   BingoModeId,
   AudioPart,
   DefaultVoice,
@@ -52,22 +52,22 @@ export async function generateSpeech(
 }
 
 export async function listDefaultVoices(
-  language: LanguageId,
+  accent: AccentId,
   apiKey: string,
   gender?: string
 ): Promise<DefaultVoice[]> {
-  return invoke<DefaultVoice[]>('list_default_voices', { language, apiKey, gender });
+  return invoke<DefaultVoice[]>('list_default_voices', { accent, apiKey, gender });
 }
 
 export async function searchSharedVoices(
-  language: LanguageId,
+  accent: AccentId,
   apiKey: string,
   gender?: string,
   search?: string,
   pageSize?: number
 ): Promise<SharedVoicesResponse> {
   return invoke<SharedVoicesResponse>('search_shared_voices', {
-    language,
+    accent,
     apiKey,
     gender,
     search,
@@ -95,7 +95,7 @@ export async function addSharedVoice(
 export async function saveAudioFile(
   data: Uint8Array,
   number: number,
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice,
   mode: BingoModeId,
   part: AudioPart
@@ -103,7 +103,7 @@ export async function saveAudioFile(
   return invoke<AudioFile>('save_audio_file', {
     data: Array.from(data),
     number,
-    language,
+    accent,
     voice,
     mode,
     part,
@@ -111,12 +111,12 @@ export async function saveAudioFile(
 }
 
 export async function loadAudioFiles(
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice,
   mode: BingoModeId
 ): Promise<Map<number, NumberAudioPair>> {
   const result = await invoke<Record<string, NumberAudioPair>>('load_audio_files', {
-    language,
+    accent,
     voice,
     mode,
   });
@@ -130,21 +130,21 @@ export async function loadAudioFiles(
 
 export async function deleteAudioFile(
   number: number,
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice,
   mode: BingoModeId,
   part: AudioPart
 ): Promise<void> {
-  return invoke('delete_audio_file', { number, language, voice, mode, part });
+  return invoke('delete_audio_file', { number, accent, voice, mode, part });
 }
 
 export async function deleteAllAudioFilesForNumber(
   number: number,
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice,
   mode: BingoModeId
 ): Promise<void> {
-  return invoke('delete_all_audio_files', { number, language, voice, mode });
+  return invoke('delete_all_audio_files', { number, accent, voice, mode });
 }
 
 export async function getStorageDirectory(): Promise<string> {
@@ -162,17 +162,17 @@ export interface VoiceDirectoryInfo {
 }
 
 export async function getVoiceDirectory(
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice
 ): Promise<VoiceDirectoryInfo> {
-  return invoke<VoiceDirectoryInfo>('get_voice_directory', { language, voice });
+  return invoke<VoiceDirectoryInfo>('get_voice_directory', { accent, voice });
 }
 
 export async function revealVoiceInFileManager(
-  language: LanguageId,
+  accent: AccentId,
   voice: Voice
 ): Promise<void> {
-  const dirInfo = await getVoiceDirectory(language, voice);
+  const dirInfo = await getVoiceDirectory(accent, voice);
   if (dirInfo.exists) {
     await revealItemInDir(dirInfo.path);
   }
@@ -198,7 +198,7 @@ export async function createVoice(
   elevenlabsId: string,
   elevenlabsName: string,
   customName: string,
-  language: LanguageId,
+  accent: AccentId,
   gender: string,
   kind: VoiceKind
 ): Promise<Voice[]> {
@@ -208,7 +208,7 @@ export async function createVoice(
       elevenlabsId,
       elevenlabsName,
       customName,
-      language,
+      accent,
       gender,
       kind,
     },
@@ -278,15 +278,15 @@ export async function setActiveAccount(accountId: string | null): Promise<Accoun
 
 export async function buildTtsText(
   number: number,
-  language: LanguageId,
+  accent: AccentId,
   mode: BingoModeId,
   part: AudioPart
 ): Promise<TtsText> {
-  return invoke<TtsText>('build_tts_text', { number, language, mode, part });
+  return invoke<TtsText>('build_tts_text', { number, accent, mode, part });
 }
 
-export async function getLanguages(): Promise<Language[]> {
-  return invoke<Language[]>('get_languages');
+export async function getAccents(): Promise<Accent[]> {
+  return invoke<Accent[]>('get_accents');
 }
 
 export async function getBingoModes(): Promise<BingoMode[]> {

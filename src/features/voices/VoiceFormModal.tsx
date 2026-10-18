@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
-import type { SharedVoice, LanguageId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
+import type { SharedVoice, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
 import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
@@ -15,7 +15,7 @@ interface VoiceFormModalProps {
   isOpen: boolean;
   mode: 'add' | 'edit';
   voice: Voice | null;
-  currentLanguage: LanguageId;
+  currentAccent: AccentId;
   apiKey: string;
   subscription: SubscriptionInfo | null;
   onClose: () => void;
@@ -28,7 +28,7 @@ export function VoiceFormModal({
   isOpen,
   mode,
   voice,
-  currentLanguage,
+  currentAccent,
   apiKey,
   subscription,
   onClose,
@@ -38,6 +38,8 @@ export function VoiceFormModal({
   const [searchResults, setSearchResults] = useState<VoiceOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // The Voice Library has no voices under the Accent's label, so results span its Language
+  const [wholeLanguage, setWholeLanguage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('');
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function VoiceFormModal({
         setSearchQuery('');
         setGenderFilter('');
         setSearchResults([]);
+        setWholeLanguage(false);
       }
       setFormError(null);
       setSearchError(null);
@@ -103,9 +106,9 @@ export function VoiceFormModal({
     try {
       // Fetch both Default Voices and Library Voices in parallel
       const [defaultVoices, sharedResponse] = await Promise.all([
-        listDefaultVoices(currentLanguage, apiKey, genderFilter || undefined),
+        listDefaultVoices(currentAccent, apiKey, genderFilter || undefined),
         searchSharedVoices(
-          currentLanguage,
+          currentAccent,
           apiKey,
           genderFilter || undefined,
           query || undefined,
@@ -137,14 +140,16 @@ export function VoiceFormModal({
 
       // Combine: Default Voices first (free), then Library Voices
       setSearchResults([...defaultOptions, ...sharedOptions]);
+      setWholeLanguage(sharedResponse.wholeLanguage);
     } catch (err) {
       if (searchId !== latestSearchRef.current) return;
       setSearchError(`Failed to fetch voices: ${errorMessage(err)}`);
       setSearchResults([]);
+      setWholeLanguage(false);
     } finally {
       if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentLanguage, apiKey, genderFilter]);
+  }, [currentAccent, apiKey, genderFilter]);
 
   // Search again when the modal opens and whenever the gender filter changes
   useEffect(() => {
@@ -237,13 +242,13 @@ export function VoiceFormModal({
           voiceIdToUse,
           selectedVoice.name,
           trimmedName,
-          currentLanguage,
+          currentAccent,
           formGender || 'unknown',
           selectedVoice.kind
         );
         onVoiceSaved(updatedVoices);
       } else if (mode === 'edit' && voice) {
-        // Update existing voice (keep original language)
+        // Update existing voice (keep its Accent)
         const updatedVoice: Voice = {
           ...voice,
           customName: trimmedName,
@@ -259,7 +264,7 @@ export function VoiceFormModal({
     } finally {
       setIsSaving(false);
     }
-  }, [mode, selectedVoice, voice, customName, currentLanguage, formGender, onVoiceSaved, selectedUnavailableReason]);
+  }, [mode, selectedVoice, voice, customName, currentAccent, formGender, onVoiceSaved, selectedUnavailableReason]);
 
   const handleClose = useCallback(() => {
     if (audioElement) {
@@ -348,13 +353,19 @@ export function VoiceFormModal({
             </div>
 
             {searchError && <div className="modal-error">{searchError}</div>}
+            {wholeLanguage && !searchError && (
+              <div className="modal-warning">
+                The Voice Library has no voices labelled with this accent. Showing every Library
+                Voice in the language: check each one's accent tag and preview.
+              </div>
+            )}
 
             <div className="modal-body">
               {isSearching && searchResults.length === 0 ? (
                 <div className="modal-loading">Loading voices...</div>
               ) : searchResults.length === 0 ? (
                 <div className="modal-empty">
-                  No voices found for this language. Try a different search.
+                  No voices found for this accent. Try a different search.
                 </div>
               ) : (
                 <div className="voice-picker-list">

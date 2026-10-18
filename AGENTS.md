@@ -85,15 +85,16 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 | `src/services/tauri.ts` | All Tauri command wrappers (type-safe IPC bridge) |
 | `src/services/audioPlayer.ts` | Web Audio API playback and waveform |
 | `src-tauri/src/lib.rs` | Tauri app setup, command registration |
-| `src-tauri/src/models/number_words.rs` | Number-to-text mappings for all languages |
+| `src-tauri/src/models/accent.rs` | Accents: locale tag, name, flag, Voice Library label, scene |
+| `src-tauri/src/models/number_words.rs` | Number words, Bingo 75 letters and phrasing per Language |
 | `src-tauri/tauri.conf.json` | App config, window settings, security capabilities |
 
 ## Data Flow
 
-1. User selects language/mode/voice in Sidebar
+1. User selects Accent/mode/voice in Sidebar (an Accent belongs to a Language, which sets the number words; see `GLOSSARY.md`)
 2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` orchestrates
-3. Backend builds TTS text (`number_words.rs`) and calls ElevenLabs API
-4. `save_audio_file` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<language>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<language>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
+3. Backend builds TTS text (`number_words.rs` for the Language's words, `accent.rs` for the scene) and calls ElevenLabs API
+4. `save_audio_file` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<accent>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<accent>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
 5. Frontend loads audio bytes and plays via Web Audio API
 
 ## Types
@@ -102,7 +103,7 @@ Shared types are defined in:
 - Frontend: `src/types.ts`
 - Backend: `src-tauri/src/models/`
 
-Key types: `LanguageId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioFile`
+Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioFile`
 
 ## Conventions
 

@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::{bingo75_letter, AudioPart, BingoMode, Language};
+use super::{Accent, AudioPart, BingoMode, Language};
 
 pub struct SpeechPatterns {
     pub word_single_digit_90: &'static str,
@@ -12,21 +12,39 @@ pub struct SpeechPatterns {
     pub digit: &'static str,
 }
 
+/// The Bingo 75 column letters as written to ElevenLabs. The letter itself ("B", not "be"):
+/// a spelled-out name sounds like a word ("o" as "oh").
+const LATIN_LETTERS: [&str; 5] = ["B", "I", "N", "G", "O"];
+
 pub struct LanguageConfig {
     pub numbers: HashMap<u32, &'static str>,
-    /// Describes the bingo call to ElevenLabs. It is sent as context, never spoken.
-    pub scene: &'static str,
+    /// The letters of the columns B, I, N, G and O, in the script of the Language.
+    pub letters: [&'static str; 5],
     pub patterns: SpeechPatterns,
 }
 
 impl LanguageConfig {
-    pub fn for_language(language: Language) -> Self {
+    /// The words of the Accent's Language, with the ones the Accent writes differently.
+    pub fn for_accent(accent: Accent) -> Self {
+        let mut config = Self::for_language(accent.language());
+        config
+            .numbers
+            .extend(accent.number_word_overrides().iter().copied());
+        config
+    }
+
+    fn for_language(language: Language) -> Self {
         match language {
             Language::Spanish => Self::spanish(),
-            Language::English | Language::EnglishGB => Self::english(),
+            Language::English => Self::english(),
             Language::French => Self::french(),
             Language::Portuguese => Self::portuguese(),
             Language::Italian => Self::italian(),
+            Language::German => Self::german(),
+            Language::Russian => Self::russian(),
+            Language::Turkish => Self::turkish(),
+            Language::Hindi => Self::hindi(),
+            Language::Japanese => Self::japanese(),
         }
     }
 
@@ -131,7 +149,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            scene: "En una sala de bingo, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:",
+            letters: LATIN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "\u{a1}{num_word}!",
                 word_two_digit_90: "\u{a1}{num_word}!",
@@ -243,7 +261,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            scene: "In a bingo hall, the caller draws the next ball from the cage and announces it with energy, loud and clear:",
+            letters: LATIN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -355,7 +373,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            scene: "Dans une salle de bingo, l'animateur tire la boule suivante du boulier et l'annonce avec \u{e9}nergie, haut et fort :",
+            letters: LATIN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -467,7 +485,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            scene: "Em um sal\u{e3}o de bingo, o locutor sorteia a pr\u{f3}xima bola do globo e a anuncia com energia, alto e bom som:",
+            letters: LATIN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -579,7 +597,7 @@ impl LanguageConfig {
 
         Self {
             numbers,
-            scene: "In una sala bingo, il banditore estrae la prossima pallina dall'urna e la annuncia con energia, forte e chiaro:",
+            letters: LATIN_LETTERS,
             patterns: SpeechPatterns {
                 word_single_digit_90: "{num_word}!",
                 word_two_digit_90: "{num_word}!",
@@ -589,9 +607,568 @@ impl LanguageConfig {
             },
         }
     }
+
+    fn german() -> Self {
+        let mut numbers = HashMap::new();
+        let words = [
+            (0, "null"),
+            (1, "eins"),
+            (2, "zwei"),
+            (3, "drei"),
+            (4, "vier"),
+            (5, "fünf"),
+            (6, "sechs"),
+            (7, "sieben"),
+            (8, "acht"),
+            (9, "neun"),
+            (10, "zehn"),
+            (11, "elf"),
+            (12, "zwölf"),
+            (13, "dreizehn"),
+            (14, "vierzehn"),
+            (15, "fünfzehn"),
+            (16, "sechzehn"),
+            (17, "siebzehn"),
+            (18, "achtzehn"),
+            (19, "neunzehn"),
+            (20, "zwanzig"),
+            (21, "einundzwanzig"),
+            (22, "zweiundzwanzig"),
+            (23, "dreiundzwanzig"),
+            (24, "vierundzwanzig"),
+            (25, "fünfundzwanzig"),
+            (26, "sechsundzwanzig"),
+            (27, "siebenundzwanzig"),
+            (28, "achtundzwanzig"),
+            (29, "neunundzwanzig"),
+            (30, "dreißig"),
+            (31, "einunddreißig"),
+            (32, "zweiunddreißig"),
+            (33, "dreiunddreißig"),
+            (34, "vierunddreißig"),
+            (35, "fünfunddreißig"),
+            (36, "sechsunddreißig"),
+            (37, "siebenunddreißig"),
+            (38, "achtunddreißig"),
+            (39, "neununddreißig"),
+            (40, "vierzig"),
+            (41, "einundvierzig"),
+            (42, "zweiundvierzig"),
+            (43, "dreiundvierzig"),
+            (44, "vierundvierzig"),
+            (45, "fünfundvierzig"),
+            (46, "sechsundvierzig"),
+            (47, "siebenundvierzig"),
+            (48, "achtundvierzig"),
+            (49, "neunundvierzig"),
+            (50, "fünfzig"),
+            (51, "einundfünfzig"),
+            (52, "zweiundfünfzig"),
+            (53, "dreiundfünfzig"),
+            (54, "vierundfünfzig"),
+            (55, "fünfundfünfzig"),
+            (56, "sechsundfünfzig"),
+            (57, "siebenundfünfzig"),
+            (58, "achtundfünfzig"),
+            (59, "neunundfünfzig"),
+            (60, "sechzig"),
+            (61, "einundsechzig"),
+            (62, "zweiundsechzig"),
+            (63, "dreiundsechzig"),
+            (64, "vierundsechzig"),
+            (65, "fünfundsechzig"),
+            (66, "sechsundsechzig"),
+            (67, "siebenundsechzig"),
+            (68, "achtundsechzig"),
+            (69, "neunundsechzig"),
+            (70, "siebzig"),
+            (71, "einundsiebzig"),
+            (72, "zweiundsiebzig"),
+            (73, "dreiundsiebzig"),
+            (74, "vierundsiebzig"),
+            (75, "fünfundsiebzig"),
+            (76, "sechsundsiebzig"),
+            (77, "siebenundsiebzig"),
+            (78, "achtundsiebzig"),
+            (79, "neunundsiebzig"),
+            (80, "achtzig"),
+            (81, "einundachtzig"),
+            (82, "zweiundachtzig"),
+            (83, "dreiundachtzig"),
+            (84, "vierundachtzig"),
+            (85, "fünfundachtzig"),
+            (86, "sechsundachtzig"),
+            (87, "siebenundachtzig"),
+            (88, "achtundachtzig"),
+            (89, "neunundachtzig"),
+            (90, "neunzig"),
+        ];
+        for (n, w) in words {
+            numbers.insert(n, w);
+        }
+
+        Self {
+            numbers,
+            letters: LATIN_LETTERS,
+            patterns: SpeechPatterns {
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
+                digit: "{d1} {d2}",
+            },
+        }
+    }
+
+    fn russian() -> Self {
+        let mut numbers = HashMap::new();
+        let words = [
+            (0, "ноль"),
+            (1, "один"),
+            (2, "два"),
+            (3, "три"),
+            (4, "четыре"),
+            (5, "пять"),
+            (6, "шесть"),
+            (7, "семь"),
+            (8, "восемь"),
+            (9, "девять"),
+            (10, "десять"),
+            (11, "одиннадцать"),
+            (12, "двенадцать"),
+            (13, "тринадцать"),
+            (14, "четырнадцать"),
+            (15, "пятнадцать"),
+            (16, "шестнадцать"),
+            (17, "семнадцать"),
+            (18, "восемнадцать"),
+            (19, "девятнадцать"),
+            (20, "двадцать"),
+            (21, "двадцать один"),
+            (22, "двадцать два"),
+            (23, "двадцать три"),
+            (24, "двадцать четыре"),
+            (25, "двадцать пять"),
+            (26, "двадцать шесть"),
+            (27, "двадцать семь"),
+            (28, "двадцать восемь"),
+            (29, "двадцать девять"),
+            (30, "тридцать"),
+            (31, "тридцать один"),
+            (32, "тридцать два"),
+            (33, "тридцать три"),
+            (34, "тридцать четыре"),
+            (35, "тридцать пять"),
+            (36, "тридцать шесть"),
+            (37, "тридцать семь"),
+            (38, "тридцать восемь"),
+            (39, "тридцать девять"),
+            (40, "сорок"),
+            (41, "сорок один"),
+            (42, "сорок два"),
+            (43, "сорок три"),
+            (44, "сорок четыре"),
+            (45, "сорок пять"),
+            (46, "сорок шесть"),
+            (47, "сорок семь"),
+            (48, "сорок восемь"),
+            (49, "сорок девять"),
+            (50, "пятьдесят"),
+            (51, "пятьдесят один"),
+            (52, "пятьдесят два"),
+            (53, "пятьдесят три"),
+            (54, "пятьдесят четыре"),
+            (55, "пятьдесят пять"),
+            (56, "пятьдесят шесть"),
+            (57, "пятьдесят семь"),
+            (58, "пятьдесят восемь"),
+            (59, "пятьдесят девять"),
+            (60, "шестьдесят"),
+            (61, "шестьдесят один"),
+            (62, "шестьдесят два"),
+            (63, "шестьдесят три"),
+            (64, "шестьдесят четыре"),
+            (65, "шестьдесят пять"),
+            (66, "шестьдесят шесть"),
+            (67, "шестьдесят семь"),
+            (68, "шестьдесят восемь"),
+            (69, "шестьдесят девять"),
+            (70, "семьдесят"),
+            (71, "семьдесят один"),
+            (72, "семьдесят два"),
+            (73, "семьдесят три"),
+            (74, "семьдесят четыре"),
+            (75, "семьдесят пять"),
+            (76, "семьдесят шесть"),
+            (77, "семьдесят семь"),
+            (78, "семьдесят восемь"),
+            (79, "семьдесят девять"),
+            (80, "восемьдесят"),
+            (81, "восемьдесят один"),
+            (82, "восемьдесят два"),
+            (83, "восемьдесят три"),
+            (84, "восемьдесят четыре"),
+            (85, "восемьдесят пять"),
+            (86, "восемьдесят шесть"),
+            (87, "восемьдесят семь"),
+            (88, "восемьдесят восемь"),
+            (89, "восемьдесят девять"),
+            (90, "девяносто"),
+        ];
+        for (n, w) in words {
+            numbers.insert(n, w);
+        }
+
+        Self {
+            numbers,
+            letters: LATIN_LETTERS,
+            patterns: SpeechPatterns {
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
+                digit: "{d1} {d2}",
+            },
+        }
+    }
+
+    fn turkish() -> Self {
+        let mut numbers = HashMap::new();
+        let words = [
+            (0, "sıfır"),
+            (1, "bir"),
+            (2, "iki"),
+            (3, "üç"),
+            (4, "dört"),
+            (5, "beş"),
+            (6, "altı"),
+            (7, "yedi"),
+            (8, "sekiz"),
+            (9, "dokuz"),
+            (10, "on"),
+            (11, "on bir"),
+            (12, "on iki"),
+            (13, "on üç"),
+            (14, "on dört"),
+            (15, "on beş"),
+            (16, "on altı"),
+            (17, "on yedi"),
+            (18, "on sekiz"),
+            (19, "on dokuz"),
+            (20, "yirmi"),
+            (21, "yirmi bir"),
+            (22, "yirmi iki"),
+            (23, "yirmi üç"),
+            (24, "yirmi dört"),
+            (25, "yirmi beş"),
+            (26, "yirmi altı"),
+            (27, "yirmi yedi"),
+            (28, "yirmi sekiz"),
+            (29, "yirmi dokuz"),
+            (30, "otuz"),
+            (31, "otuz bir"),
+            (32, "otuz iki"),
+            (33, "otuz üç"),
+            (34, "otuz dört"),
+            (35, "otuz beş"),
+            (36, "otuz altı"),
+            (37, "otuz yedi"),
+            (38, "otuz sekiz"),
+            (39, "otuz dokuz"),
+            (40, "kırk"),
+            (41, "kırk bir"),
+            (42, "kırk iki"),
+            (43, "kırk üç"),
+            (44, "kırk dört"),
+            (45, "kırk beş"),
+            (46, "kırk altı"),
+            (47, "kırk yedi"),
+            (48, "kırk sekiz"),
+            (49, "kırk dokuz"),
+            (50, "elli"),
+            (51, "elli bir"),
+            (52, "elli iki"),
+            (53, "elli üç"),
+            (54, "elli dört"),
+            (55, "elli beş"),
+            (56, "elli altı"),
+            (57, "elli yedi"),
+            (58, "elli sekiz"),
+            (59, "elli dokuz"),
+            (60, "altmış"),
+            (61, "altmış bir"),
+            (62, "altmış iki"),
+            (63, "altmış üç"),
+            (64, "altmış dört"),
+            (65, "altmış beş"),
+            (66, "altmış altı"),
+            (67, "altmış yedi"),
+            (68, "altmış sekiz"),
+            (69, "altmış dokuz"),
+            (70, "yetmiş"),
+            (71, "yetmiş bir"),
+            (72, "yetmiş iki"),
+            (73, "yetmiş üç"),
+            (74, "yetmiş dört"),
+            (75, "yetmiş beş"),
+            (76, "yetmiş altı"),
+            (77, "yetmiş yedi"),
+            (78, "yetmiş sekiz"),
+            (79, "yetmiş dokuz"),
+            (80, "seksen"),
+            (81, "seksen bir"),
+            (82, "seksen iki"),
+            (83, "seksen üç"),
+            (84, "seksen dört"),
+            (85, "seksen beş"),
+            (86, "seksen altı"),
+            (87, "seksen yedi"),
+            (88, "seksen sekiz"),
+            (89, "seksen dokuz"),
+            (90, "doksan"),
+        ];
+        for (n, w) in words {
+            numbers.insert(n, w);
+        }
+
+        Self {
+            numbers,
+            letters: LATIN_LETTERS,
+            patterns: SpeechPatterns {
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
+                digit: "{d1} {d2}",
+            },
+        }
+    }
+
+    fn hindi() -> Self {
+        let mut numbers = HashMap::new();
+        let words = [
+            (0, "शून्य"),
+            (1, "एक"),
+            (2, "दो"),
+            (3, "तीन"),
+            (4, "चार"),
+            (5, "पाँच"),
+            (6, "छह"),
+            (7, "सात"),
+            (8, "आठ"),
+            (9, "नौ"),
+            (10, "दस"),
+            (11, "ग्यारह"),
+            (12, "बारह"),
+            (13, "तेरह"),
+            (14, "चौदह"),
+            (15, "पंद्रह"),
+            (16, "सोलह"),
+            (17, "सत्रह"),
+            (18, "अठारह"),
+            (19, "उन्नीस"),
+            (20, "बीस"),
+            (21, "इक्कीस"),
+            (22, "बाईस"),
+            (23, "तेईस"),
+            (24, "चौबीस"),
+            (25, "पच्चीस"),
+            (26, "छब्बीस"),
+            (27, "सत्ताईस"),
+            (28, "अट्ठाईस"),
+            (29, "उनतीस"),
+            (30, "तीस"),
+            (31, "इकतीस"),
+            (32, "बत्तीस"),
+            (33, "तैंतीस"),
+            (34, "चौंतीस"),
+            (35, "पैंतीस"),
+            (36, "छत्तीस"),
+            (37, "सैंतीस"),
+            (38, "अड़तीस"),
+            (39, "उनतालीस"),
+            (40, "चालीस"),
+            (41, "इकतालीस"),
+            (42, "बयालीस"),
+            (43, "तैंतालीस"),
+            (44, "चवालीस"),
+            (45, "पैंतालीस"),
+            (46, "छियालीस"),
+            (47, "सैंतालीस"),
+            (48, "अड़तालीस"),
+            (49, "उनचास"),
+            (50, "पचास"),
+            (51, "इक्यावन"),
+            (52, "बावन"),
+            (53, "तिरपन"),
+            (54, "चौवन"),
+            (55, "पचपन"),
+            (56, "छप्पन"),
+            (57, "सत्तावन"),
+            (58, "अट्ठावन"),
+            (59, "उनसठ"),
+            (60, "साठ"),
+            (61, "इकसठ"),
+            (62, "बासठ"),
+            (63, "तिरसठ"),
+            (64, "चौंसठ"),
+            (65, "पैंसठ"),
+            (66, "छियासठ"),
+            (67, "सड़सठ"),
+            (68, "अड़सठ"),
+            (69, "उनहत्तर"),
+            (70, "सत्तर"),
+            (71, "इकहत्तर"),
+            (72, "बहत्तर"),
+            (73, "तिहत्तर"),
+            (74, "चौहत्तर"),
+            (75, "पचहत्तर"),
+            (76, "छिहत्तर"),
+            (77, "सतहत्तर"),
+            (78, "अठहत्तर"),
+            (79, "उन्यासी"),
+            (80, "अस्सी"),
+            (81, "इक्यासी"),
+            (82, "बयासी"),
+            (83, "तिरासी"),
+            (84, "चौरासी"),
+            (85, "पचासी"),
+            (86, "छियासी"),
+            (87, "सत्तासी"),
+            (88, "अट्ठासी"),
+            (89, "नवासी"),
+            (90, "नब्बे"),
+        ];
+        for (n, w) in words {
+            numbers.insert(n, w);
+        }
+
+        Self {
+            numbers,
+            letters: LATIN_LETTERS,
+            patterns: SpeechPatterns {
+                word_single_digit_90: "{num_word}!",
+                word_two_digit_90: "{num_word}!",
+                word_single_digit_75: "{letter} !{num_word}!",
+                word_two_digit_75: "{letter} !{num_word}!",
+                digit: "{d1} {d2}",
+            },
+        }
+    }
+
+    fn japanese() -> Self {
+        let mut numbers = HashMap::new();
+        let words = [
+            (0, "ゼロ"),
+            (1, "いち"),
+            (2, "に"),
+            (3, "さん"),
+            (4, "よん"),
+            (5, "ご"),
+            (6, "ろく"),
+            (7, "なな"),
+            (8, "はち"),
+            (9, "きゅう"),
+            (10, "じゅう"),
+            (11, "じゅういち"),
+            (12, "じゅうに"),
+            (13, "じゅうさん"),
+            (14, "じゅうよん"),
+            (15, "じゅうご"),
+            (16, "じゅうろく"),
+            (17, "じゅうなな"),
+            (18, "じゅうはち"),
+            (19, "じゅうきゅう"),
+            (20, "にじゅう"),
+            (21, "にじゅういち"),
+            (22, "にじゅうに"),
+            (23, "にじゅうさん"),
+            (24, "にじゅうよん"),
+            (25, "にじゅうご"),
+            (26, "にじゅうろく"),
+            (27, "にじゅうなな"),
+            (28, "にじゅうはち"),
+            (29, "にじゅうきゅう"),
+            (30, "さんじゅう"),
+            (31, "さんじゅういち"),
+            (32, "さんじゅうに"),
+            (33, "さんじゅうさん"),
+            (34, "さんじゅうよん"),
+            (35, "さんじゅうご"),
+            (36, "さんじゅうろく"),
+            (37, "さんじゅうなな"),
+            (38, "さんじゅうはち"),
+            (39, "さんじゅうきゅう"),
+            (40, "よんじゅう"),
+            (41, "よんじゅういち"),
+            (42, "よんじゅうに"),
+            (43, "よんじゅうさん"),
+            (44, "よんじゅうよん"),
+            (45, "よんじゅうご"),
+            (46, "よんじゅうろく"),
+            (47, "よんじゅうなな"),
+            (48, "よんじゅうはち"),
+            (49, "よんじゅうきゅう"),
+            (50, "ごじゅう"),
+            (51, "ごじゅういち"),
+            (52, "ごじゅうに"),
+            (53, "ごじゅうさん"),
+            (54, "ごじゅうよん"),
+            (55, "ごじゅうご"),
+            (56, "ごじゅうろく"),
+            (57, "ごじゅうなな"),
+            (58, "ごじゅうはち"),
+            (59, "ごじゅうきゅう"),
+            (60, "ろくじゅう"),
+            (61, "ろくじゅういち"),
+            (62, "ろくじゅうに"),
+            (63, "ろくじゅうさん"),
+            (64, "ろくじゅうよん"),
+            (65, "ろくじゅうご"),
+            (66, "ろくじゅうろく"),
+            (67, "ろくじゅうなな"),
+            (68, "ろくじゅうはち"),
+            (69, "ろくじゅうきゅう"),
+            (70, "ななじゅう"),
+            (71, "ななじゅういち"),
+            (72, "ななじゅうに"),
+            (73, "ななじゅうさん"),
+            (74, "ななじゅうよん"),
+            (75, "ななじゅうご"),
+            (76, "ななじゅうろく"),
+            (77, "ななじゅうなな"),
+            (78, "ななじゅうはち"),
+            (79, "ななじゅうきゅう"),
+            (80, "はちじゅう"),
+            (81, "はちじゅういち"),
+            (82, "はちじゅうに"),
+            (83, "はちじゅうさん"),
+            (84, "はちじゅうよん"),
+            (85, "はちじゅうご"),
+            (86, "はちじゅうろく"),
+            (87, "はちじゅうなな"),
+            (88, "はちじゅうはち"),
+            (89, "はちじゅうきゅう"),
+            (90, "きゅうじゅう"),
+        ];
+        for (n, w) in words {
+            numbers.insert(n, w);
+        }
+
+        Self {
+            numbers,
+            letters: ["ビー", "アイ", "エヌ", "ジー", "オー"],
+            patterns: SpeechPatterns {
+                word_single_digit_90: "{num_word}！",
+                word_two_digit_90: "{num_word}！",
+                word_single_digit_75: "{letter}、{num_word}！",
+                word_two_digit_75: "{letter}、{num_word}！",
+                digit: "{d1}、{d2}",
+            },
+        }
+    }
 }
 
-/// Builds TTS text for a given number, language, mode, and part
 /// What is sent to ElevenLabs for one Audio Part: the text it speaks, and the context around it,
 /// which it does not speak.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -608,28 +1185,28 @@ pub struct TtsText {
 /// Returns `None` for the Digit of a number below 10, which has none.
 pub fn build_tts_text(
     number: u32,
-    language: Language,
+    accent: Accent,
     mode: BingoMode,
     part: AudioPart,
 ) -> Option<TtsText> {
     if !part.exists_for(number) {
         return None;
     }
-    let scene = LanguageConfig::for_language(language).scene;
+    let scene = accent.scene();
     let tts = match part {
         AudioPart::Word => TtsText {
-            text: build_text(number, language, mode, AudioPart::Word),
+            text: build_text(number, accent, mode, AudioPart::Word),
             previous_text: scene.to_string(),
             next_text: AudioPart::Digit
                 .exists_for(number)
-                .then(|| build_digit_text(number, language)),
+                .then(|| build_digit_text(number, accent)),
         },
         AudioPart::Digit => TtsText {
-            text: build_digit_text(number, language),
+            text: build_digit_text(number, accent),
             previous_text: format!(
                 "{} {}",
                 scene,
-                build_text(number, language, BingoMode::Bingo90, AudioPart::Word)
+                build_text(number, accent, BingoMode::Bingo90, AudioPart::Word)
             ),
             next_text: None,
         },
@@ -637,24 +1214,27 @@ pub fn build_tts_text(
     Some(tts)
 }
 
-pub fn build_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
+pub fn build_text(number: u32, accent: Accent, mode: BingoMode, part: AudioPart) -> String {
     let text = match (mode, part) {
-        (BingoMode::Bingo90, AudioPart::Word) => build_word_text_90(number, language),
-        (BingoMode::Bingo75, AudioPart::Word) => build_word_text_75(number, language),
-        (_, AudioPart::Digit) => return build_digit_text(number, language),
+        (BingoMode::Bingo90, AudioPart::Word) => build_word_text_90(number, accent),
+        (BingoMode::Bingo75, AudioPart::Word) => build_word_text_75(number, accent),
+        (_, AudioPart::Digit) => return build_digit_text(number, accent),
     };
-    capitalize_first_letter(&text)
+    capitalize_first_letter(&text, accent.language())
 }
 
 /// Upper-cases the first letter, skipping leading punctuation such as Spanish "¡".
-fn capitalize_first_letter(text: &str) -> String {
+/// Scripts without case (Devanagari, kana) stay as they are.
+fn capitalize_first_letter(text: &str, language: Language) -> String {
     match text.char_indices().find(|(_, c)| c.is_alphabetic()) {
-        Some((i, c)) => format!(
-            "{}{}{}",
-            &text[..i],
-            c.to_uppercase(),
-            &text[i + c.len_utf8()..]
-        ),
+        Some((i, c)) => {
+            let upper = match (language, c) {
+                // Turkish keeps the dot: "iki" becomes "İki", not "Iki"
+                (Language::Turkish, 'i') => "\u{130}".to_string(),
+                _ => c.to_uppercase().to_string(),
+            };
+            format!("{}{}{}", &text[..i], upper, &text[i + c.len_utf8()..])
+        }
         None => text.to_string(),
     }
 }
@@ -667,8 +1247,8 @@ fn number_word(config: &LanguageConfig, number: u32) -> String {
         .unwrap_or_else(|| number.to_string())
 }
 
-fn build_word_text_90(number: u32, language: Language) -> String {
-    let config = LanguageConfig::for_language(language);
+fn build_word_text_90(number: u32, accent: Accent) -> String {
+    let config = LanguageConfig::for_accent(accent);
     let pattern = if number < 10 {
         config.patterns.word_single_digit_90
     } else {
@@ -677,39 +1257,44 @@ fn build_word_text_90(number: u32, language: Language) -> String {
     pattern.replace("{num_word}", &number_word(&config, number))
 }
 
-fn build_word_text_75(number: u32, language: Language) -> String {
-    let config = LanguageConfig::for_language(language);
+fn build_word_text_75(number: u32, accent: Accent) -> String {
+    let config = LanguageConfig::for_accent(accent);
     let pattern = if number < 10 {
         config.patterns.word_single_digit_75
     } else {
         config.patterns.word_two_digit_75
     };
+    let letter = config.letters[((number.clamp(1, 75) - 1) / 15) as usize];
     pattern
-        // The letter itself ("B", not "be"): a spelled-out name sounds like a word ("o" as "oh").
-        .replace("{letter}", bingo75_letter(number))
+        .replace("{letter}", letter)
         .replace("{num_word}", &number_word(&config, number))
 }
 
-fn build_digit_text(number: u32, language: Language) -> String {
-    let config = LanguageConfig::for_language(language);
+fn build_digit_text(number: u32, accent: Accent) -> String {
+    let config = LanguageConfig::for_accent(accent);
     let text = config
         .patterns
         .digit
         .replace("{d1}", &number_word(&config, number / 10))
         .replace("{d2}", &number_word(&config, number % 10));
-    capitalize_first_letter(&text)
+    capitalize_first_letter(&text, accent.language())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const SPANISH_SCENE: &str = "En una sala de bingo, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:";
+    const SPANISH_SCENE: &str = "En una sala de bingo de Espa\u{f1}a, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:";
 
     #[test]
     fn word_knows_the_scene_and_that_the_digits_follow() {
-        let tts =
-            build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Word).unwrap();
+        let tts = build_tts_text(
+            45,
+            Accent::PeninsularSpanish,
+            BingoMode::Bingo90,
+            AudioPart::Word,
+        )
+        .unwrap();
 
         assert_eq!(
             tts,
@@ -723,8 +1308,13 @@ mod tests {
 
     #[test]
     fn digit_knows_the_scene_and_the_word_said_before() {
-        let tts =
-            build_tts_text(45, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit).unwrap();
+        let tts = build_tts_text(
+            45,
+            Accent::PeninsularSpanish,
+            BingoMode::Bingo90,
+            AudioPart::Digit,
+        )
+        .unwrap();
 
         assert_eq!(
             tts,
@@ -738,15 +1328,25 @@ mod tests {
 
     #[test]
     fn digit_is_the_same_in_both_modes_and_its_context_has_no_letter() {
-        let digit = |mode| build_tts_text(45, Language::Spanish, mode, AudioPart::Digit);
+        let digit = |mode| build_tts_text(45, Accent::PeninsularSpanish, mode, AudioPart::Digit);
 
         assert_eq!(digit(BingoMode::Bingo75), digit(BingoMode::Bingo90));
     }
 
     #[test]
     fn numbers_below_10_have_no_digit() {
-        let word = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
-        let digit = build_tts_text(7, Language::Spanish, BingoMode::Bingo90, AudioPart::Digit);
+        let word = build_tts_text(
+            7,
+            Accent::PeninsularSpanish,
+            BingoMode::Bingo90,
+            AudioPart::Word,
+        );
+        let digit = build_tts_text(
+            7,
+            Accent::PeninsularSpanish,
+            BingoMode::Bingo90,
+            AudioPart::Digit,
+        );
 
         assert_eq!(word.unwrap().next_text, None);
         assert_eq!(digit, None);
@@ -754,7 +1354,14 @@ mod tests {
 
     #[test]
     fn spanish_number_words_carry_their_accents() {
-        let text = |n| build_text(n, Language::Spanish, BingoMode::Bingo90, AudioPart::Word);
+        let text = |n| {
+            build_text(
+                n,
+                Accent::PeninsularSpanish,
+                BingoMode::Bingo90,
+                AudioPart::Word,
+            )
+        };
 
         assert_eq!(text(16), "\u{a1}Diecis\u{e9}is!");
         assert_eq!(text(22), "\u{a1}Veintid\u{f3}s!");
@@ -764,7 +1371,14 @@ mod tests {
 
     #[test]
     fn bingo_75_word_says_the_letter_itself_outside_the_exclamation() {
-        let word = |n| build_text(n, Language::Spanish, BingoMode::Bingo75, AudioPart::Word);
+        let word = |n| {
+            build_text(
+                n,
+                Accent::PeninsularSpanish,
+                BingoMode::Bingo75,
+                AudioPart::Word,
+            )
+        };
 
         assert_eq!(word(8), "B !ocho!");
         assert_eq!(word(74), "O !setenta y cuatro!");
@@ -772,15 +1386,118 @@ mod tests {
 
     #[test]
     fn bingo_75_digit_has_no_letter() {
-        let digit = build_text(52, Language::English, BingoMode::Bingo75, AudioPart::Digit);
+        let digit = build_text(
+            52,
+            Accent::AmericanEnglish,
+            BingoMode::Bingo75,
+            AudioPart::Digit,
+        );
 
         assert_eq!(digit, "Five two");
     }
 
     #[test]
-    fn every_language_has_a_scene() {
-        for language in Language::all() {
-            assert!(!LanguageConfig::for_language(language).scene.is_empty());
+    fn accents_of_a_language_say_the_same_text_with_their_own_scene() {
+        let word = |accent| build_tts_text(45, accent, BingoMode::Bingo75, AudioPart::Word);
+        let peninsular = word(Accent::PeninsularSpanish).unwrap();
+        let rioplatense = word(Accent::RioplatenseSpanish).unwrap();
+
+        assert_eq!(rioplatense.text, peninsular.text);
+        assert_ne!(rioplatense.previous_text, peninsular.previous_text);
+    }
+
+    #[test]
+    fn european_portuguese_writes_its_own_teens() {
+        let text = |accent, n| build_text(n, accent, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(Accent::EuropeanPortuguese, 16), "Dezasseis!");
+        assert_eq!(text(Accent::EuropeanPortuguese, 17), "Dezassete!");
+        assert_eq!(text(Accent::EuropeanPortuguese, 19), "Dezanove!");
+        assert_eq!(text(Accent::BrazilianPortuguese, 16), "Dezesseis!");
+        assert_eq!(text(Accent::EuropeanPortuguese, 18), "Dezoito!");
+    }
+
+    #[test]
+    fn every_accent_says_every_number_in_words() {
+        for accent in Accent::all() {
+            for number in 1..=90 {
+                for mode in [BingoMode::Bingo90, BingoMode::Bingo75] {
+                    if mode == BingoMode::Bingo75 && number > 75 {
+                        continue;
+                    }
+                    let tts = build_tts_text(number, accent, mode, AudioPart::Word).unwrap();
+                    assert!(
+                        !tts.text.chars().any(|c| c.is_ascii_digit()),
+                        "{:?} {} {:?}: {}",
+                        accent,
+                        number,
+                        mode,
+                        tts.text
+                    );
+                }
+            }
         }
+    }
+
+    #[test]
+    fn german_joins_units_before_tens() {
+        let text = |n| build_text(n, Accent::German, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(1), "Eins!");
+        assert_eq!(text(21), "Einundzwanzig!");
+        assert_eq!(text(45), "F\u{fc}nfundvierzig!");
+        assert_eq!(
+            build_text(45, Accent::German, BingoMode::Bingo90, AudioPart::Digit),
+            "Vier f\u{fc}nf"
+        );
+    }
+
+    #[test]
+    fn russian_numbers_are_in_cyrillic() {
+        let text = |n| build_text(n, Accent::Russian, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(45), "Сорок пять!");
+        assert_eq!(text(12), "Двенадцать!");
+        assert_eq!(
+            build_text(40, Accent::Russian, BingoMode::Bingo90, AudioPart::Digit),
+            "Четыре ноль"
+        );
+    }
+
+    #[test]
+    fn turkish_capitalizes_dotted_i() {
+        let text = |n| build_text(n, Accent::Turkish, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(2), "\u{130}ki!");
+        assert_eq!(text(45), "K\u{131}rk be\u{15f}!");
+        assert_eq!(
+            build_text(25, Accent::Turkish, BingoMode::Bingo90, AudioPart::Digit),
+            "\u{130}ki be\u{15f}"
+        );
+    }
+
+    #[test]
+    fn hindi_has_its_own_word_for_every_number() {
+        let text = |n| build_text(n, Accent::Hindi, BingoMode::Bingo90, AudioPart::Word);
+
+        assert_eq!(text(45), "पैंतालीस!");
+        assert_eq!(text(89), "नवासी!");
+        assert_eq!(
+            build_text(45, Accent::Hindi, BingoMode::Bingo90, AudioPart::Digit),
+            "चार पाँच"
+        );
+    }
+
+    #[test]
+    fn japanese_uses_kana_with_the_readings_callers_use() {
+        let text = |n, mode| build_text(n, Accent::Japanese, mode, AudioPart::Word);
+
+        assert_eq!(text(4, BingoMode::Bingo90), "よん！");
+        assert_eq!(text(47, BingoMode::Bingo90), "よんじゅうなな！");
+        assert_eq!(text(45, BingoMode::Bingo75), "エヌ、よんじゅうご！");
+        assert_eq!(
+            build_text(45, Accent::Japanese, BingoMode::Bingo90, AudioPart::Digit),
+            "よん、ご"
+        );
     }
 }

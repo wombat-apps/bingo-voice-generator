@@ -9,7 +9,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 use crate::models::{
-    bingo75_letter, AudioFile, AudioPart, BingoMode, Language, NumberAudioPair, Voice,
+    bingo75_letter, Accent, AudioFile, AudioPart, BingoMode, NumberAudioPair, Voice,
 };
 use crate::services::audio_trimmer::{trim_trailing_silence, AudioTrimError, TrimConfig};
 
@@ -52,33 +52,33 @@ fn audio_file_name(number: u32, mode: &BingoMode, part: &AudioPart) -> String {
 /// Path of the Trimmed Audio, the one the app plays.
 fn audio_file_path(
     number: u32,
-    language: &Language,
+    accent: &Accent,
     voice: &Voice,
     mode: &BingoMode,
     part: &AudioPart,
 ) -> PathBuf {
-    voice_directory(language, voice).join(audio_file_name(number, mode, part))
+    voice_directory(accent, voice).join(audio_file_name(number, mode, part))
 }
 
 /// Path of the Original Audio. It lives in a tree parallel to the voice
 /// directories so that copying a voice directory only copies Trimmed Audio.
 fn original_audio_path(
     number: u32,
-    language: &Language,
+    accent: &Accent,
     voice: &Voice,
     mode: &BingoMode,
     part: &AudioPart,
 ) -> PathBuf {
     get_base_directory()
         .join("Originals")
-        .join(language.raw_value())
+        .join(accent.raw_value())
         .join(voice.uuid.to_string())
         .join(audio_file_name(number, mode, part))
 }
 
-fn voice_directory(language: &Language, voice: &Voice) -> PathBuf {
+fn voice_directory(accent: &Accent, voice: &Voice) -> PathBuf {
     get_base_directory()
-        .join(language.raw_value())
+        .join(accent.raw_value())
         .join(voice.uuid.to_string())
 }
 
@@ -149,14 +149,14 @@ async fn remove_original_audio(path: &Path) {
 pub async fn save_audio_file(
     data: Vec<u8>,
     number: u32,
-    language: Language,
+    accent: Accent,
     voice: Voice,
     mode: BingoMode,
     part: AudioPart,
 ) -> Result<AudioFile, StorageError> {
     // The Original Audio is only a safety net: failing to save it must not
     // lose a generation that has already spent characters.
-    let original_path = original_audio_path(number, &language, &voice, &mode, &part);
+    let original_path = original_audio_path(number, &accent, &voice, &mode, &part);
     if let Err(e) = write_file(&original_path, &data).await {
         log::warn!(
             "[save_audio_file] Could not save Original Audio {}: {}",
@@ -165,7 +165,7 @@ pub async fn save_audio_file(
         );
     }
 
-    let path = audio_file_path(number, &language, &voice, &mode, &part);
+    let path = audio_file_path(number, &accent, &voice, &mode, &part);
     let trimmed = trim_or_keep(data).await;
     write_file(&path, &trimmed).await?;
 
@@ -174,7 +174,7 @@ pub async fn save_audio_file(
     let audio_file = AudioFile::new(
         number,
         part,
-        language,
+        accent,
         &voice,
         mode,
         path.to_string_lossy().to_string(),
@@ -186,11 +186,11 @@ pub async fn save_audio_file(
 
 #[tauri::command]
 pub async fn load_audio_files(
-    language: Language,
+    accent: Accent,
     voice: Voice,
     mode: BingoMode,
 ) -> Result<HashMap<u32, NumberAudioPair>, StorageError> {
-    let directory = voice_directory(&language, &voice);
+    let directory = voice_directory(&accent, &voice);
     let mut result: HashMap<u32, NumberAudioPair> = HashMap::new();
 
     // Check if directory exists
@@ -239,7 +239,7 @@ pub async fn load_audio_files(
         let audio_file = AudioFile {
             number,
             part,
-            language,
+            accent,
             voice_uuid: voice.uuid.to_string(),
             mode,
             file_path: path.to_string_lossy().to_string(),
@@ -310,36 +310,30 @@ fn parse_filename(filename: &str, mode: &BingoMode) -> Option<(u32, AudioPart)> 
 #[tauri::command]
 pub async fn delete_audio_file(
     number: u32,
-    language: Language,
+    accent: Accent,
     voice: Voice,
     mode: BingoMode,
     part: AudioPart,
 ) -> Result<(), StorageError> {
-    let path = audio_file_path(number, &language, &voice, &mode, &part);
+    let path = audio_file_path(number, &accent, &voice, &mode, &part);
     fs::remove_file(&path).await?;
-    remove_original_audio(&original_audio_path(
-        number, &language, &voice, &mode, &part,
-    ))
-    .await;
+    remove_original_audio(&original_audio_path(number, &accent, &voice, &mode, &part)).await;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn delete_all_audio_files(
     number: u32,
-    language: Language,
+    accent: Accent,
     voice: Voice,
     mode: BingoMode,
 ) -> Result<(), StorageError> {
     for part in AudioPart::all() {
-        let path = audio_file_path(number, &language, &voice, &mode, &part);
+        let path = audio_file_path(number, &accent, &voice, &mode, &part);
         if path.exists() {
             fs::remove_file(&path).await?;
         }
-        remove_original_audio(&original_audio_path(
-            number, &language, &voice, &mode, &part,
-        ))
-        .await;
+        remove_original_audio(&original_audio_path(number, &accent, &voice, &mode, &part)).await;
     }
     Ok(())
 }
@@ -368,10 +362,10 @@ pub struct VoiceDirectoryInfo {
 
 #[tauri::command]
 pub async fn get_voice_directory(
-    language: Language,
+    accent: Accent,
     voice: Voice,
 ) -> Result<VoiceDirectoryInfo, StorageError> {
-    let dir = voice_directory(&language, &voice);
+    let dir = voice_directory(&accent, &voice);
     let exists = dir.exists();
     Ok(VoiceDirectoryInfo {
         path: dir.to_string_lossy().to_string(),
@@ -390,18 +384,18 @@ mod tests {
             "id".into(),
             "Name".into(),
             None,
-            Language::Spanish,
+            Accent::PeninsularSpanish,
             None,
             VoiceKind::Default,
         );
         let mode = BingoMode::Bingo75;
         let part = AudioPart::Word;
 
-        let trimmed = audio_file_path(12, &Language::Spanish, &voice, &mode, &part);
-        let original = original_audio_path(12, &Language::Spanish, &voice, &mode, &part);
+        let trimmed = audio_file_path(12, &Accent::PeninsularSpanish, &voice, &mode, &part);
+        let original = original_audio_path(12, &Accent::PeninsularSpanish, &voice, &mode, &part);
 
         assert_eq!(trimmed.file_name(), original.file_name());
-        assert!(!original.starts_with(voice_directory(&Language::Spanish, &voice)));
+        assert!(!original.starts_with(voice_directory(&Accent::PeninsularSpanish, &voice)));
         assert!(original.starts_with(get_base_directory().join("Originals")));
     }
 

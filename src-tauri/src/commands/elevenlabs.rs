@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::models::Language;
+use crate::models::Accent;
 
 const BASE_URL: &str = "https://api.elevenlabs.io/v1";
 
@@ -90,7 +90,7 @@ pub struct VerifiedLanguage {
     pub preview_url: Option<String>,
 }
 
-/// A Default Voice as the voice picker shows it, for one language.
+/// A Default Voice as the voice picker shows it, for one Accent.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DefaultVoice {
@@ -104,18 +104,18 @@ pub struct DefaultVoice {
 }
 
 impl DefaultVoice {
-    /// The voice for `language`, or `None` when ElevenLabs has not verified it speaks it.
-    /// The preview is the one in the language's accent if there is one, then any in the
-    /// language, then the generic one.
-    pub fn for_language(voice: &ElevenLabsVoice, language: Language) -> Option<Self> {
+    /// The voice for the Language of `accent`, or `None` when ElevenLabs has not verified it
+    /// speaks it. The preview is the one in the Accent if there is one, then any in the
+    /// Language, then the generic one.
+    pub fn for_accent(voice: &ElevenLabsVoice, accent: Accent) -> Option<Self> {
         let in_language: Vec<&VerifiedLanguage> = voice
             .verified_languages
             .iter()
-            .filter(|v| v.language == language.elevenlabs_code())
+            .filter(|v| v.language == accent.elevenlabs_code())
             .collect();
         let verified = in_language
             .iter()
-            .find(|v| v.accent.as_deref() == Some(language.elevenlabs_accent()))
+            .find(|v| v.accent.as_deref() == Some(accent.elevenlabs_accent()))
             .or_else(|| in_language.first())?;
         let label = |key: &str| voice.labels.get(key).cloned();
         Some(DefaultVoice {
@@ -212,6 +212,9 @@ pub struct SharedVoicesResponse {
     pub voices: Vec<SharedVoice>,
     #[serde(rename(deserialize = "has_more"))]
     pub has_more: bool,
+    /// The Accent's label found no voices, so these are from its whole Language.
+    #[serde(default, skip_deserializing)]
+    pub whole_language: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -460,30 +463,30 @@ pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>
     fetch_default_voices(&api_key, None).await
 }
 
-/// The Default Voices ElevenLabs has verified for `language`.
+/// The Default Voices ElevenLabs has verified for the Language of `accent`.
 #[tauri::command]
 pub async fn list_default_voices(
-    language: Language,
+    accent: Accent,
     api_key: String,
     gender: Option<String>,
 ) -> Result<Vec<DefaultVoice>, ElevenLabsError> {
     let voices = fetch_default_voices(&api_key, gender.as_deref()).await?;
     let in_language: Vec<DefaultVoice> = voices
         .iter()
-        .filter_map(|v| DefaultVoice::for_language(v, language))
+        .filter_map(|v| DefaultVoice::for_accent(v, accent))
         .collect();
     log::info!(
         "[list_default_voices] {} of {} Default Voices are verified for {}",
         in_language.len(),
         voices.len(),
-        language.elevenlabs_code()
+        accent.elevenlabs_code()
     );
     Ok(in_language)
 }
 
 #[tauri::command]
 pub async fn search_shared_voices(
-    language: Language,
+    accent: Accent,
     api_key: String,
     gender: Option<String>,
     search: Option<String>,
@@ -493,32 +496,62 @@ pub async fn search_shared_voices(
         return Err(ElevenLabsError::NoApiKey);
     }
 
-    let mut url = format!(
-        "{}/shared-voices?language={}&accent={}&page_size={}",
-        BASE_URL,
-        language.elevenlabs_code(),
-        language.elevenlabs_accent(),
-        page_size.unwrap_or(20)
+    let url = |accent_label| {
+        shared_voices_url(
+            accent,
+            accent_label,
+            gender.as_deref(),
+            search.as_deref(),
+            page_size.unwrap_or(20),
+        )
+    };
+    let in_accent = fetch_shared_voices(&api_key, &url(Some(accent.elevenlabs_accent()))).await?;
+    if !in_accent.voices.is_empty() {
+        return Ok(in_accent);
+    }
+
+    // Some Accents have few or no voices under their label (or a label the Voice Library
+    // does not use): the user picks from the whole Language by ear instead.
+    log::info!(
+        "[search_shared_voices] No voices with accent {:?}, searching all of {}",
+        accent.elevenlabs_accent(),
+        accent.elevenlabs_code()
     );
+    let mut in_language = fetch_shared_voices(&api_key, &url(None)).await?;
+    in_language.whole_language = true;
+    Ok(in_language)
+}
 
-    if let Some(g) = gender {
-        if !g.is_empty() {
-            url.push_str(&format!("&gender={}", g));
+fn shared_voices_url(
+    accent: Accent,
+    accent_label: Option<&str>,
+    gender: Option<&str>,
+    search: Option<&str>,
+    page_size: u32,
+) -> String {
+    let mut url = format!(
+        "{}/shared-voices?language={}&page_size={}",
+        BASE_URL,
+        accent.elevenlabs_code(),
+        page_size
+    );
+    let mut push = |key: &str, value: Option<&str>| {
+        if let Some(v) = value.filter(|v| !v.is_empty()) {
+            url.push_str(&format!("&{}={}", key, urlencoding::encode(v)));
         }
-    }
+    };
+    push("accent", accent_label);
+    push("gender", gender);
+    push("search", search);
+    url
+}
 
-    if let Some(s) = search {
-        if !s.is_empty() {
-            url.push_str(&format!("&search={}", urlencoding::encode(&s)));
-        }
-    }
-
+async fn fetch_shared_voices(
+    api_key: &str,
+    url: &str,
+) -> Result<SharedVoicesResponse, ElevenLabsError> {
     let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .header("xi-api-key", &api_key)
-        .send()
-        .await?;
+    let response = client.get(url).header("xi-api-key", api_key).send().await?;
 
     let status = response.status();
 
@@ -614,7 +647,10 @@ mod tests {
     fn default_voice_not_verified_for_the_language_is_left_out() {
         let voice = default_voice(r#"{"language":"en","model_id":"m","preview_url":"en.mp3"}"#);
 
-        assert_eq!(DefaultVoice::for_language(&voice, Language::Spanish), None);
+        assert_eq!(
+            DefaultVoice::for_accent(&voice, Accent::PeninsularSpanish),
+            None
+        );
     }
 
     #[test]
@@ -624,7 +660,7 @@ mod tests {
                {"language":"es","model_id":"m","accent":"peninsular","preview_url":"es.mp3"}"#,
         );
 
-        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+        let picked = DefaultVoice::for_accent(&voice, Accent::PeninsularSpanish).unwrap();
 
         assert_eq!(picked.preview_url.as_deref(), Some("es.mp3"));
         assert_eq!(picked.accent.as_deref(), Some("peninsular"));
@@ -637,7 +673,7 @@ mod tests {
             r#"{"language":"es","model_id":"m","accent":"latin american","preview_url":"latam.mp3"}"#,
         );
 
-        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+        let picked = DefaultVoice::for_accent(&voice, Accent::PeninsularSpanish).unwrap();
 
         assert_eq!(picked.preview_url.as_deref(), Some("latam.mp3"));
     }
@@ -646,9 +682,38 @@ mod tests {
     fn default_voice_without_a_preview_in_the_language_falls_back_to_the_generic_one() {
         let voice = default_voice(r#"{"language":"es","model_id":"m"}"#);
 
-        let picked = DefaultVoice::for_language(&voice, Language::Spanish).unwrap();
+        let picked = DefaultVoice::for_accent(&voice, Accent::PeninsularSpanish).unwrap();
 
         assert_eq!(picked.preview_url.as_deref(), Some("generic.mp3"));
+    }
+
+    #[test]
+    fn shared_voices_url_encodes_the_accent_label() {
+        let url = shared_voices_url(
+            Accent::LatinAmericanSpanish,
+            Some("latin american"),
+            Some("female"),
+            None,
+            50,
+        );
+
+        assert_eq!(
+            url,
+            format!(
+                "{}/shared-voices?language=es&page_size=50&accent=latin%20american&gender=female",
+                BASE_URL
+            )
+        );
+    }
+
+    #[test]
+    fn shared_voices_url_without_label_searches_the_whole_language() {
+        let url = shared_voices_url(Accent::NewZealandEnglish, None, None, Some(""), 20);
+
+        assert_eq!(
+            url,
+            format!("{}/shared-voices?language=en&page_size=20", BASE_URL)
+        );
     }
 
     #[test]

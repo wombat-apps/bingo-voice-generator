@@ -1,8 +1,13 @@
-// Language types
-export type LanguageId = 'es-ES' | 'en-US' | 'en-GB' | 'fr-FR' | 'pt-BR' | 'it-IT';
+// Accent types (see GLOSSARY.md)
+export type AccentId =
+  | 'es-ES' | 'es-419' | 'es-AR'
+  | 'en-US' | 'en-GB' | 'en-NZ' | 'en-IN'
+  | 'fr-FR' | 'fr-CA'
+  | 'pt-BR' | 'pt-PT'
+  | 'it-IT' | 'de-DE' | 'ru-RU' | 'tr-TR' | 'hi-IN' | 'ja-JP';
 
-export interface Language {
-  id: LanguageId;
+export interface Accent {
+  id: AccentId;
   displayName: string;
   flag: string;
   elevenlabsCode: string;
@@ -38,7 +43,7 @@ export interface Voice {
   elevenlabsId: string;
   elevenlabsName: string;
   customName: string;
-  language: LanguageId;
+  accent: AccentId;
   gender: string;
   favorite: boolean;
   /** null for Voices saved before kinds were stored, until `backfillVoiceKinds` runs. */
@@ -49,7 +54,7 @@ export interface Voice {
 export interface AudioFile {
   number: number;
   part: AudioPart;
-  language: LanguageId;
+  accent: AccentId;
   voiceUuid: string;
   mode: BingoModeId;
   filePath: string;
@@ -93,6 +98,8 @@ export interface SharedVoice {
 export interface SharedVoicesResponse {
   voices: SharedVoice[];
   hasMore: boolean;
+  /** The Accent's label found no voices, so these are from its whole Language. */
+  wholeLanguage: boolean;
 }
 
 // ElevenLabs accounts (API keys stay in the Keychain)
@@ -186,7 +193,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 
 // App state
 export interface AppState {
-  language: LanguageId;
+  accent: AccentId;
   mode: BingoModeId;
   selectedVoice: Voice | null;
   audioFiles: Map<number, NumberAudioPair>;

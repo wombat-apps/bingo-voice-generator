@@ -10,7 +10,7 @@ import { SettingsPanel } from './features/settings-panel';
 import { ActionBar } from './features/player';
 import { VoiceFormModal } from './features/voices';
 import {
-  getLanguages,
+  getAccents,
   loadVoices,
   backfillVoiceKinds,
   loadAudioFiles,
@@ -42,9 +42,9 @@ import {
 } from './services/audioPlayer';
 import type {
   AccountsState,
-  Language,
+  Accent,
   Voice,
-  LanguageId,
+  AccentId,
   BingoModeId,
   AudioPart,
   NumberAudioPair,
@@ -59,10 +59,10 @@ import './App.css';
 
 function App() {
   // Static data
-  const [languages, setLanguages] = useState<Language[]>([]);
+  const [accents, setAccents] = useState<Accent[]>([]);
 
   // User settings
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageId>('es-ES');
+  const [selectedAccent, setSelectedAccent] = useState<AccentId>('es-ES');
   const [selectedMode, setSelectedMode] = useState<BingoModeId>('bingo90');
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
@@ -291,12 +291,12 @@ function App() {
     async function loadData() {
       try {
         const [langs, savedVoices, accounts] = await Promise.all([
-          getLanguages(),
+          getAccents(),
           loadVoices(),
           listAccounts(),
         ]);
 
-        setLanguages(langs);
+        setAccents(langs);
         setVoices(savedVoices);
         await applyAccountsState(accounts);
       } catch (error) {
@@ -333,10 +333,10 @@ function App() {
 
   // Auto-open settings panel if there is no Active Account
   useEffect(() => {
-    if (accountsState.activeAccountId === null && languages.length > 0) {
+    if (accountsState.activeAccountId === null && accents.length > 0) {
       setIsSettingsPanelOpen(true);
     }
-  }, [accountsState.activeAccountId, languages.length]);
+  }, [accountsState.activeAccountId, accents.length]);
 
   // Load audio files when voice or mode changes
   useEffect(() => {
@@ -347,7 +347,7 @@ function App() {
       }
 
       try {
-        const files = await loadAudioFiles(selectedLanguage, selectedVoice, selectedMode);
+        const files = await loadAudioFiles(selectedAccent, selectedVoice, selectedMode);
         setAudioFiles(files);
       } catch (error) {
         console.error('Failed to load audio files:', error);
@@ -356,17 +356,17 @@ function App() {
     }
 
     loadFiles();
-  }, [selectedVoice, selectedLanguage, selectedMode]);
+  }, [selectedVoice, selectedAccent, selectedMode]);
 
-  // Check which voices have recordings for the current language/mode
+  // Check which voices have recordings for the current Accent/mode
   useEffect(() => {
     async function checkVoiceRecordings() {
-      const voicesForLanguage = voices.filter((v) => v.language === selectedLanguage);
+      const voicesForAccent = voices.filter((v) => v.accent === selectedAccent);
       const recordingsMap = new Map<string, boolean>();
 
-      for (const voice of voicesForLanguage) {
+      for (const voice of voicesForAccent) {
         try {
-          const files = await loadAudioFiles(selectedLanguage, voice, selectedMode);
+          const files = await loadAudioFiles(selectedAccent, voice, selectedMode);
           const hasAny = Array.from(files.values()).some(
             (pair) => pair.wordAudio !== null || pair.digitAudio !== null
           );
@@ -382,7 +382,7 @@ function App() {
     if (voices.length > 0) {
       checkVoiceRecordings();
     }
-  }, [voices, selectedLanguage, selectedMode]);
+  }, [voices, selectedAccent, selectedMode]);
 
   // Set up playback end callback with sequential queue support
   useEffect(() => {
@@ -499,15 +499,15 @@ function App() {
     setDigitCurrentTime(0);
   }, [selectedNumber, audioFiles]);
 
-  // Update selected voice when language changes
+  // Update selected voice when the Accent changes
   useEffect(() => {
-    const voicesForLanguage = voices.filter((v) => v.language === selectedLanguage);
-    if (selectedVoice && selectedVoice.language !== selectedLanguage) {
-      setSelectedVoice(voicesForLanguage[0] || null);
-    } else if (!selectedVoice && voicesForLanguage.length > 0) {
-      setSelectedVoice(voicesForLanguage[0]);
+    const voicesForAccent = voices.filter((v) => v.accent === selectedAccent);
+    if (selectedVoice && selectedVoice.accent !== selectedAccent) {
+      setSelectedVoice(voicesForAccent[0] || null);
+    } else if (!selectedVoice && voicesForAccent.length > 0) {
+      setSelectedVoice(voicesForAccent[0]);
     }
-  }, [selectedLanguage, voices, selectedVoice]);
+  }, [selectedAccent, voices, selectedVoice]);
 
   // Cell click handler - plays complete audio (word + digit) sequentially
   const handleCellClick = useCallback(
@@ -560,11 +560,11 @@ function App() {
       setGenerating(true);
 
       try {
-        const currentLang = languages.find((l) => l.id === selectedLanguage);
-        const languageCode = currentLang?.elevenlabsCode || 'es';
+        const currentAccentInfo = accents.find((l) => l.id === selectedAccent);
+        const languageCode = currentAccentInfo?.elevenlabsCode || 'es';
 
         // Build TTS text
-        const tts = await buildTtsText(selectedNumber, selectedLanguage, selectedMode, part);
+        const tts = await buildTtsText(selectedNumber, selectedAccent, selectedMode, part);
 
         // Generate speech
         const audioData = await generateSpeech(
@@ -581,7 +581,7 @@ function App() {
         const savedFile = await saveAudioFile(
           audioData,
           selectedNumber,
-          selectedLanguage,
+          selectedAccent,
           selectedVoice,
           selectedMode,
           part
@@ -612,7 +612,7 @@ function App() {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedLanguage, selectedMode, languages, voiceSettings]
+    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedAccent, selectedMode, accents, voiceSettings]
   );
 
   const handleGenerateWord = useCallback(() => {
@@ -629,14 +629,14 @@ function App() {
 
       try {
         if (part === 'all') {
-          await deleteAllAudioFilesForNumber(selectedNumber, selectedLanguage, selectedVoice, selectedMode);
+          await deleteAllAudioFilesForNumber(selectedNumber, selectedAccent, selectedVoice, selectedMode);
           setAudioFiles((prev) => {
             const newMap = new Map(prev);
             newMap.delete(selectedNumber);
             return newMap;
           });
         } else {
-          await deleteAudioFile(selectedNumber, selectedLanguage, selectedVoice, selectedMode, part);
+          await deleteAudioFile(selectedNumber, selectedAccent, selectedVoice, selectedMode, part);
           setAudioFiles((prev) => {
             const newMap = new Map(prev);
             const existing = newMap.get(selectedNumber);
@@ -672,7 +672,7 @@ function App() {
         setError('Error al eliminar el audio');
       }
     },
-    [selectedNumber, selectedVoice, selectedLanguage, selectedMode, playingNumber]
+    [selectedNumber, selectedVoice, selectedAccent, selectedMode, playingNumber]
   );
 
   const handlePlay = useCallback(async () => {
@@ -862,15 +862,15 @@ function App() {
         setSelectedVoice(updatedSelectedVoice);
       }
     } else if (voiceFormState.mode === 'add') {
-      // For add mode, select the newly added voice (last one matching current language)
+      // For add mode, select the newly added voice (last one matching the current Accent)
       const newVoice = updatedVoices.find(
-        (v) => v.language === selectedLanguage && !voices.some((existing) => existing.uuid === v.uuid)
+        (v) => v.accent === selectedAccent && !voices.some((existing) => existing.uuid === v.uuid)
       );
       if (newVoice) {
         setSelectedVoice(newVoice);
       }
     }
-  }, [voiceFormState.mode, voiceFormState.voice, selectedVoice, selectedLanguage, voices]);
+  }, [voiceFormState.mode, voiceFormState.voice, selectedVoice, selectedAccent, voices]);
 
   const handleCloseVoiceForm = useCallback(() => {
     setVoiceFormState({ isOpen: false, mode: 'add', voice: null });
@@ -889,14 +889,14 @@ function App() {
 
       // If the deleted voice was selected, clear selection or select another voice
       if (selectedVoice?.uuid === voice.uuid) {
-        const voicesForLanguage = updatedVoices.filter((v) => v.language === selectedLanguage);
-        setSelectedVoice(voicesForLanguage[0] || null);
+        const voicesForAccent = updatedVoices.filter((v) => v.accent === selectedAccent);
+        setSelectedVoice(voicesForAccent[0] || null);
       }
     } catch (err) {
       console.error('Failed to delete voice:', err);
       setError('Error al eliminar la voz');
     }
-  }, [selectedVoice, selectedLanguage]);
+  }, [selectedVoice, selectedAccent]);
 
   const handleToggleFavorite = useCallback(async (voice: Voice) => {
     const updatedVoice = { ...voice, favorite: !voice.favorite };
@@ -909,19 +909,19 @@ function App() {
 
   const handleShowVoiceInFileManager = useCallback(async (voice: Voice) => {
     try {
-      await revealVoiceInFileManager(selectedLanguage, voice);
+      await revealVoiceInFileManager(selectedAccent, voice);
     } catch (err) {
       console.error('Failed to reveal voice in file manager:', err);
       setError('Could not open folder');
     }
-  }, [selectedLanguage]);
+  }, [selectedAccent]);
 
   // Play a random recorded sample for a voice (word + digit)
   // Uses separate preview player - does NOT affect main player bar state
   const handlePlayVoiceSample = useCallback(async (voice: Voice) => {
     try {
       // Load audio files for this voice
-      const files = await loadAudioFiles(selectedLanguage, voice, selectedMode);
+      const files = await loadAudioFiles(selectedAccent, voice, selectedMode);
 
       // Find numbers that have at least one recording
       const numbersWithAudio: number[] = [];
@@ -961,7 +961,7 @@ function App() {
       console.error('Failed to play voice sample:', err);
       setError('Failed to play voice sample');
     }
-  }, [selectedLanguage, selectedMode]);
+  }, [selectedAccent, selectedMode]);
 
   // Get audio state for selected number
   const selectedAudioPair = selectedNumber !== null ? audioFiles.get(selectedNumber) : null;
@@ -991,16 +991,16 @@ function App() {
       {/* Sidebar - full height on left */}
       <aside className="app-sidebar">
         <Sidebar
-          languages={languages}
+          accents={accents}
           voices={voices}
-          selectedLanguage={selectedLanguage}
+          selectedAccent={selectedAccent}
           selectedVoice={selectedVoice}
           hasApiKey={hasActiveAccount}
           accountsState={accountsState}
           subscription={subscription}
           voiceHasRecordings={voiceHasRecordings}
           platform={platform}
-          onLanguageChange={setSelectedLanguage}
+          onAccentChange={setSelectedAccent}
           onActiveAccountChange={handleActiveAccountChange}
           onVoiceChange={setSelectedVoice}
           onOpenVoiceForm={handleOpenVoiceForm}
@@ -1161,7 +1161,7 @@ function App() {
         isOpen={voiceFormState.isOpen}
         mode={voiceFormState.mode}
         voice={voiceFormState.voice}
-        currentLanguage={selectedLanguage}
+        currentAccent={selectedAccent}
         apiKey={apiKey}
         subscription={subscription}
         onClose={handleCloseVoiceForm}

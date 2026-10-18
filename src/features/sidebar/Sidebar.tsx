@@ -3,20 +3,20 @@ import { Music, Star, Play } from 'lucide-react';
 import { SubscriptionInfo } from './SubscriptionInfo';
 import { VoiceContextMenu } from './VoiceContextMenu';
 import { voiceUnavailableReason } from '../../services/voiceAvailability';
-import type { AccountsState, Language, Voice, LanguageId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
+import type { AccountsState, Accent, Voice, AccentId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
 import './Sidebar.css';
 
 interface SidebarProps {
-  languages: Language[];
+  accents: Accent[];
   voices: Voice[];
-  selectedLanguage: LanguageId;
+  selectedAccent: AccentId;
   selectedVoice: Voice | null;
   hasApiKey: boolean;
   accountsState: AccountsState;
   subscription: SubscriptionInfoType | null;
   voiceHasRecordings: Map<string, boolean>;
   platform: string;
-  onLanguageChange: (language: LanguageId) => void;
+  onAccentChange: (accent: AccentId) => void;
   onActiveAccountChange: (accountId: string | null) => void;
   onVoiceChange: (voice: Voice | null) => void;
   onOpenVoiceForm: (voice?: Voice) => void;
@@ -27,16 +27,16 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  languages,
+  accents,
   voices,
-  selectedLanguage,
+  selectedAccent,
   selectedVoice,
   hasApiKey,
   accountsState,
   subscription,
   voiceHasRecordings,
   platform,
-  onLanguageChange,
+  onAccentChange,
   onActiveAccountChange,
   onVoiceChange,
   onOpenVoiceForm,
@@ -63,9 +63,9 @@ export function Sidebar({
     setContextMenu(null);
   }, []);
 
-  // Filter by language, then sort: favorites first, then alphabetically
+  // Filter by Accent, then sort: favorites first, then alphabetically
   const filteredVoices = voices
-    .filter((v) => v.language === selectedLanguage)
+    .filter((v) => v.accent === selectedAccent)
     .sort((a, b) => {
       // Favorites first
       if (a.favorite && !b.favorite) return -1;
@@ -73,19 +73,19 @@ export function Sidebar({
       // Then alphabetically by custom name
       return a.customName.localeCompare(b.customName);
     });
-  const currentLanguage = languages.find((l) => l.id === selectedLanguage);
+  const currentAccent = accents.find((l) => l.id === selectedAccent);
 
   return (
     <div className="sidebar">
       <div className="sidebar-section">
         <div className="form-group">
-          <label className="form-label">Language</label>
+          <label className="form-label">Accent</label>
           <select
             className="select"
-            value={selectedLanguage}
-            onChange={(e) => onLanguageChange(e.target.value as LanguageId)}
+            value={selectedAccent}
+            onChange={(e) => onAccentChange(e.target.value as AccentId)}
           >
-            {languages.map((lang) => (
+            {accents.map((lang) => (
               <option key={lang.id} value={lang.id}>
                 {lang.flag} {lang.displayName}
               </option>
@@ -113,7 +113,7 @@ export function Sidebar({
         <div className="voice-list">
           {filteredVoices.length === 0 ? (
             <p className="text-muted text-center">
-              No voices for {currentLanguage?.displayName || selectedLanguage}.
+              No voices for {currentAccent?.displayName || selectedAccent}.
               <br />
               Click "Add Voice" to get started.
             </p>

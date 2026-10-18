@@ -4,6 +4,14 @@ Generates the audio a bingo caller plays for each number, in several languages, 
 
 ## Language
 
+**Language**:
+The language the numbers are said in (Spanish, English, Portuguese…). It sets the number words and how the Word and the Digit are phrased. The user never picks a Language directly: they pick an Accent, which belongs to one.
+_Avoid_: Locale, idioma (for the concept in code)
+
+**Accent**:
+The regional way a Language is spoken, such as Peninsular, Rioplatense or neutral Latin American Spanish, or New Zealand English. It is what the user picks to generate in: every Voice and every audio file belongs to one Accent. Two Accents of the same Language say the same text, except for the few numbers an Accent writes differently (European Portuguese "dezasseis", Brazilian "dezesseis"); otherwise only the voice and the scene described to ElevenLabs change. It is the same concept as the Accent of a Bundled Voice in the bingo apps.
+_Avoid_: Variant (taken by Bingo Mode), dialect, locale, language (for an Accent)
+
 **TTS Model**:
 The ElevenLabs speech-synthesis engine that turns the text into audio (e.g. Eleven v4, Multilingual v2). The app offers a curated set, not every model ElevenLabs publishes.
 _Avoid_: Model (on its own), engine
@@ -21,7 +29,7 @@ The single ElevenLabs Account the whole app uses at a given moment: for generati
 _Avoid_: Current key, selected key
 
 **Voice**:
-A voice the user has added to the app for one language, under a name they chose, pointing at an ElevenLabs voice. Voices belong to the app, not to an ElevenLabs Account: every account sees the same Voices and the same audio files. A Voice is either a Default Voice or a Library Voice. Whether the Active Account can generate with it depends on that account's Plan allowing that kind of voice, not on the voice having been saved in the account beforehand.
+A voice the user has added to the app for one Accent, under a name they chose, pointing at an ElevenLabs voice. Voices belong to the app, not to an ElevenLabs Account: every account sees the same Voices and the same audio files. A Voice is either a Default Voice or a Library Voice. Whether the Active Account can generate with it depends on that account's Plan allowing that kind of voice, not on the voice having been saved in the account beforehand.
 _Avoid_: Speaker, account voice
 
 **Default Voice**:
