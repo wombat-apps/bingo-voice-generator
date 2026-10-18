@@ -3,7 +3,7 @@
 //! Pure Rust implementation using symphonia for decoding and mp3lame-encoder for encoding.
 //! Matches the behavior of the macOS SilenceTrimmingService.swift
 
-use mp3lame_encoder::{Builder, FlushNoGap, InterleavedPcm};
+use mp3lame_encoder::{Builder, FlushNoGap, InterleavedPcm, MonoPcm};
 use std::io::Cursor;
 use std::mem::MaybeUninit;
 use symphonia::core::audio::{AudioBufferRef, Signal};
@@ -312,11 +312,13 @@ fn encode_mp3(
     let mut lame_buffer: Vec<MaybeUninit<u8>> = vec![MaybeUninit::uninit(); 8192];
 
     for chunk in samples_i16.chunks(frames_per_block * channels) {
-        let pcm = InterleavedPcm(chunk);
-
-        let bytes_written = encoder
-            .encode(pcm, &mut lame_buffer)
-            .map_err(|e| AudioTrimError::EncodeError(format!("{:?}", e)))?;
+        // InterleavedPcm always reads stereo pairs, so mono input would play at 2x speed
+        let encoded = if channels == 1 {
+            encoder.encode(MonoPcm(chunk), &mut lame_buffer)
+        } else {
+            encoder.encode(InterleavedPcm(chunk), &mut lame_buffer)
+        };
+        let bytes_written = encoded.map_err(|e| AudioTrimError::EncodeError(format!("{:?}", e)))?;
 
         // Copiar SOLO los bytes inicializados
         let initialized =
@@ -446,5 +448,33 @@ mod tests {
         let linear = config.threshold_linear();
         // -40dB should be approximately 0.01
         assert!((linear - 0.01).abs() < 0.001);
+    }
+
+    fn encoded_duration_secs(channels: usize) -> f64 {
+        let sample_rate = 44_100;
+        let frames = sample_rate as usize; // 1 second
+        let samples: Vec<f32> = (0..frames)
+            .flat_map(|i| {
+                let v = (i as f32 * 440.0 * std::f32::consts::TAU / sample_rate as f32).sin() * 0.5;
+                std::iter::repeat_n(v, channels)
+            })
+            .collect();
+
+        let mp3 = encode_mp3(&samples, sample_rate, channels).unwrap();
+        let pcm = decode_mp3(&mp3).unwrap();
+        (pcm.samples.len() / pcm.channels) as f64 / pcm.sample_rate as f64
+    }
+
+    // ElevenLabs returns mono MP3; re-encoding must keep its duration
+    #[test]
+    fn test_encode_mono_preserves_duration() {
+        let duration = encoded_duration_secs(1);
+        assert!((duration - 1.0).abs() < 0.1, "duration was {duration}s");
+    }
+
+    #[test]
+    fn test_encode_stereo_preserves_duration() {
+        let duration = encoded_duration_secs(2);
+        assert!((duration - 1.0).abs() < 0.1, "duration was {duration}s");
     }
 }
