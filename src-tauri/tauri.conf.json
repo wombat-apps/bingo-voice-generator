@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Bingo Voice Generator",
+  "version": "0.1.0",
+  "identifier": "com.alvaromurillodelpuerto.bingovoicegenerator",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "Bingo Voice Generator",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "windowEffects": {
+          "effects": ["hudWindow"],
+          "state": "active",
+          "radius": 12
+        }
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Utility",
+    "shortDescription": "Generate bingo number audio files using ElevenLabs TTS",
+    "longDescription": "A cross-platform application that generates audio files for bingo numbers using the ElevenLabs text-to-speech API. Supports Bingo 90 (European) and Bingo 75 (American B-I-N-G-O) modes in multiple languages.",
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": []
+    }
+  }
+}

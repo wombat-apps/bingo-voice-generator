@@ -1,0 +1,53 @@
+.bingo-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--spacing-xs);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background-color: var(--cell-empty);
+  container-type: inline-size;
+}
+
+.bingo-cell:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.bingo-cell:active {
+  transform: scale(0.98);
+}
+
+.cell-empty {
+  background-color: var(--cell-empty);
+}
+
+.cell-partial {
+  background-color: var(--cell-partial);
+}
+
+.cell-complete {
+  background-color: var(--cell-complete);
+}
+
+.cell-selected {
+  outline: 3px solid var(--accent-tertiary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--cell-selected-glow);
+}
+
+.cell-number {
+  font-size: clamp(0.625rem, 22cqi, 1.125rem);
+  font-weight: 700;
+  color: var(--text-on-accent);
+  line-height: 1;
+}
+
+.bingo-grid-container--bingo75 .bingo-cell {
+  aspect-ratio: 2;
+}

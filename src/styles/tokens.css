@@ -1,0 +1,236 @@
+/* ========================================
+   Design Tokens - Bingo Voice Generator
+   Based on CodexMonitor aesthetic
+   ======================================== */
+
+:root {
+  /* === TIPOGRAFÍA === */
+  --font-display: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-body: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+
+  /* === TIPOGRAFÍA - ESCALA === */
+  --font-size-xs: 0.625rem;   /* 10px - labels pequeños */
+  --font-size-sm: 0.75rem;    /* 12px - texto secundario */
+  --font-size-base: 0.875rem; /* 14px - texto principal */
+  --font-size-lg: 1rem;       /* 16px - títulos */
+
+  /* === TEXTO (jerarquía por opacidad) === */
+  --text-strong: #ffffff;
+  --text-on-accent: #ffffff;  /* Siempre blanco, para usar sobre fondos de color */
+  --text-on-accent-muted: rgba(255, 255, 255, 0.8);
+  --surface-on-accent: rgba(255, 255, 255, 0.15);
+  --surface-on-accent-hover: rgba(255, 255, 255, 0.25);
+  --border-on-accent: rgba(255, 255, 255, 0.3);
+  --text-primary: #e6e7ea;
+  --text-emphasis: rgba(255, 255, 255, 0.9);
+  --text-quiet: rgba(255, 255, 255, 0.75);
+  --text-muted: rgba(255, 255, 255, 0.7);
+  --text-subtle: rgba(255, 255, 255, 0.6);
+  --text-faint: rgba(255, 255, 255, 0.5);
+  --text-dim: rgba(255, 255, 255, 0.35);
+
+  /* === SUPERFICIES (transparentes para glassmorfismo) === */
+  --surface-sidebar: rgba(18, 18, 18, 0.35);
+  --surface-content: rgba(8, 10, 16, 0.45);
+  --surface-header: rgba(10, 14, 20, 0.45);
+  --surface-footer: rgba(10, 14, 20, 0.5);
+  --surface-card: rgba(255, 255, 255, 0.04);
+  --surface-card-strong: rgba(255, 255, 255, 0.12);
+  --surface-control: rgba(255, 255, 255, 0.08);
+  --surface-control-hover: rgba(255, 255, 255, 0.14);
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --surface-active: rgba(100, 200, 255, 0.14);
+  --surface-popover: rgba(10, 14, 20, 0.9);
+
+  /* === BORDES (sutiles) === */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-muted: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-accent: rgba(100, 200, 255, 0.6);
+  --border-accent-soft: rgba(100, 200, 255, 0.3);
+
+  /* === ACENTOS === */
+  --accent-primary: #5dd1c6;        /* Teal */
+  --accent-primary-hover: #4bc4b8;
+  --accent-primary-glow: rgba(93, 209, 198, 0.4);
+  --accent-primary-bg: rgba(93, 209, 198, 0.1);
+  --accent-secondary: #f7b267;      /* Amber */
+  --accent-secondary-glow: rgba(247, 178, 103, 0.4);
+  --accent-secondary-bg: rgba(247, 178, 103, 0.1);
+  --accent-secondary-bg-strong: rgba(247, 178, 103, 0.15);
+  --accent-tertiary: #4a7fdc;       /* Blue - WCAG AA compliant 4.5:1 */
+  --accent-tertiary-hover: #3d6fc9;
+  --accent-tertiary-glow: rgba(108, 162, 255, 0.3);
+  --shadow-accent: rgba(92, 168, 255, 0.28);
+
+  /* === ESTADOS === */
+  --status-success: rgba(120, 235, 190, 0.95);
+  --status-success-bg: rgba(120, 235, 190, 0.15);
+  --status-warning: rgba(255, 175, 85, 0.95);
+  --status-warning-bg: rgba(255, 175, 85, 0.15);
+  --status-error: rgba(255, 110, 110, 0.95);
+  --status-error-hover: #dc2626;
+  --status-error-bg: rgba(255, 110, 110, 0.15);
+
+  /* === BINGO-ESPECÍFICOS (estados de celda) === */
+  --cell-empty: var(--surface-card);
+  --cell-word: rgba(120, 235, 190, 0.85);       /* Verde teal */
+  --cell-digit: rgba(100, 200, 255, 0.85);      /* Azul */
+  --cell-complete: var(--accent-primary);
+  --cell-partial: rgba(120, 235, 190, 0.4);
+  --cell-selected-glow: var(--shadow-accent);
+
+  /* === ESPACIADO === */
+  --spacing-2xs: 0.125rem;  /* 2px - micro-gaps */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* === BORDES RADIUS === */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* === SOMBRAS === */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-glass: 0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* === TRANSICIONES === */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* === CONTROL ESPECÍFICOS === */
+  --toggle-thumb: #ffffff;
+  --toggle-track-off: rgba(255, 255, 255, 0.15);
+  --control-arrow: rgba(255, 255, 255, 0.6);
+  --inset-highlight: rgba(255, 255, 255, 0.05);
+
+  /* === WAVEFORM === */
+  --waveform-unplayed: rgba(255, 255, 255, 0.3);
+  --waveform-playhead: #ffffff;
+
+  /* === SUBSCRIPTION TIERS === */
+  --tier-free: #6b7280;
+  --tier-starter: #3b82f6;
+  --tier-creator: #8b5cf6;
+  --tier-pro: #f97316;
+  --tier-enterprise: #ef4444;
+
+  /* === USAGE STATUS === */
+  --usage-healthy: #22c55e;
+  --usage-warning: #f97316;
+  --usage-critical: #ef4444;
+
+}
+
+/* ========================================
+   Light Mode
+   ======================================== */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* === TEXTO === */
+    --text-strong: #1d1d1f;
+    --text-primary: #2c2c2e;
+    --text-emphasis: rgba(0, 0, 0, 0.85);
+    --text-quiet: rgba(0, 0, 0, 0.7);
+    --text-muted: rgba(0, 0, 0, 0.6);
+    --text-subtle: rgba(0, 0, 0, 0.5);
+    --text-faint: rgba(0, 0, 0, 0.4);
+    --text-dim: rgba(0, 0, 0, 0.25);
+
+    /* === SUPERFICIES === */
+    --surface-sidebar: rgba(255, 255, 255, 0.7);
+    --surface-content: rgba(245, 245, 247, 0.65);
+    --surface-header: rgba(255, 255, 255, 0.75);
+    --surface-footer: rgba(255, 255, 255, 0.8);
+    --surface-card: rgba(0, 0, 0, 0.03);
+    --surface-card-strong: rgba(0, 0, 0, 0.06);
+    --surface-control: rgba(0, 0, 0, 0.05);
+    --surface-control-hover: rgba(0, 0, 0, 0.08);
+    --surface-hover: rgba(0, 0, 0, 0.03);
+    --surface-active: rgba(100, 200, 255, 0.12);
+    --surface-popover: rgba(255, 255, 255, 0.9);
+
+    /* === BORDES === */
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-muted: rgba(0, 0, 0, 0.05);
+    --border-strong: rgba(0, 0, 0, 0.12);
+
+    /* === ACENTOS (ligeramente más saturados para light mode) === */
+    --accent-primary: #2cb5a8;
+    --accent-primary-hover: #25a89c;
+    --accent-secondary: #e5a04a;
+    --accent-tertiary: #3b82f6;       /* Azul medio - buen contraste con blanco y ámbar */
+    --accent-tertiary-hover: #2563eb;
+
+    /* === ESTADOS === */
+    --status-success: #22c55e;
+    --status-success-bg: rgba(34, 197, 94, 0.12);
+    --status-warning: #f59e0b;
+    --status-warning-bg: rgba(245, 158, 11, 0.12);
+    --status-error: #ef4444;
+    --status-error-bg: rgba(239, 68, 68, 0.12);
+
+    /* === BINGO CELLS === */
+    --cell-word: rgba(34, 197, 94, 0.85);
+    --cell-digit: rgba(59, 130, 246, 0.85);
+    --cell-partial: rgba(34, 197, 94, 0.3);
+
+    /* === CONTROL ESPECÍFICOS === */
+    --toggle-thumb: #ffffff;
+    --toggle-track-off: rgba(0, 0, 0, 0.15);
+    --control-arrow: rgba(0, 0, 0, 0.5);
+    --inset-highlight: rgba(0, 0, 0, 0.05);
+
+    /* === WAVEFORM === */
+    --waveform-unplayed: rgba(0, 0, 0, 0.25);
+    --waveform-playhead: #1d1d1f;
+  }
+}
+
+/* ========================================
+   No Vibrancy Fallback
+   (Windows, Linux, or reduced transparency)
+   ======================================== */
+
+html.no-vibrancy :root {
+  --surface-sidebar: #121620;
+  --surface-content: #0a0e14;
+  --surface-header: #121620;
+  --surface-footer: #121620;
+  --surface-card: rgba(255, 255, 255, 0.06);
+  --surface-card-strong: #1f2937;
+  --border-subtle: #374151;
+}
+
+@media (prefers-color-scheme: light) {
+  html.no-vibrancy :root {
+    --surface-sidebar: #ffffff;
+    --surface-content: #f5f5f7;
+    --surface-header: #ffffff;
+    --surface-footer: #ffffff;
+    --surface-card-strong: #f0f0f0;
+    --border-subtle: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* ========================================
+   Reduced Motion
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-normal: 0ms;
+    --transition-slow: 0ms;
+  }
+}
