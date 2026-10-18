@@ -1,34 +1,46 @@
 import { readAudioFile } from './tauri';
 
-let audioContext: AudioContext | null = null;
-let currentSource: AudioBufferSourceNode | null = null;
+// Playback goes through <audio> elements, not Web Audio. After the Mac wakes from sleep,
+// WebKit's Web Audio output can stay silent while its clock keeps running (the progress bar
+// moves but nothing is heard), even on a new AudioContext or after reloading the page;
+// <audio> keeps working. Web Audio is only used to decode, which needs no output device.
+let currentAudio: HTMLAudioElement | null = null;
+let currentUrl: string | null = null;
+let currentDuration = 0;
+let isCurrentlyPlaying = false;
+// Bumped on every play/stop so a playback still loading does not start after a newer one
+let playToken = 0;
 let onPlaybackEndCallback: (() => void) | null = null;
-
-// Seek support state
-let currentAudioBuffer: AudioBuffer | null = null;
-let startTime: number = 0;
-let pauseOffset: number = 0;
-let isCurrentlyPlaying: boolean = false;
 let updateTimer: number | null = null;
 let onTimeUpdateCallback: ((time: number) => void) | null = null;
 
 // Separate state for preview playback (voice samples in sidebar)
-let previewAudioContext: AudioContext | null = null;
-let previewBufferSource: AudioBufferSourceNode | null = null;
+let previewAudio: HTMLAudioElement | null = null;
+let previewUrl: string | null = null;
 let previewPendingNext: string | null = null;
+let previewToken = 0;
 
-function getAudioContext(): AudioContext {
-  if (!audioContext) {
-    audioContext = new AudioContext();
+let decodeContext: OfflineAudioContext | null = null;
+
+function decode(data: Uint8Array): Promise<AudioBuffer> {
+  if (!decodeContext) {
+    decodeContext = new OfflineAudioContext(1, 1, 44100);
   }
-  return audioContext;
+  // decodeAudioData detaches the buffer it is given, so pass a copy
+  return decodeContext.decodeAudioData(data.slice().buffer);
 }
 
-function getPreviewAudioContext(): AudioContext {
-  if (!previewAudioContext) {
-    previewAudioContext = new AudioContext();
-  }
-  return previewAudioContext;
+function createAudio(data: Uint8Array): { audio: HTMLAudioElement; url: string } {
+  const url = URL.createObjectURL(new Blob([data.slice()], { type: 'audio/mpeg' }));
+  return { audio: new Audio(url), url };
+}
+
+function releaseAudio(audio: HTMLAudioElement, url: string): void {
+  audio.onended = null;
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  URL.revokeObjectURL(url);
 }
 
 function startTimeUpdateTimer(): void {
@@ -47,202 +59,95 @@ function stopTimeUpdateTimer(): void {
   }
 }
 
-export async function playAudioFile(filePath: string): Promise<void> {
-  // Stop any currently playing audio
-  stop();
+async function startPlayback(data: Uint8Array, token: number): Promise<void> {
+  // Decoding gives the exact duration; <audio> only estimates it for MP3
+  const audioBuffer = await decode(data);
+  if (token !== playToken) return;
 
-  const ctx = getAudioContext();
+  const { audio, url } = createAudio(data);
+  currentAudio = audio;
+  currentUrl = url;
+  currentDuration = audioBuffer.duration;
 
-  // Resume context if suspended (browser autoplay policy)
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
-  }
-
-  // Read audio data from file
-  const audioData = await readAudioFile(filePath);
-
-  // Decode audio data
-  const audioBuffer = await ctx.decodeAudioData(audioData.buffer);
-
-  // Store buffer for seek support
-  currentAudioBuffer = audioBuffer;
-  pauseOffset = 0;
-
-  // Create source node
-  currentSource = ctx.createBufferSource();
-  currentSource.buffer = audioBuffer;
-  currentSource.connect(ctx.destination);
-
-  // Set up onended callback
-  currentSource.onended = () => {
-    // Only trigger end callback if we weren't seeking/stopping
-    if (isCurrentlyPlaying) {
-      isCurrentlyPlaying = false;
-      stopTimeUpdateTimer();
-      currentSource = null;
-      if (onPlaybackEndCallback) {
-        onPlaybackEndCallback();
-      }
+  audio.onended = () => {
+    if (audio !== currentAudio) return;
+    isCurrentlyPlaying = false;
+    stopTimeUpdateTimer();
+    if (onPlaybackEndCallback) {
+      onPlaybackEndCallback();
     }
   };
 
-  // Start playback
-  startTime = ctx.currentTime;
   isCurrentlyPlaying = true;
-  currentSource.start(0);
+  try {
+    await audio.play();
+  } catch (err) {
+    if (audio === currentAudio) {
+      isCurrentlyPlaying = false;
+    }
+    throw err;
+  }
   startTimeUpdateTimer();
+}
+
+export async function playAudioFile(filePath: string): Promise<void> {
+  // Stop any currently playing audio
+  stop();
+  const token = playToken;
+
+  const audioData = await readAudioFile(filePath);
+  if (token !== playToken) return;
+
+  await startPlayback(audioData, token);
 }
 
 export async function playAudioData(data: Uint8Array): Promise<void> {
   // Stop any currently playing audio
   stop();
-
-  const ctx = getAudioContext();
-
-  // Resume context if suspended (browser autoplay policy)
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
-  }
-
-  // Decode audio data
-  const audioBuffer = await ctx.decodeAudioData(data.buffer.slice(0));
-
-  // Store buffer for seek support
-  currentAudioBuffer = audioBuffer;
-  pauseOffset = 0;
-
-  // Create source node
-  currentSource = ctx.createBufferSource();
-  currentSource.buffer = audioBuffer;
-  currentSource.connect(ctx.destination);
-
-  // Set up onended callback
-  currentSource.onended = () => {
-    // Only trigger end callback if we weren't seeking/stopping
-    if (isCurrentlyPlaying) {
-      isCurrentlyPlaying = false;
-      stopTimeUpdateTimer();
-      currentSource = null;
-      if (onPlaybackEndCallback) {
-        onPlaybackEndCallback();
-      }
-    }
-  };
-
-  // Start playback
-  startTime = ctx.currentTime;
-  isCurrentlyPlaying = true;
-  currentSource.start(0);
-  startTimeUpdateTimer();
+  await startPlayback(data, playToken);
 }
 
 export function stop(): void {
+  playToken++;
   isCurrentlyPlaying = false;
   stopTimeUpdateTimer();
-  if (currentSource) {
-    try {
-      currentSource.stop();
-    } catch {
-      // Ignore errors if already stopped
-    }
-    currentSource = null;
+  if (currentAudio && currentUrl) {
+    releaseAudio(currentAudio, currentUrl);
   }
-  currentAudioBuffer = null;
-  pauseOffset = 0;
+  currentAudio = null;
+  currentUrl = null;
+  currentDuration = 0;
 }
 
 export function pause(): void {
-  if (!isCurrentlyPlaying || !currentSource) return;
+  if (!isCurrentlyPlaying || !currentAudio) return;
 
-  // Calculate current position
-  const ctx = getAudioContext();
-  pauseOffset = ctx.currentTime - startTime + pauseOffset;
-
-  // Stop the source (but keep the buffer)
   isCurrentlyPlaying = false;
   stopTimeUpdateTimer();
-  try {
-    currentSource.stop();
-  } catch {
-    // Ignore errors if already stopped
-  }
-  currentSource = null;
+  currentAudio.pause();
 }
 
 export function resume(): void {
-  if (isCurrentlyPlaying || !currentAudioBuffer) return;
+  if (isCurrentlyPlaying || !currentAudio) return;
 
-  const ctx = getAudioContext();
-
-  // Create new source from stored buffer
-  currentSource = ctx.createBufferSource();
-  currentSource.buffer = currentAudioBuffer;
-  currentSource.connect(ctx.destination);
-
-  currentSource.onended = () => {
-    if (isCurrentlyPlaying) {
+  const audio = currentAudio;
+  isCurrentlyPlaying = true;
+  audio.play().catch((err) => {
+    console.error('[audioPlayer] Failed to resume playback:', err);
+    if (audio === currentAudio) {
       isCurrentlyPlaying = false;
       stopTimeUpdateTimer();
-      currentSource = null;
-      if (onPlaybackEndCallback) {
-        onPlaybackEndCallback();
-      }
     }
-  };
-
-  // Start from pause position
-  startTime = ctx.currentTime - pauseOffset;
-  isCurrentlyPlaying = true;
-  currentSource.start(0, pauseOffset);
+  });
   startTimeUpdateTimer();
 }
 
 export function seek(time: number): void {
-  if (!currentAudioBuffer) return;
-
-  const wasPlaying = isCurrentlyPlaying;
-
-  // Stop current source
-  if (currentSource) {
-    isCurrentlyPlaying = false;
-    try {
-      currentSource.stop();
-    } catch {
-      // Ignore errors
-    }
-    currentSource = null;
-  }
+  if (!currentAudio) return;
 
   // Clamp time to valid range
-  const clampedTime = Math.max(0, Math.min(time, currentAudioBuffer.duration));
-
-  if (wasPlaying) {
-    // Resume from new position
-    const ctx = getAudioContext();
-    currentSource = ctx.createBufferSource();
-    currentSource.buffer = currentAudioBuffer;
-    currentSource.connect(ctx.destination);
-
-    currentSource.onended = () => {
-      if (isCurrentlyPlaying) {
-        isCurrentlyPlaying = false;
-        stopTimeUpdateTimer();
-        currentSource = null;
-        if (onPlaybackEndCallback) {
-          onPlaybackEndCallback();
-        }
-      }
-    };
-
-    pauseOffset = 0;
-    startTime = ctx.currentTime - clampedTime;
-    isCurrentlyPlaying = true;
-    currentSource.start(0, clampedTime);
-    startTimeUpdateTimer();
-  } else {
-    // Just update the pause offset
-    pauseOffset = clampedTime;
-  }
+  const clampedTime = Math.max(0, Math.min(time, currentDuration));
+  currentAudio.currentTime = clampedTime;
 
   // Notify of new time
   if (onTimeUpdateCallback) {
@@ -251,18 +156,11 @@ export function seek(time: number): void {
 }
 
 export function getCurrentTime(): number {
-  if (!currentAudioBuffer) return 0;
-
-  if (isCurrentlyPlaying) {
-    const ctx = getAudioContext();
-    return ctx.currentTime - startTime;
-  }
-
-  return pauseOffset;
+  return currentAudio?.currentTime ?? 0;
 }
 
 export function getDuration(): number {
-  return currentAudioBuffer?.duration ?? 0;
+  return currentDuration;
 }
 
 export function setOnTimeUpdate(callback: ((time: number) => void) | null): void {
@@ -277,16 +175,15 @@ export function setOnPlaybackEnd(callback: (() => void) | null): void {
   onPlaybackEndCallback = callback;
 }
 
+
 export async function getAudioDuration(filePath: string): Promise<number> {
-  const ctx = getAudioContext();
   const audioData = await readAudioFile(filePath);
-  const audioBuffer = await ctx.decodeAudioData(audioData.buffer.slice(0));
+  const audioBuffer = await decode(audioData);
   return audioBuffer.duration;
 }
 
 export async function getAudioDurationFromData(data: Uint8Array): Promise<number> {
-  const ctx = getAudioContext();
-  const audioBuffer = await ctx.decodeAudioData(data.buffer.slice(0));
+  const audioBuffer = await decode(data);
   return audioBuffer.duration;
 }
 
@@ -295,9 +192,8 @@ export async function generateWaveform(
   filePath: string,
   samples: number = 100
 ): Promise<number[]> {
-  const ctx = getAudioContext();
   const audioData = await readAudioFile(filePath);
-  const audioBuffer = await ctx.decodeAudioData(audioData.buffer.slice(0));
+  const audioBuffer = await decode(audioData);
 
   return extractWaveform(audioBuffer, samples);
 }
@@ -306,8 +202,7 @@ export async function generateWaveformFromData(
   data: Uint8Array,
   samples: number = 100
 ): Promise<number[]> {
-  const ctx = getAudioContext();
-  const audioBuffer = await ctx.decodeAudioData(data.buffer.slice(0));
+  const audioBuffer = await decode(data);
 
   return extractWaveform(audioBuffer, samples);
 }
@@ -335,64 +230,49 @@ function extractWaveform(audioBuffer: AudioBuffer, samples: number): number[] {
   return waveform;
 }
 
+
 // Preview playback functions (independent from main player)
 // Used for voice sample previews in sidebar - doesn't affect main player state
 
 export function stopPreview(): void {
+  previewToken++;
   previewPendingNext = null;
-  if (previewBufferSource) {
-    // Remove the onended handler BEFORE stopping to prevent it from
-    // triggering after we've already started a new preview
-    previewBufferSource.onended = null;
-    try {
-      previewBufferSource.stop();
-    } catch {
-      // Ignore errors if already stopped
-    }
-    previewBufferSource = null;
+  if (previewAudio && previewUrl) {
+    // releaseAudio removes the onended handler before pausing, so it cannot
+    // start the pending next file after we've already started a new preview
+    releaseAudio(previewAudio, previewUrl);
   }
+  previewAudio = null;
+  previewUrl = null;
 }
 
 export async function playPreview(filePath: string, nextFilePath?: string): Promise<void> {
   // Stop any currently playing preview
   stopPreview();
-
-  const ctx = getPreviewAudioContext();
-
-  // Resume context if suspended (browser autoplay policy)
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
-  }
+  const token = previewToken;
 
   // Store pending next file for sequential playback
   previewPendingNext = nextFilePath || null;
 
-  // Read audio data from file
   const audioData = await readAudioFile(filePath);
+  if (token !== previewToken) return;
 
-  // Decode audio data
-  const audioBuffer = await ctx.decodeAudioData(audioData.buffer.slice(0));
-
-  // Create source node
-  previewBufferSource = ctx.createBufferSource();
-  previewBufferSource.buffer = audioBuffer;
-  previewBufferSource.connect(ctx.destination);
+  const { audio, url } = createAudio(audioData);
+  previewAudio = audio;
+  previewUrl = url;
 
   // Set up onended callback for sequential preview playback
-  previewBufferSource.onended = () => {
-    previewBufferSource = null;
-    // If there's a pending next file, play it
-    if (previewPendingNext) {
-      const nextPath = previewPendingNext;
-      previewPendingNext = null;
+  audio.onended = () => {
+    const nextPath = previewPendingNext;
+    stopPreview();
+    if (nextPath) {
       playPreview(nextPath).catch(console.error);
     }
   };
 
-  // Start playback
-  previewBufferSource.start(0);
+  await audio.play();
 }
 
 export function isPreviewPlaying(): boolean {
-  return previewBufferSource !== null;
+  return previewAudio !== null;
 }
