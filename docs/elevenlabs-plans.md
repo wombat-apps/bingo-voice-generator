@@ -25,7 +25,7 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 
 - **Library Voices are not available via the API on the Free Plan.** Verified live: generating with a Library Voice on a Free account fails with `402 payment_required` / `paid_plan_required` ("Free users cannot use library voices via the API"), even when the voice is saved in that account. Default Voices work. [Voice Library](https://elevenlabs.io/docs/eleven-creative/voices/voice-library).
 - **A Library Voice does not need to be saved before use.** Verified live: a Creator account generated with a Library Voice it had never saved, and ElevenLabs then saved it to the account on its own.
-- **Library Voices and Default Voices do not use custom voice slots.** Verified live: a Creator account with 5 saved Library Voices reports `voice_slots_used: 0`. Slots are only used by voices made with Voice Design or Voice Cloning, which this app does not create. So freeing a slot to add a Library Voice is no longer needed. [Voice slots](https://elevenlabs.io/docs/help-center/account/general/how-many-voice-slots-do-i-get-per-tier-and-how-can-i-increase-it.md).
+- **Library Voices and Default Voices do not use custom voice slots.** Verified live: a Creator account with 5 saved Library Voices reports `voice_slots_used: 0`. Slots are only used by voices made with Voice Design or Voice Cloning, which this app does not create. So the app never frees slots or deletes voices from the account. [Voice slots](https://elevenlabs.io/docs/help-center/account/general/how-many-voice-slots-do-i-get-per-tier-and-how-can-i-increase-it.md).
 - **Voice ids are global.** Verified live: the same Default Voice or Library Voice has the same `voice_id` in every account.
 - Saving or editing a voice uses one of the Plan's monthly voice add/edit operations.
 - When an owner stops sharing a Library Voice, accounts that saved it keep it for the notice period (30 days to 2 years); it then disappears. `GET /v1/voices/{voice_id}` shows the date in `disable_at_unix`.
@@ -75,8 +75,8 @@ ElevenLabs API keys can be restricted. The app needs:
 | Permission | Used for |
 |---|---|
 | `text_to_speech` | Generating audio |
-| `voices_read` | Listing Default Voices, Library Voices and saved voices |
-| `voices_write` | Saving and deleting voices |
+| `voices_read` | Listing Default Voices and Library Voices |
+| `voices_write` | Saving Library Voices in the account (the app never deletes voices) |
 | `user_read` | Showing the Plan and quota, and checking the key when an account is added |
 
 Verified live: a key without `voices_read` gets `401 authentication_error` / `unauthorized` ("missing the permission voices_read"). The app only checks `user_read` when an account is added.
@@ -103,4 +103,4 @@ Switch on `detail.code`, falling back to the HTTP status. `detail.status` is leg
 | 429 | `rate_limit_exceeded`, `system_busy` | Retry with backoff |
 | 500 / 503 | `internal_error`, `service_unavailable`, `maintenance` | Retry later |
 
-A `402` is not always quota: `paid_plan_required` and `insufficient_credits` share the status. `voice_limit_reached`, which the app still handles, is no longer in the official list.
+A `402` is not always quota: `paid_plan_required` and `insufficient_credits` share the status. `voice_limit_reached` is no longer in the official list; the app treats it as any other API error.

@@ -72,7 +72,7 @@ bingo-voice-generator/
 │   │   ├── player/          # NowPlayingBar, ActionBar
 │   │   ├── settings-panel/  # Settings, ElevenLabs Accounts
 │   │   ├── sidebar/         # Sidebar, subscription info
-│   │   └── voices/          # Voice form and voice limit modals
+│   │   └── voices/          # Voice form modal
 │   ├── services/            # API wrappers
 │   │   ├── tauri.ts         # Tauri command wrappers
 │   │   └── audioPlayer.ts   # Web Audio API

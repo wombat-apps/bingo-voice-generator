@@ -47,10 +47,6 @@ export async function generateSpeech(
   return new Uint8Array(result);
 }
 
-export async function listElevenLabsVoices(apiKey: string): Promise<ElevenLabsVoice[]> {
-  return invoke<ElevenLabsVoice[]>('list_voices', { apiKey });
-}
-
 export async function listPremadeVoices(apiKey: string): Promise<ElevenLabsVoice[]> {
   return invoke<ElevenLabsVoice[]>('list_premade_voices', { apiKey });
 }
@@ -73,10 +69,6 @@ export async function searchSharedVoices(
 
 export async function getSubscription(apiKey: string): Promise<SubscriptionInfo> {
   return invoke<SubscriptionInfo>('get_subscription', { apiKey });
-}
-
-export async function deleteElevenLabsVoice(voiceId: string, apiKey: string): Promise<void> {
-  return invoke('delete_voice', { voiceId, apiKey });
 }
 
 export async function addSharedVoice(

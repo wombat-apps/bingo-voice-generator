@@ -41,8 +41,6 @@ export function describeGenerationError(err: unknown, accountName: string | null
       return 'Por favor, selecciona una cuenta de ElevenLabs.';
     case 'NETWORK_ERROR':
       return 'No se pudo conectar con ElevenLabs. Comprueba tu conexión a internet.';
-    case 'VOICE_LIMIT_REACHED':
-      return 'Has alcanzado el límite de voces de tu plan de ElevenLabs.';
     case 'API_ERROR':
       break;
   }

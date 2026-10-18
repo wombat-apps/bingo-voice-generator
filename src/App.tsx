@@ -8,7 +8,7 @@ import { BingoGrid } from './features/grid';
 import { Sidebar } from './features/sidebar';
 import { SettingsPanel } from './features/settings-panel';
 import { ActionBar } from './features/player';
-import { VoiceFormModal, VoiceLimitModal } from './features/voices';
+import { VoiceFormModal } from './features/voices';
 import {
   getLanguages,
   loadVoices,
@@ -20,8 +20,6 @@ import {
   generateSpeech,
   saveAudioFile,
   buildTtsText,
-  listElevenLabsVoices,
-  deleteElevenLabsVoice,
   getSubscription,
   updateVoice,
   deleteAudioFile,
@@ -52,10 +50,9 @@ import type {
   NumberAudioPair,
   VoiceSettings,
   SubscriptionInfo,
-  ElevenLabsVoice,
 } from './types';
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
-import { describeGenerationError, isElevenLabsError } from './services/errors';
+import { describeGenerationError } from './services/errors';
 import { voiceUnavailableReason } from './services/voiceAvailability';
 import './styles/index.css';
 import './App.css';
@@ -148,14 +145,6 @@ function App() {
     voice: Voice | null;
   }>({ isOpen: false, mode: 'add', voice: null });
 
-  // Voice limit modal state
-  const [voiceLimitModalState, setVoiceLimitModalState] = useState<{
-    isOpen: boolean;
-    voices: ElevenLabsVoice[];
-    onSelect: (voiceId: string) => void;
-    onCancel: () => void;
-  } | null>(null);
-
   // Error state
   const [error, setError] = useState<string | null>(null);
 
@@ -222,24 +211,6 @@ function App() {
       console.error('Failed to change the active account:', err);
     }
   }, [applyAccountsState]);
-
-  // Helper to ask user to select a voice to delete when limit is reached
-  const askUserToSelectVoice = useCallback((voices: ElevenLabsVoice[]): Promise<string | null> => {
-    return new Promise((resolve) => {
-      setVoiceLimitModalState({
-        isOpen: true,
-        voices,
-        onSelect: (voiceId) => {
-          setVoiceLimitModalState(null);
-          resolve(voiceId);
-        },
-        onCancel: () => {
-          setVoiceLimitModalState(null);
-          resolve(null);
-        },
-      });
-    });
-  }, []);
 
   // Ref for header (for double-click maximize)
   const headerRef = useRef<HTMLElement>(null);
@@ -636,83 +607,12 @@ function App() {
         await playAudioFile(savedFile.filePath);
       } catch (err) {
         console.error(`Failed to generate audio for ${selectedNumber} ${part}:`, err);
-        if (isElevenLabsError(err) && err.code === 'VOICE_LIMIT_REACHED') {
-          // Show modal to let user choose which voice to delete
-          try {
-            const elevenLabsVoices = await listElevenLabsVoices(apiKey);
-            const deletableVoices = elevenLabsVoices;
-
-            if (deletableVoices.length === 0) {
-              setError('Límite de voces alcanzado. No hay voces que eliminar. Elimina voces manualmente en elevenlabs.io');
-              setGenerating(false);
-              return;
-            }
-
-            const selectedVoiceId = await askUserToSelectVoice(deletableVoices);
-
-            if (!selectedVoiceId) {
-              setError('Generación cancelada. Se requiere eliminar una voz para continuar.');
-              setGenerating(false);
-              return;
-            }
-
-            await deleteElevenLabsVoice(selectedVoiceId, apiKey);
-
-            // Retry generation
-            const currentLang = languages.find((l) => l.id === selectedLanguage);
-            const languageCode = currentLang?.elevenlabsCode || 'es';
-            const text = await buildTtsText(selectedNumber, selectedLanguage, selectedMode, part);
-            const audioData = await generateSpeech(
-              text,
-              selectedVoice.elevenlabsId,
-              languageCode,
-              apiKey,
-              voiceSettings.modelId,
-              undefined,
-              voiceSettings
-            );
-
-            const savedFile = await saveAudioFile(
-              audioData,
-              selectedNumber,
-              selectedLanguage,
-              selectedVoice,
-              selectedMode,
-              part
-            );
-
-            setAudioFiles((prev) => {
-              const newMap = new Map(prev);
-              const existing = newMap.get(selectedNumber) || { number: selectedNumber, wordAudio: null, digitAudio: null };
-              if (part === 'word') {
-                newMap.set(selectedNumber, { ...existing, wordAudio: savedFile });
-              } else {
-                newMap.set(selectedNumber, { ...existing, digitAudio: savedFile });
-              }
-              return newMap;
-            });
-
-            setPlayingNumber(selectedNumber);
-            setPlayingPart(part);
-            setCurrentFilePath(savedFile.filePath);
-            setIsPlaying(true);
-            await playAudioFile(savedFile.filePath);
-            setGenerating(false);
-            return;
-          } catch (retryError) {
-            console.error('Retry failed:', retryError);
-            setError(describeGenerationError(retryError, activeAccountName));
-            setGenerating(false);
-            return;
-          }
-        } else {
-          setError(describeGenerationError(err, activeAccountName));
-        }
+        setError(describeGenerationError(err, activeAccountName));
       } finally {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedLanguage, selectedMode, languages, voiceSettings, askUserToSelectVoice]
+    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedLanguage, selectedMode, languages, voiceSettings]
   );
 
   const handleGenerateWord = useCallback(() => {
@@ -1267,14 +1167,6 @@ function App() {
         onClose={handleCloseVoiceForm}
         onVoiceSaved={handleVoiceSaved}
       />
-
-      {voiceLimitModalState && (
-        <VoiceLimitModal
-          voices={voiceLimitModalState.voices}
-          onSelectVoice={voiceLimitModalState.onSelect}
-          onCancel={voiceLimitModalState.onCancel}
-        />
-      )}
 
       {error && (
         <div className="error-toast" onClick={() => setError(null)}>

@@ -177,5 +177,5 @@ export interface AppState {
 
 /** Serialized `ElevenLabsError` from src-tauri/src/commands/elevenlabs.rs. */
 export type ElevenLabsError =
-  | { code: 'NO_API_KEY' | 'VOICE_LIMIT_REACHED' | 'NETWORK_ERROR'; message: string }
+  | { code: 'NO_API_KEY' | 'NETWORK_ERROR'; message: string }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };

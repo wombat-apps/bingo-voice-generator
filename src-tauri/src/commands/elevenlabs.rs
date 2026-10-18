@@ -19,8 +19,6 @@ pub enum ElevenLabsError {
         /// ElevenLabs' message, never the raw body.
         message: String,
     },
-    #[error("Voice limit reached")]
-    VoiceLimitReached,
     #[error("Network error: {0}")]
     NetworkError(reqwest::Error),
 }
@@ -42,7 +40,6 @@ impl Serialize for ElevenLabsError {
         let code = match self {
             ElevenLabsError::NoApiKey => "NO_API_KEY",
             ElevenLabsError::ApiError { .. } => "API_ERROR",
-            ElevenLabsError::VoiceLimitReached => "VOICE_LIMIT_REACHED",
             ElevenLabsError::NetworkError(_) => "NETWORK_ERROR",
         };
         map.serialize_entry("code", code)?;
@@ -205,9 +202,6 @@ async fn api_error(
 
 fn error_from_response(status: reqwest::StatusCode, body: &str) -> ElevenLabsError {
     let ErrorBody { code, message } = parse_error_body(body);
-    if code.as_deref() == Some("voice_limit_reached") {
-        return ElevenLabsError::VoiceLimitReached;
-    }
     ElevenLabsError::ApiError {
         status_code: status.as_u16(),
         api_code: code,
@@ -345,69 +339,6 @@ pub async fn generate_speech(
 }
 
 #[tauri::command]
-pub async fn list_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, ElevenLabsError> {
-    if api_key.is_empty() {
-        return Err(ElevenLabsError::NoApiKey);
-    }
-
-    let url = "https://api.elevenlabs.io/v2/voices?page_size=100&voice_type=saved".to_string();
-
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .header("xi-api-key", &api_key)
-        .send()
-        .await?;
-
-    let status = response.status();
-
-    if !status.is_success() {
-        return Err(api_error("list_voices", status, response).await);
-    }
-
-    let response_text = response.text().await?;
-    log::debug!(
-        "[list_voices] Raw response (first 2000 chars): {}",
-        &response_text[..response_text.len().min(2000)]
-    );
-
-    let voices_response: VoicesResponse = serde_json::from_str(&response_text).map_err(|e| {
-        log::error!("[list_voices] JSON parse error: {}", e);
-        ElevenLabsError::ApiError {
-            status_code: 500,
-            api_code: None,
-            message: format!("JSON parse error: {}", e),
-        }
-    })?;
-    log::debug!(
-        "[list_voices] Found {} voices:",
-        voices_response.voices.len()
-    );
-    let mut premade_count = 0;
-    let mut custom_count = 0;
-    for voice in &voices_response.voices {
-        if voice.category == "premade" {
-            premade_count += 1;
-        } else {
-            custom_count += 1;
-        }
-        log::debug!(
-            "  - {} (id: {}, category: {}, created_at: {:?})",
-            voice.name,
-            voice.voice_id,
-            voice.category,
-            voice.created_at_unix
-        );
-    }
-    log::debug!(
-        "[list_voices] Summary: {} premade, {} custom/professional",
-        premade_count,
-        custom_count
-    );
-    Ok(voices_response.voices)
-}
-
-#[tauri::command]
 pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, ElevenLabsError> {
     if api_key.is_empty() {
         return Err(ElevenLabsError::NoApiKey);
@@ -508,33 +439,6 @@ pub async fn get_subscription(api_key: String) -> Result<SubscriptionInfo, Eleve
 
     let subscription: SubscriptionInfo = response.json().await?;
     Ok(subscription)
-}
-
-#[tauri::command]
-pub async fn delete_voice(voice_id: String, api_key: String) -> Result<(), ElevenLabsError> {
-    log::debug!("[delete_voice] Deleting voice: {}", voice_id);
-    if api_key.is_empty() {
-        return Err(ElevenLabsError::NoApiKey);
-    }
-
-    let url = format!("{}/voices/{}", BASE_URL, voice_id);
-
-    let client = reqwest::Client::new();
-    let response = client
-        .delete(&url)
-        .header("xi-api-key", &api_key)
-        .send()
-        .await?;
-
-    let status = response.status();
-    log::debug!("[delete_voice] Response status: {}", status);
-
-    if !status.is_success() {
-        return Err(api_error("delete_voice", status, response).await);
-    }
-
-    log::info!("[delete_voice] Success");
-    Ok(())
 }
 
 #[tauri::command]
@@ -644,11 +548,15 @@ mod tests {
     }
 
     #[test]
-    fn voice_limit_reached_code_becomes_its_own_error() {
+    fn voice_limit_reached_code_is_a_plain_api_error() {
         let body = r#"{"detail":{"status":"voice_limit_reached","message":"Limit reached"}}"#;
 
         let error = error_from_response(reqwest::StatusCode::BAD_REQUEST, body);
 
-        assert!(matches!(error, ElevenLabsError::VoiceLimitReached));
+        assert!(matches!(
+            error,
+            ElevenLabsError::ApiError { status_code: 400, api_code: Some(ref code), ref message }
+                if code == "voice_limit_reached" && message == "Limit reached"
+        ));
     }
 }

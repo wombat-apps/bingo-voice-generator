@@ -210,19 +210,26 @@ export function VoiceFormModal({
       if (mode === 'add' && selectedVoice) {
         let voiceIdToUse = selectedVoice.voiceId;
 
-        // Save Library Voices in the account. Not needed to use them (docs/elevenlabs-plans.md),
-        // and skipped when the Plan cannot use them: ElevenLabs saves the voice on its own the
-        // first time an account whose Plan allows it generates with it.
+        // Save Library Voices in the account so they stay usable during the notice period if
+        // their owner stops sharing them. Not needed to use them, and voice ids are the same in
+        // every account (docs/elevenlabs-plans.md), so a failure is only logged. Skipped when the
+        // Plan cannot use them: ElevenLabs saves the voice on its own the first time an account
+        // whose Plan allows it generates with it.
         if (selectedVoice.kind === 'library' && !selectedUnavailableReason) {
           if (!selectedVoice.publicOwnerId) {
-            throw new Error('Voice does not have a public owner ID');
+            console.error('[VoiceFormModal] Library Voice has no public owner ID, not saving it in the account');
+          } else {
+            try {
+              voiceIdToUse = await addSharedVoice(
+                selectedVoice.publicOwnerId,
+                selectedVoice.voiceId,
+                trimmedName,
+                apiKey
+              );
+            } catch (err) {
+              console.error('[VoiceFormModal] Failed to save the Library Voice in the account:', err);
+            }
           }
-          voiceIdToUse = await addSharedVoice(
-            selectedVoice.publicOwnerId,
-            selectedVoice.voiceId,
-            trimmedName,
-            apiKey
-          );
         }
 
         // Create local voice record
