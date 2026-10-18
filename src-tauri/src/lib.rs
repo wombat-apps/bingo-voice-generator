@@ -111,6 +111,7 @@ pub fn run() {
             // Voices commands
             load_voices,
             save_voices,
+            backfill_voice_kinds,
             add_voice,
             create_voice,
             update_voice,

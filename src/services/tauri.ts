@@ -5,6 +5,7 @@ import type {
   Language,
   BingoMode,
   Voice,
+  VoiceKind,
   AudioFile,
   NumberAudioPair,
   LanguageId,
@@ -198,7 +199,8 @@ export async function createVoice(
   elevenlabsName: string,
   customName: string,
   language: LanguageId,
-  gender: string
+  gender: string,
+  kind: VoiceKind
 ): Promise<Voice[]> {
   // Tauri expects camelCase field names by default
   const payload = {
@@ -208,6 +210,7 @@ export async function createVoice(
       customName,
       language,
       gender,
+      kind,
     },
   };
 
@@ -221,6 +224,11 @@ export async function createVoice(
     console.error('[createVoice] Error from Rust:', error);
     throw error;
   }
+}
+
+/** Stores the kind of Voices saved without one; asks ElevenLabs only if some Voice lacks it. */
+export async function backfillVoiceKinds(apiKey: string): Promise<Voice[]> {
+  return invoke<Voice[]>('backfill_voice_kinds', { apiKey });
 }
 
 export async function updateVoice(voice: Voice): Promise<Voice[]> {

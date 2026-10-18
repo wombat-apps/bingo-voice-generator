@@ -17,6 +17,8 @@ interface PartPanelProps {
   hasAudio: boolean;
   isGenerating: boolean;
   canGenerate: boolean;
+  /** Shown as the generate button's tooltip instead of the default one. */
+  generateDisabledReason: string | null;
   onGenerate: () => void;
   onPlay: () => void;
   onPause: () => void;
@@ -35,6 +37,7 @@ function PartPanel({
   hasAudio,
   isGenerating,
   canGenerate,
+  generateDisabledReason,
   onGenerate,
   onPlay,
   onPause,
@@ -94,7 +97,7 @@ function PartPanel({
             className="btn btn-icon btn-xs"
             onClick={onGenerate}
             disabled={!canGenerate || isGenerating}
-            title={hasAudio ? `Regenerate ${type}` : `Generate ${type}`}
+            title={generateDisabledReason ?? (hasAudio ? `Regenerate ${type}` : `Generate ${type}`)}
           >
             {isGenerating ? (
               <span className="spinner-small" />
@@ -154,6 +157,8 @@ interface ActionBarProps {
   isGeneratingDigit: boolean;
   apiKeyConfigured: boolean;
   voiceSelected: boolean;
+  /** Why the Active Account's Plan cannot generate with the selected Voice, or null. */
+  voiceUnavailableReason: string | null;
   // Audio state for selected number (may differ from playing number)
   selectedHasWord: boolean;
   selectedHasDigit: boolean;
@@ -198,12 +203,14 @@ export function ActionBar({
   isGeneratingDigit,
   apiKeyConfigured,
   voiceSelected,
+  voiceUnavailableReason,
   selectedHasWord,
   selectedHasDigit,
   selectedNeedsDigit,
 }: ActionBarProps) {
   // Determine button states
-  const canGenerate = apiKeyConfigured && voiceSelected && selectedNumber !== null;
+  const canGenerate =
+    apiKeyConfigured && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
 
   // Format display number for selected cell
   const displayNumber = selectedNumber !== null
@@ -249,6 +256,7 @@ export function ActionBar({
             hasAudio={selectedHasWord}
             isGenerating={isGeneratingWord}
             canGenerate={canGenerate}
+            generateDisabledReason={voiceUnavailableReason}
             onGenerate={onGenerateWord}
             onPlay={onPlayWord}
             onPause={onPause}
@@ -295,6 +303,7 @@ export function ActionBar({
           hasAudio={selectedHasWord}
           isGenerating={isGeneratingWord}
           canGenerate={canGenerate}
+          generateDisabledReason={voiceUnavailableReason}
           onGenerate={onGenerateWord}
           onPlay={onPlayWord}
           onPause={onPause}
@@ -313,6 +322,7 @@ export function ActionBar({
           hasAudio={selectedHasDigit}
           isGenerating={isGeneratingDigit}
           canGenerate={canGenerate}
+          generateDisabledReason={voiceUnavailableReason}
           onGenerate={onGenerateDigit}
           onPlay={onPlayDigit}
           onPause={onPause}

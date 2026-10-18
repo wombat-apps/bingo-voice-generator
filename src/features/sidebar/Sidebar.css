@@ -273,3 +273,17 @@
   font-size: var(--font-size-xs);
   padding: var(--spacing-2xs) 6px;
 }
+
+/* Voice the Active Account's Plan cannot generate with */
+.voice-item.is-unavailable .voice-name {
+  opacity: 0.6;
+}
+
+.voice-unavailable {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.voice-item.active .voice-unavailable {
+  color: var(--text-on-accent);
+}

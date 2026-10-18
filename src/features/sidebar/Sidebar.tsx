@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Music, Star, Play } from 'lucide-react';
 import { SubscriptionInfo } from './SubscriptionInfo';
 import { VoiceContextMenu } from './VoiceContextMenu';
+import { voiceUnavailableReason } from '../../services/voiceAvailability';
 import type { AccountsState, Language, Voice, LanguageId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
 import './Sidebar.css';
 
@@ -117,39 +118,45 @@ export function Sidebar({
               Click "Add Voice" to get started.
             </p>
           ) : (
-            filteredVoices.map((voice) => (
-              <div
-                key={voice.uuid}
-                className={`voice-item ${selectedVoice?.uuid === voice.uuid ? 'active' : ''}`}
-                onContextMenu={(e) => handleContextMenu(e, voice)}
-              >
-                <button
-                  type="button"
-                  className={`btn btn-icon btn-sm voice-favorite ${voice.favorite ? 'is-favorite' : ''}`}
-                  onClick={() => onToggleFavorite(voice)}
-                  title={voice.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            filteredVoices.map((voice) => {
+              const unavailableReason = voiceUnavailableReason(voice, subscription);
+              return (
+                <div
+                  key={voice.uuid}
+                  className={`voice-item ${selectedVoice?.uuid === voice.uuid ? 'active' : ''} ${unavailableReason ? 'is-unavailable' : ''}`}
+                  onContextMenu={(e) => handleContextMenu(e, voice)}
                 >
-                  <Star size={14} fill={voice.favorite ? 'currentColor' : 'none'} />
-                </button>
-                <button
-                  type="button"
-                  className="voice-item-content"
-                  onClick={() => onVoiceChange(voice)}
-                >
-                  <span className="voice-name">{voice.customName}</span>
-                  <span className={`badge badge-${voice.gender}`}>{voice.gender}</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-icon btn-sm voice-play"
-                  onClick={() => onPlayVoiceSample(voice)}
-                  disabled={!voiceHasRecordings.get(voice.uuid)}
-                  title={voiceHasRecordings.get(voice.uuid) ? 'Play sample' : 'No recordings'}
-                >
-                  <Play size={14} />
-                </button>
-              </div>
-            ))
+                  <button
+                    type="button"
+                    className={`btn btn-icon btn-sm voice-favorite ${voice.favorite ? 'is-favorite' : ''}`}
+                    onClick={() => onToggleFavorite(voice)}
+                    title={voice.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Star size={14} fill={voice.favorite ? 'currentColor' : 'none'} />
+                  </button>
+                  <button
+                    type="button"
+                    className="voice-item-content"
+                    onClick={() => onVoiceChange(voice)}
+                  >
+                    <span className="voice-name">{voice.customName}</span>
+                    <span className={`badge badge-${voice.gender}`}>{voice.gender}</span>
+                    {unavailableReason && (
+                      <span className="voice-unavailable">{unavailableReason}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-icon btn-sm voice-play"
+                    onClick={() => onPlayVoiceSample(voice)}
+                    disabled={!voiceHasRecordings.get(voice.uuid)}
+                    title={voiceHasRecordings.get(voice.uuid) ? 'Play sample' : 'No recordings'}
+                  >
+                    <Play size={14} />
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

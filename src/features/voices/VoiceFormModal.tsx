@@ -221,7 +221,8 @@ export function VoiceFormModal({
           selectedVoice.name,
           trimmedName,
           currentLanguage,
-          formGender || 'unknown'
+          formGender || 'unknown',
+          selectedVoice.isPremade ? 'default' : 'library'
         );
         onVoiceSaved(updatedVoices);
       } else if (mode === 'edit' && voice) {

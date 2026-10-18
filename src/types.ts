@@ -23,6 +23,9 @@ export interface BingoMode {
 export type AudioPart = 'word' | 'digit';
 
 // Voice types
+/** Default Voice or Library Voice; see GLOSSARY.md. */
+export type VoiceKind = 'default' | 'library';
+
 export interface Voice {
   uuid: string;
   elevenlabsId: string;
@@ -31,6 +34,8 @@ export interface Voice {
   language: LanguageId;
   gender: string;
   favorite: boolean;
+  /** null for Voices saved before kinds were stored, until `backfillVoiceKinds` runs. */
+  kind: VoiceKind | null;
 }
 
 // Audio file types

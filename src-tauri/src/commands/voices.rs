@@ -5,7 +5,8 @@ use thiserror::Error;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::models::Voice;
+use crate::commands::{list_premade_voices, ElevenLabsError};
+use crate::models::{Voice, VoiceKind};
 
 #[derive(Debug, Error)]
 pub enum VoicesError {
@@ -15,6 +16,8 @@ pub enum VoicesError {
     JsonError(#[from] serde_json::Error),
     #[error("Voice not found: {0}")]
     VoiceNotFound(String),
+    #[error("ElevenLabs error: {0}")]
+    ElevenLabs(#[from] ElevenLabsError),
 }
 
 impl Serialize for VoicesError {
@@ -84,6 +87,7 @@ pub struct CreateVoiceInput {
     pub custom_name: String,
     pub language: crate::models::Language,
     pub gender: String,
+    pub kind: crate::models::VoiceKind,
 }
 
 /// Creates a new voice with the given parameters (UUID generated server-side)
@@ -102,6 +106,7 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
         Some(input.custom_name),
         input.language,
         Some(input.gender),
+        input.kind,
     );
 
     log::debug!("[create_voice] Created voice: {:?}", voice);
@@ -130,7 +135,9 @@ pub async fn update_voice(voice: Voice) -> Result<Vec<Voice>, VoicesError> {
     let mut voices = load_voices().await?;
 
     if let Some(existing) = voices.iter_mut().find(|v| v.uuid == voice.uuid) {
-        *existing = voice;
+        // A copy taken before the backfill must not erase the stored kind.
+        let kind = voice.kind.or(existing.kind);
+        *existing = Voice { kind, ..voice };
         save_voices(voices.clone()).await?;
         Ok(voices)
     } else {
@@ -166,4 +173,81 @@ pub async fn get_voice(voice_uuid: String) -> Result<Option<Voice>, VoicesError>
     };
 
     Ok(voices.into_iter().find(|v| v.uuid == uuid))
+}
+
+/// Sets the kind of each Voice that has none: Default Voice if its ElevenLabs voice is one of
+/// `default_voice_ids`, Library Voice otherwise. Returns whether any Voice changed.
+fn fill_missing_kinds(voices: &mut [Voice], default_voice_ids: &[String]) -> bool {
+    let mut changed = false;
+    for voice in voices.iter_mut().filter(|v| v.kind.is_none()) {
+        voice.kind = Some(if default_voice_ids.contains(&voice.elevenlabs_id) {
+            VoiceKind::Default
+        } else {
+            VoiceKind::Library
+        });
+        changed = true;
+    }
+    changed
+}
+
+/// Stores the kind of Voices saved before kinds existed, asking ElevenLabs for its Default Voices.
+#[tauri::command]
+pub async fn backfill_voice_kinds(api_key: String) -> Result<Vec<Voice>, VoicesError> {
+    let voices = load_voices().await?;
+    if voices.iter().all(|v| v.kind.is_some()) {
+        return Ok(voices);
+    }
+
+    let default_voice_ids: Vec<String> = list_premade_voices(api_key)
+        .await?
+        .into_iter()
+        .map(|v| v.voice_id)
+        .collect();
+    // Reload after the request so edits made while it was in flight are kept.
+    let mut voices = load_voices().await?;
+    if fill_missing_kinds(&mut voices, &default_voice_ids) {
+        log::info!("[backfill_voice_kinds] Stored the kind of Voices saved without one");
+        save_voices(voices.clone()).await?;
+    }
+    Ok(voices)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::Language;
+
+    fn voice(elevenlabs_id: &str, kind: Option<VoiceKind>) -> Voice {
+        let mut voice = Voice::new(
+            elevenlabs_id.to_string(),
+            elevenlabs_id.to_string(),
+            None,
+            Language::Spanish,
+            None,
+            VoiceKind::Default,
+        );
+        voice.kind = kind;
+        voice
+    }
+
+    #[test]
+    fn backfill_classifies_voices_without_kind_by_default_voice_ids() {
+        let mut voices = vec![voice("premade", None), voice("shared", None)];
+
+        let changed = fill_missing_kinds(&mut voices, &["premade".to_string()]);
+
+        assert!(changed);
+        assert_eq!(voices[0].kind, Some(VoiceKind::Default));
+        assert_eq!(voices[1].kind, Some(VoiceKind::Library));
+    }
+
+    #[test]
+    fn backfill_keeps_stored_kinds() {
+        let mut voices = vec![voice("premade", Some(VoiceKind::Library))];
+
+        let changed = fill_missing_kinds(&mut voices, &["premade".to_string()]);
+
+        assert!(!changed);
+        assert_eq!(voices[0].kind, Some(VoiceKind::Library));
+    }
 }

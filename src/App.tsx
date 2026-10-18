@@ -12,6 +12,7 @@ import { VoiceFormModal, VoiceLimitModal } from './features/voices';
 import {
   getLanguages,
   loadVoices,
+  backfillVoiceKinds,
   loadAudioFiles,
   listAccounts,
   getAccountApiKey,
@@ -55,6 +56,7 @@ import type {
 } from './types';
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
 import { describeGenerationError, isElevenLabsError } from './services/errors';
+import { voiceUnavailableReason } from './services/voiceAvailability';
 import './styles/index.css';
 import './App.css';
 
@@ -179,18 +181,18 @@ function App() {
     }
   }, [error]);
 
-  // Refresh subscription info
+  // Refresh subscription info. Only the latest request applies, so switching accounts quickly
+  // never leaves another account's Plan in place.
+  const subscriptionKeyRef = useRef('');
   const refreshSubscription = useCallback(async (key: string) => {
-    if (!key) {
-      setSubscription(null);
-      return;
-    }
+    subscriptionKeyRef.current = key;
+    setSubscription(null);
+    if (!key) return;
     try {
       const sub = await getSubscription(key);
-      setSubscription(sub);
+      if (subscriptionKeyRef.current === key) setSubscription(sub);
     } catch (err) {
       console.error('Failed to fetch subscription info:', err);
-      setSubscription(null);
     }
   }, []);
 
@@ -199,7 +201,7 @@ function App() {
     setAccountsState(state);
     if (!state.activeAccountId) {
       setApiKey('');
-      setSubscription(null);
+      refreshSubscription('');
       return;
     }
     try {
@@ -209,7 +211,7 @@ function App() {
     } catch (err) {
       console.error('Failed to load the active account API key:', err);
       setApiKey('');
-      setSubscription(null);
+      refreshSubscription('');
     }
   }, [refreshSubscription]);
 
@@ -333,6 +335,30 @@ function App() {
 
     loadData();
   }, [applyAccountsState]);
+
+  // Store the kind of Voices saved before kinds existed (once per Active Account key)
+  const needsKindBackfill = voices.some((v) => v.kind === null);
+  const backfilledKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!apiKey || !needsKindBackfill || backfilledKeyRef.current === apiKey) return;
+    backfilledKeyRef.current = apiKey;
+    backfillVoiceKinds(apiKey)
+      .then((updatedVoices) => {
+        setVoices(updatedVoices);
+        setSelectedVoice((current) =>
+          current ? updatedVoices.find((v) => v.uuid === current.uuid) ?? current : current
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to backfill voice kinds:', err);
+        backfilledKeyRef.current = null; // retry on the next account change
+      });
+  }, [apiKey, needsKindBackfill]);
+
+  // Whether the Active Account's Plan can generate with the selected Voice
+  const selectedVoiceUnavailableReason = selectedVoice
+    ? voiceUnavailableReason(selectedVoice, subscription)
+    : null;
 
   // Auto-open settings panel if there is no Active Account
   useEffect(() => {
@@ -1213,6 +1239,7 @@ function App() {
           isGeneratingDigit={isGeneratingDigit}
           apiKeyConfigured={hasActiveAccount}
           voiceSelected={selectedVoice !== null}
+          voiceUnavailableReason={selectedVoiceUnavailableReason}
           selectedHasWord={selectedHasWord}
           selectedHasDigit={selectedHasDigit}
           selectedNeedsDigit={selectedNeedsDigit}
