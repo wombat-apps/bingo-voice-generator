@@ -197,6 +197,14 @@ impl ElevenLabs {
         };
         Ok(self.client_for_key(key))
     }
+
+    /// Drops the cached key of a deleted account, so it does not outlive the account.
+    pub async fn forget_account(&self, account_id: Uuid) {
+        let mut cached = self.active_key.lock().await;
+        if matches!(cached.as_ref(), Some((id, _)) if *id == account_id) {
+            *cached = None;
+        }
+    }
 }
 
 /// One ElevenLabs API key's view of the API. Every request goes through `send`, which adds
@@ -396,6 +404,19 @@ pub(crate) mod tests {
     use super::*;
     use wiremock::matchers::{body_partial_json, header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn forget_account_drops_only_that_accounts_cached_key() {
+        let elevenlabs = ElevenLabs::new("http://unused");
+        let id = Uuid::new_v4();
+        *elevenlabs.active_key.lock().await = Some((id, "key".into()));
+
+        elevenlabs.forget_account(Uuid::new_v4()).await;
+        assert!(elevenlabs.active_key.lock().await.is_some());
+
+        elevenlabs.forget_account(id).await;
+        assert!(elevenlabs.active_key.lock().await.is_none());
+    }
 
     pub(crate) fn tts(next_text: Option<&str>) -> TtsText {
         TtsText {

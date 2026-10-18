@@ -278,6 +278,7 @@ pub async fn rename_account(
 #[tauri::command]
 pub async fn delete_account(
     dirs: State<'_, AppDirs>,
+    elevenlabs: State<'_, ElevenLabs>,
     account_id: Uuid,
 ) -> Result<AccountsState, AccountsError> {
     let mut state = load_state(&dirs).await?;
@@ -286,6 +287,7 @@ pub async fn delete_account(
         Ok(()) | Err(keyring::Error::NoEntry) => {}
         Err(e) => return Err(e.into()),
     }
+    elevenlabs.forget_account(account_id).await;
     save_state(&dirs, &state).await?;
     Ok(state)
 }
