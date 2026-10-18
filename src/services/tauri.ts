@@ -16,7 +16,6 @@ import type {
   SharedVoicesResponse,
   SharedVoiceSort,
   SubscriptionInfo,
-  TtsModelId,
   TtsText,
   VoiceSettings,
 } from '../types';
@@ -25,44 +24,27 @@ import type {
 // ElevenLabs Commands
 // ============================================================================
 
+// ElevenLabs commands use the Active Account: its API key never leaves Rust.
+
 export async function generateSpeech(
   tts: TtsText,
   voiceId: string,
   languageCode: string,
-  apiKey: string,
-  modelId: TtsModelId,
-  outputFormat?: string,
-  voiceSettings?: VoiceSettings
+  settings: VoiceSettings
 ): Promise<Uint8Array> {
-  const result = await invoke<number[]>('generate_speech', {
-    text: tts.text,
-    previousText: tts.previousText,
-    nextText: tts.nextText,
-    voiceId,
-    languageCode,
-    apiKey,
-    modelId,
-    outputFormat,
-    speed: voiceSettings?.speed,
-    stability: voiceSettings?.stability,
-    similarityBoost: voiceSettings?.similarityBoost,
-    style: voiceSettings?.style,
-    useSpeakerBoost: voiceSettings?.useSpeakerBoost,
-  });
+  const result = await invoke<number[]>('generate_speech', { tts, voiceId, languageCode, settings });
   return new Uint8Array(result);
 }
 
 export async function listDefaultVoices(
   accent: AccentId,
-  apiKey: string,
   gender?: string
 ): Promise<DefaultVoice[]> {
-  return invoke<DefaultVoice[]>('list_default_voices', { accent, apiKey, gender });
+  return invoke<DefaultVoice[]>('list_default_voices', { accent, gender });
 }
 
 export async function searchSharedVoices(
   accent: AccentId,
-  apiKey: string,
   gender?: string,
   search?: string,
   sort?: SharedVoiceSort,
@@ -70,7 +52,6 @@ export async function searchSharedVoices(
 ): Promise<SharedVoicesResponse> {
   return invoke<SharedVoicesResponse>('search_shared_voices', {
     accent,
-    apiKey,
     gender,
     search,
     sort,
@@ -78,17 +59,17 @@ export async function searchSharedVoices(
   });
 }
 
-export async function getSubscription(apiKey: string): Promise<SubscriptionInfo> {
-  return invoke<SubscriptionInfo>('get_subscription', { apiKey });
+/** The subscription of any saved ElevenLabs Account, active or not. */
+export async function getAccountSubscription(accountId: string): Promise<SubscriptionInfo> {
+  return invoke<SubscriptionInfo>('get_account_subscription', { accountId });
 }
 
 export async function addSharedVoice(
   publicOwnerId: string,
   voiceId: string,
-  newName: string,
-  apiKey: string
+  newName: string
 ): Promise<string> {
-  return invoke<string>('add_shared_voice', { publicOwnerId, voiceId, newName, apiKey });
+  return invoke<string>('add_shared_voice', { publicOwnerId, voiceId, newName });
 }
 
 // ============================================================================
@@ -219,8 +200,8 @@ export async function createVoice(
 }
 
 /** Stores the kind of Voices saved without one; asks ElevenLabs only if some Voice lacks it. */
-export async function backfillVoiceKinds(apiKey: string): Promise<Voice[]> {
-  return invoke<Voice[]>('backfill_voice_kinds', { apiKey });
+export async function backfillVoiceKinds(): Promise<Voice[]> {
+  return invoke<Voice[]>('backfill_voice_kinds');
 }
 
 export async function updateVoice(voice: Voice): Promise<Voice[]> {
@@ -239,8 +220,9 @@ export async function listAccounts(): Promise<AccountsState> {
   return invoke<AccountsState>('list_accounts');
 }
 
-export async function getAccountApiKey(accountId: string): Promise<string> {
-  return invoke<string>('get_account_api_key', { accountId });
+/** The full API key, only to show it when the user asks to. */
+export async function revealAccountApiKey(accountId: string): Promise<string> {
+  return invoke<string>('reveal_account_api_key', { accountId });
 }
 
 /** Validates the key against ElevenLabs before saving it. */

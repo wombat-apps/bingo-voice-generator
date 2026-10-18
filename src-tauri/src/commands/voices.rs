@@ -3,7 +3,7 @@ use tauri::State;
 use thiserror::Error;
 use tokio::fs;
 
-use crate::commands::{list_premade_voices, ElevenLabsError};
+use crate::commands::{ElevenLabs, ElevenLabsError};
 use crate::models::{Voice, VoiceKind};
 use crate::services::app_dirs::AppDirs;
 
@@ -163,15 +163,18 @@ fn fill_missing_kinds(voices: &mut [Voice], default_voice_ids: &[String]) -> boo
 /// Stores the kind of Voices saved before kinds existed, asking ElevenLabs for its Default Voices.
 #[tauri::command]
 pub async fn backfill_voice_kinds(
+    elevenlabs: State<'_, ElevenLabs>,
     dirs: State<'_, AppDirs>,
-    api_key: String,
 ) -> Result<Vec<Voice>, VoicesError> {
     let voices = read_voices(&dirs).await?;
     if voices.iter().all(|v| v.kind.is_some()) {
         return Ok(voices);
     }
 
-    let default_voice_ids: Vec<String> = list_premade_voices(api_key)
+    let default_voice_ids: Vec<String> = elevenlabs
+        .active_client(&dirs)
+        .await?
+        .default_voices(None)
         .await?
         .into_iter()
         .map(|v| v.voice_id)

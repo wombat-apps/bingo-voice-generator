@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::{Accent, AudioPart, BingoMode, Language};
@@ -1171,7 +1171,7 @@ impl LanguageConfig {
 
 /// What is sent to ElevenLabs for one Audio Part: the text it speaks, and the context around it,
 /// which it does not speak.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TtsText {
     pub text: String,

@@ -25,7 +25,8 @@ interface VoiceFormModalProps {
   mode: 'add' | 'edit';
   voice: Voice | null;
   currentAccent: AccentId;
-  apiKey: string;
+  /** Searches again when the Active Account changes. */
+  activeAccountId: string | null;
   subscription: SubscriptionInfo | null;
   onClose: () => void;
   onVoiceSaved: (voices: Voice[]) => void;
@@ -38,7 +39,7 @@ export function VoiceFormModal({
   mode,
   voice,
   currentAccent,
-  apiKey,
+  activeAccountId,
   subscription,
   onClose,
   onVoiceSaved,
@@ -108,7 +109,7 @@ export function VoiceFormModal({
   const latestSearchRef = useRef(0);
 
   const fetchVoices = useCallback(async () => {
-    if (!apiKey) return;
+    if (!activeAccountId) return;
     const query = searchQueryRef.current;
     const searchId = ++latestSearchRef.current;
 
@@ -118,10 +119,9 @@ export function VoiceFormModal({
     try {
       // Fetch both Default Voices and Library Voices in parallel
       const [defaultVoices, sharedResponse] = await Promise.all([
-        listDefaultVoices(currentAccent, apiKey, genderFilter || undefined),
+        listDefaultVoices(currentAccent, genderFilter || undefined),
         searchSharedVoices(
           currentAccent,
-          apiKey,
           genderFilter || undefined,
           query || undefined,
           sort,
@@ -164,7 +164,7 @@ export function VoiceFormModal({
     } finally {
       if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentAccent, apiKey, genderFilter, sort]);
+  }, [currentAccent, activeAccountId, genderFilter, sort]);
 
   // Search again when the modal opens and whenever the gender filter or the order changes
   useEffect(() => {
@@ -243,8 +243,7 @@ export function VoiceFormModal({
               voiceIdToUse = await addSharedVoice(
                 selectedVoice.publicOwnerId,
                 selectedVoice.voiceId,
-                trimmedName,
-                apiKey
+                trimmedName
               );
             } catch (err) {
               console.error('[VoiceFormModal] Failed to save the Library Voice in the account:', err);

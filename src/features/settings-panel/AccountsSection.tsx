@@ -3,9 +3,9 @@ import { Eye, EyeOff, Pencil, Trash2, Check, X } from 'lucide-react';
 import {
   addAccount,
   deleteAccount,
-  getAccountApiKey,
-  getSubscription,
+  getAccountSubscription,
   renameAccount,
+  revealAccountApiKey,
 } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
 import type { AccountsState, ApiKeyPermission, ElevenLabsAccount } from '../../types';
@@ -26,10 +26,6 @@ interface PermissionWarning {
   missingPermissions: ApiKeyPermission[];
 }
 
-function maskApiKey(apiKey: string): string {
-  return `••••${apiKey.slice(-4)}`;
-}
-
 export function AccountsSection({ accountsState, onAccountsChange }: AccountsSectionProps) {
   const { accounts, activeAccountId } = accountsState;
 
@@ -40,26 +36,21 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
   const [addError, setAddError] = useState<string | null>(null);
   const [permissionWarning, setPermissionWarning] = useState<PermissionWarning | null>(null);
 
-  // Keys loaded from the Keychain, and which ones are unmasked
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  // Full keys the user asked to see, read from the Keychain on demand
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [tiers, setTiers] = useState<Record<string, string>>({});
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
 
-  // Load each account's key and plan tier once
+  // Load each account's plan tier once
   const requestedIds = useRef(new Set<string>());
   useEffect(() => {
     for (const account of accounts) {
       if (requestedIds.current.has(account.id)) continue;
       requestedIds.current.add(account.id);
-      getAccountApiKey(account.id)
-        .then(async (key) => {
-          setApiKeys((prev) => ({ ...prev, [account.id]: key }));
-          const sub = await getSubscription(key);
-          setTiers((prev) => ({ ...prev, [account.id]: sub.tier }));
-        })
+      getAccountSubscription(account.id)
+        .then((sub) => setTiers((prev) => ({ ...prev, [account.id]: sub.tier })))
         .catch((err) => console.error(`Failed to load account "${account.name}":`, err));
     }
   }, [accounts]);
@@ -84,13 +75,17 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
     }
   };
 
-  const toggleRevealed = (id: string) => {
-    setRevealed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleRevealed = async (id: string) => {
+    if (revealed[id]) {
+      setRevealed(({ [id]: _hidden, ...rest }) => rest);
+      return;
+    }
+    try {
+      const key = await revealAccountApiKey(id);
+      setRevealed((prev) => ({ ...prev, [id]: key }));
+    } catch (err) {
+      console.error('Failed to read the API key:', err);
+    }
   };
 
   const startRename = (account: ElevenLabsAccount) => {
@@ -127,7 +122,7 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
       ) : (
         <ul className="accounts-list">
           {accounts.map((account) => {
-            const key = apiKeys[account.id];
+            const key = revealed[account.id];
             const tier = tiers[account.id];
             const isActive = account.id === activeAccountId;
             return (
@@ -164,7 +159,7 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
                     </div>
                   )}
                   <span className="account-key">
-                    {key ? (revealed.has(account.id) ? key : maskApiKey(key)) : '…'}
+                    {key ?? account.keyHint ?? '…'}
                   </span>
                 </div>
                 {renamingId !== account.id && (
@@ -173,10 +168,9 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
                       type="button"
                       className="btn btn-icon btn-sm"
                       onClick={() => toggleRevealed(account.id)}
-                      title={revealed.has(account.id) ? 'Hide API key' : 'Show API key'}
-                      disabled={!key}
+                      title={key ? 'Hide API key' : 'Show API key'}
                     >
-                      {revealed.has(account.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {key ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                     <button type="button" className="btn btn-icon btn-sm" onClick={() => startRename(account)} title="Rename account">
                       <Pencil size={14} />

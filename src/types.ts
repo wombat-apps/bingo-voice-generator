@@ -111,6 +111,8 @@ export interface SharedVoicesResponse {
 export interface ElevenLabsAccount {
   id: string;
   name: string;
+  /** The last characters of the API key, e.g. `••••a1b2`. */
+  keyHint: string | null;
 }
 
 export interface AccountsState {
@@ -208,5 +210,5 @@ export interface AppState {
 
 /** Serialized `ElevenLabsError` from src-tauri/src/commands/elevenlabs.rs. */
 export type ElevenLabsError =
-  | { code: 'NO_API_KEY' | 'NETWORK_ERROR'; message: string }
+  | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR'; message: string }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };

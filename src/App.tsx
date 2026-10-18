@@ -15,12 +15,11 @@ import {
   backfillVoiceKinds,
   loadAudioFiles,
   listAccounts,
-  getAccountApiKey,
   setActiveAccount,
   generateSpeech,
   saveAudioFile,
   buildTtsText,
-  getSubscription,
+  getAccountSubscription,
   updateVoice,
   deleteAudioFile,
   deleteAllAudioFilesForNumber,
@@ -68,10 +67,10 @@ function App() {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
 
-  // ElevenLabs accounts; apiKey is the Active Account's key ('' when there is none)
+  // ElevenLabs accounts; Rust reads the Active Account's key itself
   const [accountsState, setAccountsState] = useState<AccountsState>({ accounts: [], activeAccountId: null });
-  const [apiKey, setApiKey] = useState('');
-  const hasActiveAccount = apiKey !== '';
+  const activeAccountId = accountsState.activeAccountId;
+  const hasActiveAccount = activeAccountId !== null;
   const activeAccountName =
     accountsState.accounts.find((a) => a.id === accountsState.activeAccountId)?.name ?? '';
 
@@ -173,36 +172,23 @@ function App() {
 
   // Refresh subscription info. Only the latest request applies, so switching accounts quickly
   // never leaves another account's Plan in place.
-  const subscriptionKeyRef = useRef('');
-  const refreshSubscription = useCallback(async (key: string) => {
-    subscriptionKeyRef.current = key;
+  const subscriptionAccountRef = useRef<string | null>(null);
+  const refreshSubscription = useCallback(async (accountId: string | null) => {
+    subscriptionAccountRef.current = accountId;
     setSubscription(null);
-    if (!key) return;
+    if (!accountId) return;
     try {
-      const sub = await getSubscription(key);
-      if (subscriptionKeyRef.current === key) setSubscription(sub);
+      const sub = await getAccountSubscription(accountId);
+      if (subscriptionAccountRef.current === accountId) setSubscription(sub);
     } catch (err) {
       console.error('Failed to fetch subscription info:', err);
     }
   }, []);
 
-  // Apply a new accounts state, loading the Active Account's key and subscription
+  // Apply a new accounts state, loading the Active Account's subscription
   const applyAccountsState = useCallback(async (state: AccountsState) => {
     setAccountsState(state);
-    if (!state.activeAccountId) {
-      setApiKey('');
-      refreshSubscription('');
-      return;
-    }
-    try {
-      const key = await getAccountApiKey(state.activeAccountId);
-      setApiKey(key);
-      refreshSubscription(key);
-    } catch (err) {
-      console.error('Failed to load the active account API key:', err);
-      setApiKey('');
-      refreshSubscription('');
-    }
+    refreshSubscription(state.activeAccountId);
   }, [refreshSubscription]);
 
   const handleActiveAccountChange = useCallback(async (accountId: string | null) => {
@@ -308,13 +294,13 @@ function App() {
     loadData();
   }, [applyAccountsState]);
 
-  // Store the kind of Voices saved before kinds existed (once per Active Account key)
+  // Store the kind of Voices saved before kinds existed (once per Active Account)
   const needsKindBackfill = voices.some((v) => v.kind === null);
-  const backfilledKeyRef = useRef<string | null>(null);
+  const backfilledAccountRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!apiKey || !needsKindBackfill || backfilledKeyRef.current === apiKey) return;
-    backfilledKeyRef.current = apiKey;
-    backfillVoiceKinds(apiKey)
+    if (!activeAccountId || !needsKindBackfill || backfilledAccountRef.current === activeAccountId) return;
+    backfilledAccountRef.current = activeAccountId;
+    backfillVoiceKinds()
       .then((updatedVoices) => {
         setVoices(updatedVoices);
         setSelectedVoice((current) =>
@@ -323,9 +309,9 @@ function App() {
       })
       .catch((err) => {
         console.error('Failed to backfill voice kinds:', err);
-        backfilledKeyRef.current = null; // retry on the next account change
+        backfilledAccountRef.current = null; // retry on the next account change
       });
-  }, [apiKey, needsKindBackfill]);
+  }, [activeAccountId, needsKindBackfill]);
 
   // Whether the Active Account's Plan can generate with the selected Voice
   const selectedVoiceUnavailableReason = selectedVoice
@@ -544,7 +530,7 @@ function App() {
   // Generate audio for the selected number
   const generateAudio = useCallback(
     async (part: AudioPart) => {
-      if (!selectedNumber || !selectedVoice || !apiKey) {
+      if (!selectedNumber || !selectedVoice || !hasActiveAccount) {
         return;
       }
 
@@ -559,15 +545,7 @@ function App() {
         const tts = await buildTtsText(selectedNumber, selectedAccent, selectedMode, part);
 
         // Generate speech
-        const audioData = await generateSpeech(
-          tts,
-          selectedVoice.elevenlabsId,
-          languageCode,
-          apiKey,
-          voiceSettings.modelId,
-          undefined,
-          voiceSettings
-        );
+        const audioData = await generateSpeech(tts, selectedVoice.elevenlabsId, languageCode, voiceSettings);
 
         // Save audio file
         const savedFile = await saveAudioFile(
@@ -604,7 +582,7 @@ function App() {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedAccent, selectedMode, accents, voiceSettings]
+    [selectedNumber, selectedVoice, hasActiveAccount, activeAccountName, selectedAccent, selectedMode, accents, voiceSettings]
   );
 
   const handleGenerateWord = useCallback(() => {
@@ -1154,7 +1132,7 @@ function App() {
         mode={voiceFormState.mode}
         voice={voiceFormState.voice}
         currentAccent={selectedAccent}
-        apiKey={apiKey}
+        activeAccountId={activeAccountId}
         subscription={subscription}
         onClose={handleCloseVoiceForm}
         onVoiceSaved={handleVoiceSaved}

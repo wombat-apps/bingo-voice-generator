@@ -92,12 +92,13 @@ pub fn run() {
 
     builder
         .manage(services::app_dirs::AppDirs::from_system())
+        .manage(ElevenLabs::default())
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
             generate_speech,
             list_default_voices,
             search_shared_voices,
-            get_subscription,
+            get_account_subscription,
             add_shared_voice,
             // Storage commands
             save_audio_file,
@@ -115,7 +116,7 @@ pub fn run() {
             delete_local_voice,
             // Account commands
             list_accounts,
-            get_account_api_key,
+            reveal_account_api_key,
             add_account,
             rename_account,
             delete_account,
