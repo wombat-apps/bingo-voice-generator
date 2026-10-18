@@ -116,7 +116,7 @@ Shared types are defined in:
 - Frontend: `src/types.ts`
 - Backend: `src-tauri/src/models/`
 
-Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioFile`
+Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioFile`, `AudioFileId` (Accent, Voice, Bingo Mode, number and part: what names one audio file and what `AudioStore` takes), `VoiceNumber` (the same without the part)
 
 ## Conventions
 

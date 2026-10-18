@@ -35,6 +35,7 @@ import type {
   BingoModeId,
   AudioPart,
   NumberAudioPair,
+  VoiceNumber,
   VoiceSettings,
   SubscriptionInfo,
 } from './types';
@@ -405,16 +406,22 @@ function App() {
     async (part: AudioPart | 'all') => {
       if (!selectedNumber || !selectedVoice) return;
 
+      const voiceNumber: VoiceNumber = {
+        accent: selectedAccent,
+        voiceUuid: selectedVoice.uuid,
+        mode: selectedMode,
+        number: selectedNumber,
+      };
       try {
         if (part === 'all') {
-          await deleteAllAudioFilesForNumber(selectedNumber, selectedAccent, selectedVoice, selectedMode);
+          await deleteAllAudioFilesForNumber(voiceNumber);
           setAudioFiles((prev) => {
             const newMap = new Map(prev);
             newMap.delete(selectedNumber);
             return newMap;
           });
         } else {
-          await deleteAudioFile(selectedNumber, selectedAccent, selectedVoice, selectedMode, part);
+          await deleteAudioFile({ ...voiceNumber, part });
           setAudioFiles((prev) => {
             const newMap = new Map(prev);
             const existing = newMap.get(selectedNumber);

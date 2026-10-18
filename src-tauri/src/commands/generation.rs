@@ -3,7 +3,9 @@ use tauri::State;
 use thiserror::Error;
 
 use super::elevenlabs::{ElevenLabs, ElevenLabsClient, ElevenLabsError};
-use crate::models::{build_tts_text, AudioFile, AudioPart, BingoMode, Voice, VoiceSettings};
+use crate::models::{
+    build_tts_text, AudioFile, AudioPart, BingoMode, Voice, VoiceNumber, VoiceSettings,
+};
 use crate::services::app_dirs::AppDirs;
 use crate::services::audio_store::{AudioStore, StorageError};
 
@@ -93,9 +95,8 @@ async fn generate(
             settings,
         )
         .await?;
-    Ok(store
-        .save(number, accent, voice.uuid, mode, part, original)
-        .await?)
+    let id = VoiceNumber::new(accent, voice.uuid, mode, number).with_part(part);
+    Ok(store.save(&id, original).await?)
 }
 
 #[cfg(test)]
@@ -154,7 +155,7 @@ mod tests {
         .unwrap();
 
         assert!(file.file_path.ends_with("n45_word.mp3"));
-        assert_eq!(file.accent, Accent::PeninsularSpanish);
+        assert_eq!(file.id.accent, Accent::PeninsularSpanish);
         let loaded = store
             .load(voice.accent, voice.uuid, BingoMode::Bingo75)
             .await
