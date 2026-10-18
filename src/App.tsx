@@ -24,7 +24,7 @@ import {
   deleteLocalVoice,
   getPlatformInfo,
   revealVoiceInFileManager,
-  voicesWithRecordings,
+  voicesWithTrimmedAudio,
 } from './services/tauri';
 import { playPreview, stopPreview } from './services/audioPlayer';
 import type {
@@ -321,7 +321,7 @@ function App() {
   // Check which voices have recordings for the current Accent/mode
   useEffect(() => {
     if (voices.length === 0) return;
-    voicesWithRecordings(selectedAccent, selectedMode)
+    voicesWithTrimmedAudio(selectedAccent, selectedMode)
       .then((uuids) => {
         const withRecordings = new Set(uuids);
         setVoiceHasRecordings(

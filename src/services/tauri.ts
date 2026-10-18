@@ -115,9 +115,9 @@ export async function deleteAllAudioFilesForNumber(
   return invoke('delete_all_audio_files', { number, accent, voiceUuid: voice.uuid, mode });
 }
 
-/** UUIDs of the Accent's Voices with at least one recording in this Bingo Mode. */
-export async function voicesWithRecordings(accent: AccentId, mode: BingoModeId): Promise<string[]> {
-  return invoke<string[]>('voices_with_recordings', { accent, mode });
+/** UUIDs of the Accent's Voices with at least one Trimmed Audio in this Bingo Mode. */
+export async function voicesWithTrimmedAudio(accent: AccentId, mode: BingoModeId): Promise<string[]> {
+  return invoke<string[]>('voices_with_trimmed_audio', { accent, mode });
 }
 
 export async function readAudioFile(filePath: string): Promise<Uint8Array> {

@@ -169,7 +169,7 @@ impl AudioStore {
     }
 
     /// The Voices of an Accent with at least one Trimmed Audio in this Bingo Mode.
-    pub async fn voices_with_recordings(
+    pub async fn voices_with_trimmed_audio(
         &self,
         accent: Accent,
         mode: BingoMode,
@@ -189,12 +189,15 @@ impl AudioStore {
             else {
                 continue;
             };
-            let mut files = fs::read_dir(entry.path()).await?;
-            while let Some(file) = files.next_entry().await? {
-                if parse_file_name(&file.path(), mode).is_some() {
-                    voices.push(voice);
-                    break;
-                }
+            // One unreadable folder counts as that Voice having no audio
+            match has_trimmed_audio(&entry.path(), mode).await {
+                Ok(true) => voices.push(voice),
+                Ok(false) => {}
+                Err(e) => log::warn!(
+                    "[audio_store] Cannot read {}: {}",
+                    entry.path().display(),
+                    e
+                ),
             }
         }
 
@@ -262,6 +265,16 @@ fn file_name(number: u32, mode: BingoMode, part: AudioPart) -> String {
 
 /// The inverse of `file_name`, for the files of one Bingo Mode: the other mode's Words,
 /// numbers outside the mode and anything that is not one of the app's files give `None`.
+async fn has_trimmed_audio(directory: &Path, mode: BingoMode) -> std::io::Result<bool> {
+    let mut files = fs::read_dir(directory).await?;
+    while let Some(file) = files.next_entry().await? {
+        if parse_file_name(&file.path(), mode).is_some() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 fn parse_file_name(path: &Path, mode: BingoMode) -> Option<(u32, AudioPart)> {
     if path.extension()?.to_str()? != "mp3" {
         return None;
@@ -443,7 +456,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn voices_with_recordings_counts_shared_digits_but_not_the_other_modes_words() {
+    async fn voices_with_trimmed_audio_counts_shared_digits_but_not_the_other_modes_words() {
         let (_dir, store) = store();
         let only_bingo90_word = Uuid::new_v4();
         let only_digit = Uuid::new_v4();
@@ -471,11 +484,11 @@ mod tests {
             .unwrap();
 
         let bingo75 = store
-            .voices_with_recordings(ACCENT, BingoMode::Bingo75)
+            .voices_with_trimmed_audio(ACCENT, BingoMode::Bingo75)
             .await
             .unwrap();
         let mut bingo90 = store
-            .voices_with_recordings(ACCENT, BingoMode::Bingo90)
+            .voices_with_trimmed_audio(ACCENT, BingoMode::Bingo90)
             .await
             .unwrap();
         bingo90.sort();
@@ -484,6 +497,36 @@ mod tests {
 
         assert_eq!(bingo75, vec![only_digit]);
         assert_eq!(bingo90, both);
+    }
+
+    #[tokio::test]
+    async fn voices_with_trimmed_audio_skips_a_voice_it_cannot_read() {
+        let (dir, store) = store();
+        let readable = Uuid::new_v4();
+        store
+            .save(
+                45,
+                ACCENT,
+                readable,
+                BingoMode::Bingo90,
+                AudioPart::Word,
+                NOT_MP3.to_vec(),
+            )
+            .await
+            .unwrap();
+        // A file where the Voice's folder should be cannot be listed.
+        let unreadable = dir
+            .path()
+            .join(ACCENT.raw_value())
+            .join(Uuid::new_v4().to_string());
+        fs::write(&unreadable, b"").await.unwrap();
+
+        let voices = store
+            .voices_with_trimmed_audio(ACCENT, BingoMode::Bingo90)
+            .await
+            .unwrap();
+
+        assert_eq!(voices, vec![readable]);
     }
 
     #[tokio::test]

@@ -19,13 +19,13 @@ pub async fn load_audio_files(
 }
 
 #[tauri::command]
-pub async fn voices_with_recordings(
+pub async fn voices_with_trimmed_audio(
     dirs: State<'_, AppDirs>,
     accent: Accent,
     mode: BingoMode,
 ) -> Result<Vec<Uuid>, StorageError> {
     dirs.audio_store()
-        .voices_with_recordings(accent, mode)
+        .voices_with_trimmed_audio(accent, mode)
         .await
 }
 
