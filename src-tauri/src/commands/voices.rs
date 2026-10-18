@@ -110,7 +110,10 @@ pub async fn create_voice(input: CreateVoiceInput) -> Result<Vec<Voice>, VoicesE
     println!("[create_voice] Loaded {} existing voices", voices.len());
 
     // Check if voice already exists (by elevenlabs_id and language)
-    if voices.iter().any(|v| v.elevenlabs_id == voice.elevenlabs_id && v.language == voice.language) {
+    if voices
+        .iter()
+        .any(|v| v.elevenlabs_id == voice.elevenlabs_id && v.language == voice.language)
+    {
         println!("[create_voice] Voice already exists, returning existing list");
         return Ok(voices);
     }

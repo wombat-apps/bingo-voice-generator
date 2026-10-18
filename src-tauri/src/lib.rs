@@ -120,7 +120,10 @@ use models::{build_text, AudioPart, BingoMode, Language};
 
 #[tauri::command]
 fn build_tts_text(number: u32, language: Language, mode: BingoMode, part: AudioPart) -> String {
-    println!("[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}", number, language, mode, part);
+    println!(
+        "[build_tts_text] number={}, language={:?}, mode={:?}, part={:?}",
+        number, language, mode, part
+    );
     let text = build_text(number, language, mode, part);
     println!("[build_tts_text] result: {}", text);
     text

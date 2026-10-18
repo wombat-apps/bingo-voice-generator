@@ -2,15 +2,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum BingoMode {
+    #[default]
     Bingo90,
     Bingo75,
-}
-
-impl Default for BingoMode {
-    fn default() -> Self {
-        BingoMode::Bingo90
-    }
 }
 
 /// Returns the BINGO letter for a given number in Bingo 75 mode

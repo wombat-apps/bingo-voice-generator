@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum AudioPart {
+    #[default]
     Word,
     Digit,
 }
@@ -17,11 +19,5 @@ impl AudioPart {
             AudioPart::Word => "word",
             AudioPart::Digit => "digit",
         }
-    }
-}
-
-impl Default for AudioPart {
-    fn default() -> Self {
-        AudioPart::Word
     }
 }

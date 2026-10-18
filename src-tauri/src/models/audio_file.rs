@@ -37,7 +37,6 @@ impl AudioFile {
             duration,
         }
     }
-
 }
 
 /// Represents a pair of audio files (word and digit) for a single number
@@ -57,5 +56,4 @@ impl NumberAudioPair {
             digit_audio: None,
         }
     }
-
 }

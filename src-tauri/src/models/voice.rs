@@ -39,5 +39,4 @@ impl Voice {
             favorite: false,
         }
     }
-
 }

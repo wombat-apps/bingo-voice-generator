@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use std::time::Duration;
+use thiserror::Error;
 
 use crate::models::Language;
 use crate::services::audio_trimmer::{trim_trailing_silence, TrimConfig};
@@ -49,7 +49,6 @@ pub struct ElevenLabsVoice {
     #[serde(rename(deserialize = "created_at_unix"))]
     pub created_at_unix: Option<i64>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoicesResponse {
@@ -140,6 +139,8 @@ impl Default for VoiceSettings {
 
 // Tauri Commands
 
+// Arguments map 1:1 to the `invoke()` payload in src/services/tauri.ts.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn generate_speech(
     text: String,
@@ -154,7 +155,10 @@ pub async fn generate_speech(
     style: Option<f64>,
     use_speaker_boost: Option<bool>,
 ) -> Result<Vec<u8>, ElevenLabsError> {
-    println!("[generate_speech] text={}, voice_id={}, language_code={}", text, voice_id, language_code);
+    println!(
+        "[generate_speech] text={}, voice_id={}, language_code={}",
+        text, voice_id, language_code
+    );
     if api_key.is_empty() {
         println!("[generate_speech] ERROR: No API key");
         return Err(ElevenLabsError::NoApiKey);
@@ -204,7 +208,10 @@ pub async fn generate_speech(
     println!("[generate_speech] Response status: {}", status);
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         println!("[generate_speech] ERROR: {}", error_text);
 
         // Check for voice_limit_reached error
@@ -224,7 +231,10 @@ pub async fn generate_speech(
 
     let bytes = response.bytes().await?;
     let raw_bytes = bytes.to_vec();
-    println!("[generate_speech] Received {} bytes from API", raw_bytes.len());
+    println!(
+        "[generate_speech] Received {} bytes from API",
+        raw_bytes.len()
+    );
 
     // Apply silence trimming with timeout to prevent hanging
     // Run blocking trimming on a dedicated thread pool with 10 second timeout
@@ -232,10 +242,9 @@ pub async fn generate_speech(
     let raw_bytes_for_trim = raw_bytes.clone();
     let trim_result = tokio::time::timeout(
         Duration::from_secs(10),
-        tokio::task::spawn_blocking(move || {
-            trim_trailing_silence(raw_bytes_for_trim, &config)
-        })
-    ).await;
+        tokio::task::spawn_blocking(move || trim_trailing_silence(raw_bytes_for_trim, &config)),
+    )
+    .await;
 
     let trimmed_bytes = match trim_result {
         Ok(Ok(Ok(trimmed))) => {
@@ -247,10 +256,7 @@ pub async fn generate_speech(
             trimmed
         }
         Ok(Ok(Err(e))) => {
-            println!(
-                "[generate_speech] WARN: Trim failed, using original: {}",
-                e
-            );
+            println!("[generate_speech] WARN: Trim failed, using original: {}", e);
             raw_bytes // Graceful fallback
         }
         Ok(Err(e)) => {
@@ -261,9 +267,7 @@ pub async fn generate_speech(
             raw_bytes // Graceful fallback
         }
         Err(_) => {
-            println!(
-                "[generate_speech] WARN: Trim timed out after 10s, using original"
-            );
+            println!("[generate_speech] WARN: Trim timed out after 10s, using original");
             raw_bytes // Graceful fallback on timeout
         }
     };
@@ -290,7 +294,10 @@ pub async fn list_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, Eleven
     let status = response.status();
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
             message: error_text,
@@ -298,14 +305,20 @@ pub async fn list_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, Eleven
     }
 
     let response_text = response.text().await?;
-    println!("[list_voices] Raw response (first 2000 chars): {}", &response_text[..response_text.len().min(2000)]);
+    println!(
+        "[list_voices] Raw response (first 2000 chars): {}",
+        &response_text[..response_text.len().min(2000)]
+    );
 
-    let voices_response: VoicesResponse = serde_json::from_str(&response_text)
-        .map_err(|e| ElevenLabsError::ApiError {
+    let voices_response: VoicesResponse =
+        serde_json::from_str(&response_text).map_err(|e| ElevenLabsError::ApiError {
             status_code: 500,
-            message: format!("JSON parse error: {}", e)
+            message: format!("JSON parse error: {}", e),
         })?;
-    println!("[list_voices] Found {} voices:", voices_response.voices.len());
+    println!(
+        "[list_voices] Found {} voices:",
+        voices_response.voices.len()
+    );
     let mut premade_count = 0;
     let mut custom_count = 0;
     for voice in &voices_response.voices {
@@ -314,10 +327,15 @@ pub async fn list_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>, Eleven
         } else {
             custom_count += 1;
         }
-        println!("  - {} (id: {}, category: {}, created_at: {:?})",
-            voice.name, voice.voice_id, voice.category, voice.created_at_unix);
+        println!(
+            "  - {} (id: {}, category: {}, created_at: {:?})",
+            voice.name, voice.voice_id, voice.category, voice.created_at_unix
+        );
     }
-    println!("[list_voices] Summary: {} premade, {} custom/professional", premade_count, custom_count);
+    println!(
+        "[list_voices] Summary: {} premade, {} custom/professional",
+        premade_count, custom_count
+    );
     Ok(voices_response.voices)
 }
 
@@ -339,7 +357,10 @@ pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>
     let status = response.status();
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
             message: error_text,
@@ -347,7 +368,10 @@ pub async fn list_premade_voices(api_key: String) -> Result<Vec<ElevenLabsVoice>
     }
 
     let voices_response: VoicesResponse = response.json().await?;
-    println!("[list_premade_voices] Found {} premade voices", voices_response.voices.len());
+    println!(
+        "[list_premade_voices] Found {} premade voices",
+        voices_response.voices.len()
+    );
     Ok(voices_response.voices)
 }
 
@@ -393,7 +417,10 @@ pub async fn search_shared_voices(
     let status = response.status();
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
             message: error_text,
@@ -422,7 +449,10 @@ pub async fn get_subscription(api_key: String) -> Result<SubscriptionInfo, Eleve
     let status = response.status();
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
             message: error_text,
@@ -453,7 +483,10 @@ pub async fn delete_voice(voice_id: String, api_key: String) -> Result<(), Eleve
     println!("[delete_voice] Response status: {}", status);
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         println!("[delete_voice] ERROR: {}", error_text);
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
@@ -472,7 +505,10 @@ pub async fn add_shared_voice(
     new_name: String,
     api_key: String,
 ) -> Result<String, ElevenLabsError> {
-    println!("[add_shared_voice] Adding voice {} from owner {} with name: {}", voice_id, public_owner_id, new_name);
+    println!(
+        "[add_shared_voice] Adding voice {} from owner {} with name: {}",
+        voice_id, public_owner_id, new_name
+    );
     if api_key.is_empty() {
         return Err(ElevenLabsError::NoApiKey);
     }
@@ -491,7 +527,10 @@ pub async fn add_shared_voice(
     println!("[add_shared_voice] Response status: {}", status);
 
     if !status.is_success() {
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         println!("[add_shared_voice] ERROR: {}", error_text);
         return Err(ElevenLabsError::ApiError {
             status_code: status.as_u16(),
@@ -500,6 +539,9 @@ pub async fn add_shared_voice(
     }
 
     let add_response: AddSharedVoiceResponse = response.json().await?;
-    println!("[add_shared_voice] SUCCESS - new voice_id: {}", add_response.voice_id);
+    println!(
+        "[add_shared_voice] SUCCESS - new voice_id: {}",
+        add_response.voice_id
+    );
     Ok(add_response.voice_id)
 }

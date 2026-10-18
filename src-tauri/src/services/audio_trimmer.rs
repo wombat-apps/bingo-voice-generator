@@ -100,11 +100,7 @@ fn decode_mp3(mp3_bytes: &[u8]) -> Result<PcmData, AudioTrimError> {
         .codec_params
         .sample_rate
         .ok_or_else(|| AudioTrimError::DecodeError("No sample rate".into()))?;
-    let channels = track
-        .codec_params
-        .channels
-        .map(|c| c.count())
-        .unwrap_or(2);
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
 
     let decoder_opts = DecoderOptions::default();
     let mut decoder = symphonia::default::get_codecs()
@@ -194,8 +190,7 @@ fn detect_trailing_silence(
 ) -> Option<usize> {
     let threshold = config.threshold_linear();
 
-    let window_size =
-        ((sample_rate as f64 * WINDOW_MS / 1000.0).round() as usize).max(1);
+    let window_size = ((sample_rate as f64 * WINDOW_MS / 1000.0).round() as usize).max(1);
     let total_frames = samples.len() / channels;
 
     if total_frames == 0 {
@@ -239,23 +234,19 @@ fn detect_trailing_silence(
     }
 
     // Minimum silence duration (seconds)
-    let min_silence_frames =
-        (config.min_silence_duration_secs * sample_rate as f64) as usize;
+    let min_silence_frames = (config.min_silence_duration_secs * sample_rate as f64) as usize;
 
     // Find trailing silence region
     let trailing = silence_regions.iter().find(|(start, end)| {
         let end_frame = end.unwrap_or(total_frames);
-        end_frame >= total_frames
-            && (end_frame - *start) >= min_silence_frames
+        end_frame >= total_frames && (end_frame - *start) >= min_silence_frames
     })?;
 
     let silence_start_frame = trailing.0;
 
-    let tail_padding_frames =
-        (config.tail_padding_secs * sample_rate as f64) as usize;
+    let tail_padding_frames = (config.tail_padding_secs * sample_rate as f64) as usize;
 
-    let trim_frame =
-        (silence_start_frame + tail_padding_frames).min(total_frames);
+    let trim_frame = (silence_start_frame + tail_padding_frames).min(total_frames);
 
     Some(trim_frame * channels)
 }
@@ -290,7 +281,6 @@ fn encode_mp3(
     sample_rate: u32,
     channels: usize,
 ) -> Result<Vec<u8>, AudioTrimError> {
-
     let samples_i16: Vec<i16> = samples
         .iter()
         .map(|&s| (s.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)
@@ -319,8 +309,7 @@ fn encode_mp3(
     let mut output = Vec::<u8>::new();
 
     // Buffer de salida para LAME
-    let mut lame_buffer: Vec<MaybeUninit<u8>> =
-        vec![MaybeUninit::uninit(); 8192];
+    let mut lame_buffer: Vec<MaybeUninit<u8>> = vec![MaybeUninit::uninit(); 8192];
 
     for chunk in samples_i16.chunks(frames_per_block * channels) {
         let pcm = InterleavedPcm(chunk);
@@ -330,12 +319,8 @@ fn encode_mp3(
             .map_err(|e| AudioTrimError::EncodeError(format!("{:?}", e)))?;
 
         // Copiar SOLO los bytes inicializados
-        let initialized = unsafe {
-            std::slice::from_raw_parts(
-                lame_buffer.as_ptr() as *const u8,
-                bytes_written,
-            )
-        };
+        let initialized =
+            unsafe { std::slice::from_raw_parts(lame_buffer.as_ptr() as *const u8, bytes_written) };
 
         output.extend_from_slice(initialized);
     }
@@ -345,12 +330,8 @@ fn encode_mp3(
         .map_err(|e| AudioTrimError::EncodeError(format!("{:?}", e)))?;
 
     if flush_bytes > 0 {
-        let initialized = unsafe {
-            std::slice::from_raw_parts(
-                lame_buffer.as_ptr() as *const u8,
-                flush_bytes,
-            )
-        };
+        let initialized =
+            unsafe { std::slice::from_raw_parts(lame_buffer.as_ptr() as *const u8, flush_bytes) };
         output.extend_from_slice(initialized);
     }
 
@@ -366,7 +347,10 @@ fn encode_mp3(
 /// 4. Apply fade-out
 /// 5. Append silence padding
 /// 6. Re-encode to MP3
-pub fn trim_trailing_silence(mp3_bytes: Vec<u8>, config: &TrimConfig) -> Result<Vec<u8>, AudioTrimError> {
+pub fn trim_trailing_silence(
+    mp3_bytes: Vec<u8>,
+    config: &TrimConfig,
+) -> Result<Vec<u8>, AudioTrimError> {
     let original_len = mp3_bytes.len();
 
     // Decode MP3
@@ -421,14 +405,16 @@ pub fn trim_trailing_silence(mp3_bytes: Vec<u8>, config: &TrimConfig) -> Result<
     // Append silence padding
     let silence_frames = (config.silence_padding_secs * sample_rate as f64) as usize;
     let silence_samples = silence_frames * channels;
-    samples.extend(std::iter::repeat(0.0f32).take(silence_samples));
+    samples.extend(std::iter::repeat_n(0.0f32, silence_samples));
 
     let trimmed_frames = samples.len() / channels;
     let trimmed_duration_secs = trimmed_frames as f64 / sample_rate as f64;
 
     println!(
         "[trim_trailing_silence] Trimmed: {:.2}s -> {:.2}s (removed {:.2}s)",
-        original_duration_secs, trimmed_duration_secs, original_duration_secs - trimmed_duration_secs
+        original_duration_secs,
+        trimmed_duration_secs,
+        original_duration_secs - trimmed_duration_secs
     );
 
     // Encode back to MP3
@@ -436,7 +422,8 @@ pub fn trim_trailing_silence(mp3_bytes: Vec<u8>, config: &TrimConfig) -> Result<
 
     println!(
         "[trim_trailing_silence] Encoded: {} -> {} bytes",
-        original_len, result.len()
+        original_len,
+        result.len()
     );
 
     Ok(result)

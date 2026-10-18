@@ -7,7 +7,9 @@ use thiserror::Error;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
-use crate::models::{bingo75_letter, AudioFile, AudioPart, BingoMode, Language, NumberAudioPair, Voice};
+use crate::models::{
+    bingo75_letter, AudioFile, AudioPart, BingoMode, Language, NumberAudioPair, Voice,
+};
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -144,15 +146,15 @@ pub async fn load_audio_files(
         let metadata = entry.metadata().await?;
         let created_at: DateTime<Utc> = metadata
             .created()
-            .map(|t| DateTime::from(t))
+            .map(DateTime::from)
             .unwrap_or_else(|_| Utc::now());
 
         let audio_file = AudioFile {
             number,
-            part: part.clone(),
-            language: language.clone(),
+            part,
+            language,
             voice_uuid: voice.uuid.to_string(),
-            mode: mode.clone(),
+            mode,
             file_path: path.to_string_lossy().to_string(),
             created_at,
             duration: 0.0, // Duration will be calculated on frontend
