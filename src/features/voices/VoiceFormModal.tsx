@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
-import type { SharedVoice, LanguageId, Voice } from '../../types';
+import type { SharedVoice, LanguageId, SubscriptionInfo, Voice } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listPremadeVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
+import { libraryVoicesUnavailableReason } from '../../services/voiceAvailability';
 import './VoiceFormModal.css';
 
 // Extended type for combined voice list
@@ -16,6 +17,7 @@ interface VoiceFormModalProps {
   voice: Voice | null;
   currentLanguage: LanguageId;
   apiKey: string;
+  subscription: SubscriptionInfo | null;
   onClose: () => void;
   onVoiceSaved: (voices: Voice[]) => void;
 }
@@ -28,6 +30,7 @@ export function VoiceFormModal({
   voice,
   currentLanguage,
   apiKey,
+  subscription,
   onClose,
   onVoiceSaved,
 }: VoiceFormModalProps) {
@@ -176,6 +179,9 @@ export function VoiceFormModal({
     [audioElement, playingVoiceId]
   );
 
+  // Why the Active Account's Plan cannot add Library Voices, or null if it can
+  const libraryUnavailableReason = libraryVoicesUnavailableReason(subscription);
+
   const handleSelectVoice = useCallback((voiceOption: VoiceOption) => {
     setSelectedVoice(voiceOption);
     setCustomName(voiceOption.name);
@@ -204,6 +210,9 @@ export function VoiceFormModal({
 
         // Only call addSharedVoice for non-premade voices (library voices)
         if (!selectedVoice.isPremade) {
+          if (libraryUnavailableReason) {
+            throw new Error(libraryUnavailableReason);
+          }
           if (!selectedVoice.publicOwnerId) {
             throw new Error('Voice does not have a public owner ID');
           }
@@ -242,7 +251,7 @@ export function VoiceFormModal({
     } finally {
       setIsSaving(false);
     }
-  }, [mode, selectedVoice, voice, customName, currentLanguage, formGender, onVoiceSaved]);
+  }, [mode, selectedVoice, voice, customName, currentLanguage, formGender, onVoiceSaved, libraryUnavailableReason]);
 
   const handleClose = useCallback(() => {
     if (audioElement) {
@@ -337,54 +346,67 @@ export function VoiceFormModal({
                 </div>
               ) : (
                 <div className="voice-picker-list">
-                  {searchResults.map((voiceOption) => (
-                    <div key={voiceOption.voiceId} className="voice-picker-item">
-                      <div className="voice-picker-info">
-                        <div className="voice-picker-avatar">
-                          <User size={20} />
-                        </div>
-                        <div className="voice-picker-details">
-                          <span className="voice-picker-name">{voiceOption.name}</span>
-                          <span className="voice-picker-meta">
-                            {voiceOption.gender && <span className={`badge badge-${voiceOption.gender}`}>{voiceOption.gender}</span>}
-                            {voiceOption.accent && <span className="voice-tag">{voiceOption.accent}</span>}
-                            {voiceOption.age && <span className="voice-tag">{voiceOption.age}</span>}
-                            {voiceOption.isPremade || voiceOption.freeUsersAllowed ? (
-                              <span className="badge badge-free">Free</span>
-                            ) : (
-                              <span className="badge badge-paid">Paid</span>
+                  {searchResults.map((voiceOption) => {
+                    const unavailableReason = voiceOption.isPremade ? null : libraryUnavailableReason;
+                    return (
+                      <div
+                        key={voiceOption.voiceId}
+                        className={`voice-picker-item ${unavailableReason ? 'is-unavailable' : ''}`}
+                      >
+                        <div className="voice-picker-info">
+                          <div className="voice-picker-avatar">
+                            <User size={20} />
+                          </div>
+                          <div className="voice-picker-details">
+                            <span className="voice-picker-name">{voiceOption.name}</span>
+                            <span className="voice-picker-meta">
+                              {voiceOption.gender && <span className={`badge badge-${voiceOption.gender}`}>{voiceOption.gender}</span>}
+                              {voiceOption.accent && <span className="voice-tag">{voiceOption.accent}</span>}
+                              {voiceOption.age && <span className="voice-tag">{voiceOption.age}</span>}
+                              {/* On a Plan that cannot add Library Voices the reason below replaces the badge */}
+                              {!unavailableReason &&
+                                (voiceOption.isPremade || voiceOption.freeUsersAllowed ? (
+                                  <span className="badge badge-free">Free</span>
+                                ) : (
+                                  <span className="badge badge-paid">Paid</span>
+                                ))}
+                            </span>
+                            {unavailableReason && (
+                              <span className="voice-picker-unavailable">{unavailableReason}</span>
                             )}
-                          </span>
-                          {voiceOption.description && (
-                            <span className="voice-picker-description">{voiceOption.description}</span>
-                          )}
+                            {voiceOption.description && (
+                              <span className="voice-picker-description">{voiceOption.description}</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="voice-picker-actions">
-                        {voiceOption.previewUrl && (
+                        <div className="voice-picker-actions">
+                          {voiceOption.previewUrl && (
+                            <button
+                              type="button"
+                              className="btn btn-icon btn-sm"
+                              onClick={() => handlePreview(voiceOption)}
+                              title="Preview voice"
+                            >
+                              {playingVoiceId === voiceOption.voiceId ? (
+                                <Square size={16} />
+                              ) : (
+                                <Play size={16} />
+                              )}
+                            </button>
+                          )}
                           <button
                             type="button"
-                            className="btn btn-icon btn-sm"
-                            onClick={() => handlePreview(voiceOption)}
-                            title="Preview voice"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleSelectVoice(voiceOption)}
+                            disabled={unavailableReason !== null}
+                            title={unavailableReason ?? undefined}
                           >
-                            {playingVoiceId === voiceOption.voiceId ? (
-                              <Square size={16} />
-                            ) : (
-                              <Play size={16} />
-                            )}
+                            Select
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleSelectVoice(voiceOption)}
-                        >
-                          Select
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

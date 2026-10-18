@@ -304,3 +304,13 @@
   gap: var(--spacing-sm);
   margin-left: auto;
 }
+
+/* Library Voice the Active Account's Plan cannot add */
+.voice-picker-item.is-unavailable .voice-picker-name {
+  opacity: 0.6;
+}
+
+.voice-picker-unavailable {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}

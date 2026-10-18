@@ -1263,6 +1263,7 @@ function App() {
         voice={voiceFormState.voice}
         currentLanguage={selectedLanguage}
         apiKey={apiKey}
+        subscription={subscription}
         onClose={handleCloseVoiceForm}
         onVoiceSaved={handleVoiceSaved}
       />
