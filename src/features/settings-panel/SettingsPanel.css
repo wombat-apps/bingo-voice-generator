@@ -1,0 +1,134 @@
+/* Panel - now part of grid layout instead of fixed overlay */
+.settings-panel {
+  grid-column: 3;
+  width: 320px;
+  height: 100%;
+  background: var(--surface-sidebar);
+  backdrop-filter: blur(32px) saturate(1.35);
+  -webkit-backdrop-filter: blur(32px) saturate(1.35);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 220ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+/* Hidden state when not open */
+.settings-panel:not(.open) {
+  width: 0;
+  opacity: 0;
+  transform: translateX(12px);
+  pointer-events: none;
+  border-left-color: transparent;
+}
+
+/* Header */
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-panel-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.settings-panel-close:hover {
+  background-color: var(--surface-control-hover);
+  color: var(--text-primary);
+}
+
+/* Content */
+.settings-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* Section */
+.settings-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.settings-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  margin-bottom: var(--spacing-md);
+}
+
+/* API Key Section */
+.api-key-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.api-key-input-wrapper {
+  position: relative;
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.api-key-input-wrapper .input {
+  flex: 1;
+  padding-left: var(--spacing-sm);
+  padding-right: var(--spacing-sm);
+}
+
+.api-key-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.api-key-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.75rem;
+}
+
+.api-key-status.saved {
+  color: var(--status-success);
+}
+
+.api-key-status.not-saved {
+  color: var(--text-subtle);
+}
+
+/* Subscription section in panel */
+.settings-panel .subscription-info {
+  margin-top: var(--spacing-md);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .settings-panel {
+    width: 100%;
+  }
+}

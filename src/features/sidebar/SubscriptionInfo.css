@@ -1,0 +1,98 @@
+.subscription-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.subscription-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subscription-tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-2xs) 8px;
+  border-radius: 9999px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  color: white;
+}
+
+.subscription-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.subscription-usage-text {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+}
+
+.subscription-used {
+  font-weight: 600;
+}
+
+.subscription-separator {
+  color: var(--text-subtle);
+}
+
+.subscription-limit {
+  color: var(--text-muted);
+}
+
+.subscription-unit {
+  font-size: var(--font-size-sm);
+  color: var(--text-subtle);
+}
+
+.subscription-progress-track {
+  height: 6px;
+  background-color: var(--surface-card-strong);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.subscription-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.subscription-remaining {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.subscription-reset {
+  font-size: var(--font-size-sm);
+  color: var(--text-subtle);
+  font-style: italic;
+}
+
+/* Tier badge colors */
+.tier-badge--free { background-color: var(--tier-free); }
+.tier-badge--starter { background-color: var(--tier-starter); }
+.tier-badge--creator { background-color: var(--tier-creator); }
+.tier-badge--pro { background-color: var(--tier-pro); }
+.tier-badge--professional { background-color: var(--tier-pro); }
+.tier-badge--scale { background-color: var(--tier-enterprise); }
+.tier-badge--enterprise { background-color: var(--tier-enterprise); }
+
+/* Usage progress bar colors */
+.usage-bar--healthy { background-color: var(--usage-healthy); }
+.usage-bar--warning { background-color: var(--usage-warning); }
+.usage-bar--critical { background-color: var(--usage-critical); }

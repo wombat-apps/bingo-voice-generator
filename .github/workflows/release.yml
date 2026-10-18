@@ -4,175 +4,109 @@ on:
   push:
     tags:
       - 'v*'
+  # Dry run: build, sign and notarize without publishing a GitHub Release.
+  workflow_dispatch:
 
 env:
-  APP_NAME: BingoVoiceGenerator
+  # Stable name so releases/latest/download/BingoVoiceGenerator.dmg always resolves.
+  DMG_NAME: BingoVoiceGenerator.dmg
+  TARGET: aarch64-apple-darwin
 
 permissions:
   contents: write
 
 jobs:
   build-and-release:
-    runs-on: macos-26
+    # Developer ID signing and notarization require macOS.
+    runs-on: macos-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '26.2'
-
-      - name: Extract version from tag
+      - name: Resolve version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
-          # Update version.env
-          echo "MARKETING_VERSION=$VERSION" > version.env
-          echo "BUILD_NUMBER=${{ github.run_number }}" >> version.env
-
-          cat version.env
-
-      - name: Import Code Signing Certificate
-        env:
-          CERTIFICATE_P12: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
-          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      # The tag is the single source of truth for the app version.
+      - name: Inject version
+        if: github.ref_type == 'tag'
         run: |
-          # Create temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          VERSION="${{ steps.version.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' src-tauri/tauri.conf.json > tauri.conf.tmp
+          mv tauri.conf.tmp src-tauri/tauri.conf.json
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-          # Import certificate
-          echo "$CERTIFICATE_P12" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import $RUNNER_TEMP/certificate.p12 \
-            -P "$CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 \
-            -k $KEYCHAIN_PATH
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
 
-          security list-keychain -d user -s $KEYCHAIN_PATH
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
 
-          # Allow codesign to access keychain
-          security set-key-partition-list -S apple-tool:,apple:,codesign: \
-            -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
-      - name: Build project
-        run: swift build -c release
+      - name: Install npm dependencies
+        run: npm ci
 
-      - name: Build and Sign App
+      - name: Build, sign, notarize and publish
+        uses: tauri-apps/tauri-action@v0
         env:
-          APP_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
-          SPARKLE_PUBLIC_ED_KEY: ${{ secrets.SPARKLE_PUBLIC_ED_KEY }}
-          SPARKLE_FEED_URL: https://github.com/wombat-apps/bingo-voice-generator/releases/latest/download/appcast.xml
-          ENABLE_SPARKLE: "1"
-          ARCHES: "arm64 x86_64"
-        run: |
-          ./Scripts/package_app.sh release
-
-          # Verify signature
-          codesign --verify --deep --strict ${APP_NAME}.app
-          echo "Code signature verified"
-
-      - name: Create Release Archive
-        id: archive
-        run: |
-          mkdir -p releases
-          ZIP_NAME="${APP_NAME}.zip"
-          ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
-          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
-          echo "zip_path=releases/$ZIP_NAME" >> $GITHUB_OUTPUT
-
-      - name: Notarize App
-        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Developer ID signing
+          APPLE_CERTIFICATE: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
+          # Notarization
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Updater artifact signing
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          args: --target ${{ env.TARGET }}
+          # Empty on workflow_dispatch, which makes tauri-action build without publishing.
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseBody: Release ${{ github.ref_name }}
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+
+      - name: Locate DMG
+        id: dmg
         run: |
-          # Submit and capture output to temp file (avoid logging secrets)
-          xcrun notarytool submit "${{ steps.archive.outputs.zip_path }}" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_PASSWORD" \
-            --team-id "$TEAM_ID" \
-            --wait \
-            --output-format json > /tmp/notarization-result.json
+          DMG_PATH=$(ls src-tauri/target/${TARGET}/release/bundle/dmg/*.dmg | head -1)
+          echo "path=$DMG_PATH" >> $GITHUB_OUTPUT
+          echo "DMG: $DMG_PATH"
 
-          # Extract submission ID and status (safe to log)
-          SUBMISSION_ID=$(jq -r '.id' /tmp/notarization-result.json)
-          STATUS=$(jq -r '.status' /tmp/notarization-result.json)
-
-          echo "Submission ID: $SUBMISSION_ID"
-          echo "Status: $STATUS"
-
-          # If not accepted, get detailed log and fail
-          if [ "$STATUS" != "Accepted" ]; then
-            echo "::error::Notarization failed with status: $STATUS"
-            echo "Fetching detailed log from Apple..."
-            xcrun notarytool log "$SUBMISSION_ID" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$TEAM_ID" \
-              /tmp/notarization-log.json || true
-            echo "=== Notarization Issues ==="
-            jq '.issues' /tmp/notarization-log.json || true
-            exit 1
-          fi
-
-          echo "Notarization accepted"
-
-      - name: Staple Notarization Ticket
-        run: |
-          # Retry stapling with delay - ticket may take time to propagate
-          for i in 1 2 3 4 5; do
-            echo "Stapling attempt $i..."
-            if xcrun stapler staple ${APP_NAME}.app; then
-              xcrun stapler validate ${APP_NAME}.app
-              echo "Stapling complete and validated"
-              exit 0
-            fi
-            echo "Stapling failed, waiting 30 seconds before retry..."
-            sleep 30
-          done
-          echo "Stapling failed after 5 attempts"
-          exit 1
-
-      - name: Recreate Archive with Stapled App
-        run: |
-          rm -f "${{ steps.archive.outputs.zip_path }}"
-          ZIP_NAME="${APP_NAME}.zip"
-          ditto -c -k --keepParent ${APP_NAME}.app releases/$ZIP_NAME
-          echo "Recreated archive with stapled app"
-
-      - name: Generate Appcast
-        env:
-          DOWNLOAD_URL_PREFIX: https://github.com/wombat-apps/bingo-voice-generator/releases/download/v${{ steps.version.outputs.version }}/
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-        run: |
-          # Pass private key via stdin using --ed-key-file -
-          echo "$SPARKLE_PRIVATE_KEY" | base64 --decode | \
-            .build/artifacts/sparkle/Sparkle/bin/generate_appcast \
-              --ed-key-file - \
-              --download-url-prefix "$DOWNLOAD_URL_PREFIX" \
-              releases/
-
-          echo "Appcast generated:"
-          cat releases/appcast.xml
-
-      - name: Create Release
+      - name: Upload stable-name DMG to release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          ZIP_PATH="${{ steps.archive.outputs.zip_path }}"
+          cp "${{ steps.dmg.outputs.path }}" "$RUNNER_TEMP/$DMG_NAME"
+          gh release upload "${{ github.ref_name }}" "$RUNNER_TEMP/$DMG_NAME" --clobber
 
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
-            --notes "Release v${VERSION}" \
-            "$ZIP_PATH" \
-            releases/appcast.xml
-
-          echo "Release created at https://github.com/${{ github.repository }}/releases/tag/v${VERSION}"
+      - name: Upload dry-run artifacts
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bingo-voice-generator-${{ steps.version.outputs.version }}
+          path: src-tauri/target/${{ env.TARGET }}/release/bundle/
+          retention-days: 7

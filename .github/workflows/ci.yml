@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Linux runners are cheap and fast; macOS-only code paths are compiled in release.yml.
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libxdo-dev \
+            patchelf
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Typechecks with tsc and produces dist/, which tauri::generate_context! requires.
+      - name: Build frontend
+        run: npm run build
+
+      - name: Rust format
+        working-directory: src-tauri
+        run: cargo fmt --check
+
+      - name: Rust lint
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test

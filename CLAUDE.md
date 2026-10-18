@@ -4,91 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-macOS SwiftUI app that generates audio files for bingo numbers using the ElevenLabs text-to-speech API. Supports Bingo 90 (European, 1-90) and Bingo 75 (American, B-I-N-G-O letters) in Spanish, English (US/UK), French, Portuguese, and Italian.
+A desktop application (macOS, Apple Silicon only for now) that generates bingo number audio files using the ElevenLabs TTS API. Built with Tauri 2 (Rust backend) and React 19 (TypeScript frontend).
 
-## Build Commands
-
-```bash
-# Build only (check compilation)
-swift build
-
-# Build and run (recommended for development)
-./Scripts/compile_and_run.sh
-
-# Build universal binary (Intel + Apple Silicon)
-./Scripts/compile_and_run.sh --release-universal
-
-# Launch without rebuilding
-./Scripts/launch.sh
-
-# Package .app bundle (debug or release)
-./Scripts/package_app.sh release
-```
-
-Note: This project has no test suite.
-
-## Release Workflow
+## Commands
 
 ```bash
-# 1. Generate Sparkle keys (first time only)
-./Scripts/generate_sparkle_keys.sh
+# Install dependencies
+npm install
 
-# 2. Create signed release (requires APP_IDENTITY in signing.env)
-./Scripts/create_release.sh
+# Development (full Tauri app with hot reload)
+npm run tauri dev
 
-# 3. Generate appcast.xml for Sparkle updates
-./Scripts/generate_appcast.sh releases/BingoVoiceGenerator-x.x.x.zip
+# Production build for current platform
+npm run tauri build
+
+# Frontend-only dev server (no Rust backend)
+npm run dev
+
+# Rust commands (run from src-tauri/)
+# Note: May need to set PATH first: export PATH="$HOME/.cargo/bin:$PATH"
+cargo build                    # Build Rust backend
+cargo check                    # Check Rust code compiles (faster)
+cargo clippy                   # Lint Rust code
+cargo fmt                      # Format Rust code
+cargo test                     # Run Rust tests
 ```
 
-Config files: `version.env` (version/build), `sparkle.env` (update feed), `signing.env` (code signing identity)
+Build outputs: `src-tauri/target/release/bundle/` (`.app` and `.dmg`).
 
-## Other Scripts
+## CI / Release
 
-- `download_ffmpeg.sh` - Downloads static ffmpeg binary for silence trimming
-- `build_icon.sh` - Generates `.icns` from `.icon` using Xcode tools
+- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
+- `.github/workflows/release.yml`: runs on `v*` tags, on macOS. tauri-action builds for `aarch64-apple-darwin`, signs with Developer ID, notarizes, and publishes a GitHub Release containing `latest.json` for `tauri-plugin-updater` plus a stable-name `BingoVoiceGenerator.dmg`. The version comes from the tag and is injected into `tauri.conf.json`, so never bump it by hand. Running it with `workflow_dispatch` is a dry run that uploads the bundle as an artifact.
+- The updater public key is in `tauri.conf.json`. The private key is the `TAURI_SIGNING_PRIVATE_KEY` secret; if it is lost, existing installs can no longer update.
+
+## History
+
+The former native SwiftUI app is preserved at the `swift-final` tag (`git show swift-final:<path>`). `PENDING_FEATURES.md` lists the features still to port and links to the Swift sources there. See `docs/adr/0001-tauri-replaces-native-swift.md`.
 
 ## Architecture
 
-**Tech Stack**: Swift 6.2, SwiftUI, SwiftPM, macOS 14+, Sparkle (auto-updates)
+```
+Frontend (React/TypeScript)     Backend (Rust/Tauri)
+─────────────────────────────   ────────────────────────────
+src/App.tsx                     src-tauri/src/lib.rs
+    ↓                               ↓
+src/services/tauri.ts  ←IPC→   src-tauri/src/commands/
+    ↓                               ├── elevenlabs.rs (TTS API)
+src/features/                       ├── storage.rs (file I/O)
+    ├── grid/                       ├── voices.rs (voice CRUD)
+    ├── sidebar/                    └── keychain.rs (secure storage)
+    ├── player/
+    └── voices/
+```
 
-**State Management**: `@Observable` `@MainActor` classes injected via SwiftUI environment:
-- `AppState`: UI selections (language, voice, mode), audio file cache, playback
-- `GenerationState`: API key, generation progress, error handling
-- `SettingsState`: ElevenLabs model/format preferences
-- `VoiceStore`: Fetches and caches available voices from ElevenLabs API
-- `SharedVoicePickerState`: Voice picker UI state
+**IPC Pattern**: Frontend calls `invoke()` from `@tauri-apps/api` → Rust commands in `src-tauri/src/commands/` → Results serialized back to TypeScript.
 
-**Services**: Actor-based singletons for thread safety:
-- `ElevenLabsService`: TTS API client
-- `AudioStorageService`: File I/O at `~/Library/Application Support/BingoVoiceGenerator/{lang}/{voice}/{mode}/`
-- `AudioPlayerService`: AVAudioPlayer wrapper
-- `PreviewAudioService`: Preview audio generation and playback
-- `SilenceTrimmingService`: Trims silence from audio using bundled ffmpeg
-- `WaveformService`: Generates waveform data for audio visualization
-- `ExportService`: Exports audio files to various formats
-- `KeychainService`: Secure API key storage
-
-**Data Flow**:
-1. User configures ElevenLabs API key in the main screen control panel → saved to Keychain
-2. User selects language/voice/mode → AppState triggers `refreshAudioFiles()`
-3. Generate button → `GenerationState.generate()` → `TextBuilder` creates TTS prompt → `ElevenLabsService` calls API → `AudioStorageService` saves MP3
+All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backend functionality:
+1. Add Rust command in `src-tauri/src/commands/`
+2. Export from `src-tauri/src/commands/mod.rs`
+3. Register in `src-tauri/src/lib.rs` invoke_handler
+4. Add TypeScript wrapper in `src/services/tauri.ts`
 
 ## Key Files
 
-- `Sources/BingoVoiceGenerator/Config/NumberWords.swift` - TTS text patterns and digit words per language
-- `Sources/BingoVoiceGenerator/Models/Language.swift` - Language enum with ElevenLabs codes and accents
-- `Sources/BingoVoiceGenerator/Services/TextBuilder.swift` - Generates speech text from number
-- `Sources/BingoVoiceGenerator/Resources/ffmpeg` - Bundled ffmpeg binary for audio processing
-- `version.env` - Marketing version and build number (sourced by package scripts)
-- `sparkle.env` - Sparkle feed URL and public key (not committed, create locally)
-- `signing.env` - APP_IDENTITY for code signing (not committed, create locally)
+| File | Purpose |
+|------|---------|
+| `src/App.tsx` | Main state management, audio generation orchestration |
+| `src/services/tauri.ts` | All Tauri command wrappers (type-safe IPC bridge) |
+| `src/services/audioPlayer.ts` | Web Audio API playback and waveform |
+| `src-tauri/src/lib.rs` | Tauri app setup, command registration |
+| `src-tauri/src/models/number_words.rs` | Number-to-text mappings for all languages |
+| `src-tauri/tauri.conf.json` | App config, window settings, security capabilities |
 
-## Adding Languages/Voices
+## Data Flow
 
-1. Add to `Language` enum with rawValue, displayName, flag, elevenLabsCode
-2. Add language config to `NumberWords.swift` (digits, numbers, speech patterns)
-3. Add voice entry to `Voice.allVoices` with ElevenLabs voice ID
+1. User selects language/mode/voice in Sidebar
+2. Clicks cell or "Generate All" → `App.tsx` orchestrates
+3. Backend builds TTS text (`number_words.rs`) and calls ElevenLabs API
+4. Audio saved to `~/.local/share/BingoVoiceGenerator/` (organized by language/voice/mode)
+5. Frontend loads audio bytes and plays via Web Audio API
 
-## Concurrency
+## Types
 
-Swift 6.2 strict concurrency enabled. All UI updates on `@MainActor`, services are actors, types conform to `Sendable`.
+Shared types are defined in:
+- Frontend: `src/types.ts`
+- Backend: `src-tauri/src/models/`
+
+Key types: `LanguageId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioFile`
+
+## Conventions
+
+- Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
+- Rust commands use `#[tauri::command]` attribute and return `Result<T, String>`
+- API keys stored securely via system keychain (not in config files)
+- TypeScript strict mode enabled

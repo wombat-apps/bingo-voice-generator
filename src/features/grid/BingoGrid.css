@@ -1,0 +1,38 @@
+.bingo-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin: 0 auto;        /* Center when narrower than container */
+  width: 100%;           /* Use available space up to max-width */
+}
+
+.bingo-grid-container--bingo75 {
+  max-width: 400px;      /* 5 columns: half width */
+}
+
+.bingo-grid-container--bingo90 {
+  max-width: 800px;      /* 10 columns: full width */
+}
+
+.bingo-grid-header {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.bingo-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  font-size: clamp(0.875rem, 2vw, 1.25rem);
+  font-weight: 700;
+  color: var(--accent-tertiary);
+  background-color: var(--surface-card-strong);
+  border-radius: var(--radius-md);
+}
+
+.bingo-grid {
+  display: grid;
+  gap: var(--spacing-sm);
+}

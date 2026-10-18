@@ -1,0 +1,60 @@
+.segmented-control {
+  display: flex;
+  background: var(--surface-control);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+
+.segmented-button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-md) - 4px);
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.segmented-button:hover:not(.active) {
+  color: var(--text-primary);
+  background: var(--surface-control-hover);
+}
+
+.segmented-button.active {
+  background: linear-gradient(
+    135deg,
+    var(--accent-tertiary) 0%,
+    var(--accent-tertiary-hover) 100%
+  );
+  color: var(--text-on-accent);
+  font-weight: 600;
+  box-shadow:
+    0 2px 8px var(--accent-tertiary-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Size variants */
+.segmented-control-sm {
+  height: 32px;
+  padding: 3px;
+}
+
+.segmented-control-sm .segmented-button {
+  padding: 0 10px;
+  font-size: var(--font-size-sm);
+}
+
+.segmented-control-md {
+  height: 36px;
+  padding: 3px;
+}
+
+.segmented-control-md .segmented-button {
+  padding: 0 14px;
+  font-size: var(--font-size-base);
+}

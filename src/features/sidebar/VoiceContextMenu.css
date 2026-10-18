@@ -1,0 +1,68 @@
+.voice-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  background: var(--surface-popover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.voice-context-menu-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: var(--spacing-xs) 0;
+}
+
+.voice-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.voice-context-menu-item:hover:not(:disabled) {
+  background-color: var(--surface-control-hover);
+}
+
+.voice-context-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-context-menu-item svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.voice-context-menu-item:hover:not(:disabled) svg {
+  color: var(--text-primary);
+}
+
+.voice-context-menu-item-danger {
+  color: var(--status-error);
+}
+
+.voice-context-menu-item-danger svg {
+  color: var(--status-error);
+}
+
+.voice-context-menu-item-danger:hover:not(:disabled) {
+  background-color: var(--status-error-bg);
+}
+
+.voice-context-menu-item-danger:hover:not(:disabled) svg {
+  color: var(--status-error);
+}
