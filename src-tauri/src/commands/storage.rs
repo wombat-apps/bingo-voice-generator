@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::models::{Accent, AudioPart, BingoMode, NumberAudioPair};
+use crate::models::{Accent, AudioFileId, BingoMode, NumberAudioPair, VoiceNumber};
 use crate::services::app_dirs::AppDirs;
 pub use crate::services::audio_store::StorageError;
 
@@ -32,28 +32,17 @@ pub async fn voices_with_trimmed_audio(
 #[tauri::command]
 pub async fn delete_audio_file(
     dirs: State<'_, AppDirs>,
-    number: u32,
-    accent: Accent,
-    voice_uuid: Uuid,
-    mode: BingoMode,
-    part: AudioPart,
+    id: AudioFileId,
 ) -> Result<(), StorageError> {
-    dirs.audio_store()
-        .delete(number, accent, voice_uuid, mode, part)
-        .await
+    dirs.audio_store().delete(&id).await
 }
 
 #[tauri::command]
 pub async fn delete_all_audio_files(
     dirs: State<'_, AppDirs>,
-    number: u32,
-    accent: Accent,
-    voice_uuid: Uuid,
-    mode: BingoMode,
+    voice_number: VoiceNumber,
 ) -> Result<(), StorageError> {
-    dirs.audio_store()
-        .delete_all(number, accent, voice_uuid, mode)
-        .await
+    dirs.audio_store().delete_all(&voice_number).await
 }
 
 #[tauri::command]

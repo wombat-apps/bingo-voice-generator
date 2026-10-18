@@ -9,7 +9,9 @@ use tokio::fs;
 use uuid::Uuid;
 
 use super::audio_trimmer::{trim_trailing_silence, AudioTrimError, TrimConfig};
-use crate::models::{Accent, AudioFile, AudioPart, BingoMode, NumberAudioPair};
+use crate::models::{
+    Accent, AudioFile, AudioFileId, AudioPart, BingoMode, NumberAudioPair, VoiceNumber,
+};
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -64,28 +66,14 @@ impl AudioStore {
             .join(voice.to_string())
     }
 
-    fn trimmed_path(
-        &self,
-        number: u32,
-        accent: Accent,
-        voice: Uuid,
-        mode: BingoMode,
-        part: AudioPart,
-    ) -> PathBuf {
-        self.voice_directory(accent, voice)
-            .join(file_name(number, mode, part))
+    fn trimmed_path(&self, id: &AudioFileId) -> PathBuf {
+        self.voice_directory(id.accent, id.voice_uuid)
+            .join(file_name(id))
     }
 
-    fn original_path(
-        &self,
-        number: u32,
-        accent: Accent,
-        voice: Uuid,
-        mode: BingoMode,
-        part: AudioPart,
-    ) -> PathBuf {
-        self.originals_directory(accent, voice)
-            .join(file_name(number, mode, part))
+    fn original_path(&self, id: &AudioFileId) -> PathBuf {
+        self.originals_directory(id.accent, id.voice_uuid)
+            .join(file_name(id))
     }
 
     /// Saves `original`, the audio exactly as ElevenLabs returned it, as the Original Audio,
@@ -93,16 +81,12 @@ impl AudioStore {
     /// Original Audio. Replaces any audio already saved for this part.
     pub async fn save(
         &self,
-        number: u32,
-        accent: Accent,
-        voice: Uuid,
-        mode: BingoMode,
-        part: AudioPart,
+        id: &AudioFileId,
         original: Vec<u8>,
     ) -> Result<AudioFile, StorageError> {
         // The Original Audio is only a safety net: failing to save it must not
         // lose a generation that has already spent characters.
-        let original_path = self.original_path(number, accent, voice, mode, part);
+        let original_path = self.original_path(id);
         if let Err(e) = write_file(&original_path, &original).await {
             log::warn!(
                 "[audio_store] Could not save Original Audio {}: {}",
@@ -111,16 +95,12 @@ impl AudioStore {
             );
         }
 
-        let path = self.trimmed_path(number, accent, voice, mode, part);
+        let path = self.trimmed_path(id);
         let trimmed = trim_or_keep(original).await;
         write_file(&path, &trimmed).await?;
 
         Ok(AudioFile::new(
-            number,
-            part,
-            accent,
-            voice,
-            mode,
+            *id,
             path.to_string_lossy().to_string(),
             Utc::now(),
         ))
@@ -142,7 +122,7 @@ impl AudioStore {
         let mut entries = fs::read_dir(&directory).await?;
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            let Some((number, part)) = parse_file_name(&path, mode) else {
+            let Some(id) = parse_file_name(&path, accent, voice, mode) else {
                 continue;
             };
 
@@ -151,20 +131,12 @@ impl AudioStore {
                 .created()
                 .map(DateTime::from)
                 .unwrap_or_else(|_| Utc::now());
-            let audio_file = AudioFile::new(
-                number,
-                part,
-                accent,
-                voice,
-                mode,
-                path.to_string_lossy().to_string(),
-                created_at,
-            );
+            let audio_file = AudioFile::new(id, path.to_string_lossy().to_string(), created_at);
 
             let pair = result
-                .entry(number)
-                .or_insert_with(|| NumberAudioPair::new(number));
-            match part {
+                .entry(id.number)
+                .or_insert_with(|| NumberAudioPair::new(id.number));
+            match id.part {
                 AudioPart::Word => pair.word_audio = Some(audio_file),
                 AudioPart::Digit => pair.digit_audio = Some(audio_file),
             }
@@ -195,7 +167,7 @@ impl AudioStore {
                 continue;
             };
             // One unreadable folder counts as that Voice having no audio
-            match has_trimmed_audio(&entry.path(), mode).await {
+            match has_trimmed_audio(&entry.path(), accent, voice, mode).await {
                 Ok(true) => voices.push(voice),
                 Ok(false) => {}
                 Err(e) => log::warn!(
@@ -210,33 +182,21 @@ impl AudioStore {
     }
 
     /// Deletes the Trimmed Audio of one part, and its Original Audio if there is one.
-    pub async fn delete(
-        &self,
-        number: u32,
-        accent: Accent,
-        voice: Uuid,
-        mode: BingoMode,
-        part: AudioPart,
-    ) -> Result<(), StorageError> {
-        fs::remove_file(self.trimmed_path(number, accent, voice, mode, part)).await?;
-        remove_original_audio(&self.original_path(number, accent, voice, mode, part)).await;
+    pub async fn delete(&self, id: &AudioFileId) -> Result<(), StorageError> {
+        fs::remove_file(self.trimmed_path(id)).await?;
+        remove_original_audio(&self.original_path(id)).await;
         Ok(())
     }
 
     /// Deletes the Word and the Digit of a number, whichever exist.
-    pub async fn delete_all(
-        &self,
-        number: u32,
-        accent: Accent,
-        voice: Uuid,
-        mode: BingoMode,
-    ) -> Result<(), StorageError> {
+    pub async fn delete_all(&self, voice_number: &VoiceNumber) -> Result<(), StorageError> {
         for part in AudioPart::all() {
-            let path = self.trimmed_path(number, accent, voice, mode, part);
+            let id = voice_number.with_part(part);
+            let path = self.trimmed_path(&id);
             if path.exists() {
                 fs::remove_file(&path).await?;
             }
-            remove_original_audio(&self.original_path(number, accent, voice, mode, part)).await;
+            remove_original_audio(&self.original_path(&id)).await;
         }
         Ok(())
     }
@@ -258,29 +218,40 @@ impl AudioStore {
 
 /// `n45_word.mp3` for the Bingo 75 Word, `45_word.mp3` for the Bingo 90 Word and
 /// `45_digit.mp3` for the Digit, which both Bingo Modes share.
-fn file_name(number: u32, mode: BingoMode, part: AudioPart) -> String {
+fn file_name(id: &AudioFileId) -> String {
     // Only the Word carries the letter: the Digit is shared by both Bingo Modes.
-    let letter = match part {
-        AudioPart::Word => mode.column_letter(number).unwrap_or(""),
+    let letter = match id.part {
+        AudioPart::Word => id.mode.column_letter(id.number).unwrap_or(""),
         AudioPart::Digit => "",
     };
-    let stem = format!("{}{}", letter.to_lowercase(), number);
-    format!("{}_{}.mp3", stem, part.file_suffix())
+    let stem = format!("{}{}", letter.to_lowercase(), id.number);
+    format!("{}_{}.mp3", stem, id.part.file_suffix())
 }
 
-/// The inverse of `file_name`, for the files of one Bingo Mode: the other mode's Words,
-/// numbers outside the mode and anything that is not one of the app's files give `None`.
-async fn has_trimmed_audio(directory: &Path, mode: BingoMode) -> std::io::Result<bool> {
+async fn has_trimmed_audio(
+    directory: &Path,
+    accent: Accent,
+    voice: Uuid,
+    mode: BingoMode,
+) -> std::io::Result<bool> {
     let mut files = fs::read_dir(directory).await?;
     while let Some(file) = files.next_entry().await? {
-        if parse_file_name(&file.path(), mode).is_some() {
+        if parse_file_name(&file.path(), accent, voice, mode).is_some() {
             return Ok(true);
         }
     }
     Ok(false)
 }
 
-fn parse_file_name(path: &Path, mode: BingoMode) -> Option<(u32, AudioPart)> {
+/// The inverse of `file_name`, for the files of one Voice in one Bingo Mode: the other
+/// mode's Words, numbers outside the mode and anything that is not one of the app's files
+/// give `None`.
+fn parse_file_name(
+    path: &Path,
+    accent: Accent,
+    voice: Uuid,
+    mode: BingoMode,
+) -> Option<AudioFileId> {
     if path.extension()?.to_str()? != "mp3" {
         return None;
     }
@@ -302,13 +273,14 @@ fn parse_file_name(path: &Path, mode: BingoMode) -> Option<(u32, AudioPart)> {
         _ => stem.parse().ok()?,
     };
 
+    let id = VoiceNumber::new(accent, voice, mode, number).with_part(part);
     if !mode.contains(number)
         || !part.exists_for(number)
-        || file_name(number, mode, part) != path.file_name()?.to_str()?
+        || file_name(&id) != path.file_name()?.to_str()?
     {
         return None;
     }
-    Some((number, part))
+    Some(id)
 }
 
 async fn write_file(path: &Path, data: &[u8]) -> Result<(), std::io::Error> {
@@ -374,6 +346,10 @@ mod tests {
 
     const ACCENT: Accent = Accent::PeninsularSpanish;
 
+    fn id(voice: Uuid, mode: BingoMode, number: u32, part: AudioPart) -> AudioFileId {
+        VoiceNumber::new(ACCENT, voice, mode, number).with_part(part)
+    }
+
     fn store() -> (tempfile::TempDir, AudioStore) {
         let dir = tempfile::tempdir().unwrap();
         let store = AudioStore::new(dir.path().to_path_buf());
@@ -390,11 +366,7 @@ mod tests {
 
         let file = store
             .save(
-                45,
-                ACCENT,
-                voice,
-                BingoMode::Bingo75,
-                AudioPart::Word,
+                &id(voice, BingoMode::Bingo75, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
             )
             .await
@@ -402,7 +374,7 @@ mod tests {
 
         assert!(file.file_path.ends_with("n45_word.mp3"));
         assert_eq!(fs::read(&file.file_path).await.unwrap(), NOT_MP3);
-        let original = store.original_path(45, ACCENT, voice, BingoMode::Bingo75, AudioPart::Word);
+        let original = store.original_path(&id(voice, BingoMode::Bingo75, 45, AudioPart::Word));
         assert_eq!(fs::read(&original).await.unwrap(), NOT_MP3);
         assert!(!original.starts_with(store.voice_directory(ACCENT, voice)));
     }
@@ -417,7 +389,7 @@ mod tests {
             (80, BingoMode::Bingo90, AudioPart::Word),
         ] {
             store
-                .save(number, ACCENT, voice, mode, part, NOT_MP3.to_vec())
+                .save(&id(voice, mode, number, part), NOT_MP3.to_vec())
                 .await
                 .unwrap();
         }
@@ -440,23 +412,26 @@ mod tests {
         let mode = BingoMode::Bingo90;
         for part in AudioPart::all() {
             store
-                .save(45, ACCENT, voice, mode, part, NOT_MP3.to_vec())
+                .save(&id(voice, mode, 45, part), NOT_MP3.to_vec())
                 .await
                 .unwrap();
         }
 
         store
-            .delete(45, ACCENT, voice, mode, AudioPart::Digit)
+            .delete(&id(voice, mode, 45, AudioPart::Digit))
             .await
             .unwrap();
         let loaded = store.load(ACCENT, voice, mode).await.unwrap();
         assert!(loaded[&45].word_audio.is_some());
         assert!(loaded[&45].digit_audio.is_none());
         assert!(!store
-            .original_path(45, ACCENT, voice, mode, AudioPart::Digit)
+            .original_path(&id(voice, mode, 45, AudioPart::Digit))
             .exists());
 
-        store.delete_all(45, ACCENT, voice, mode).await.unwrap();
+        store
+            .delete_all(&VoiceNumber::new(ACCENT, voice, mode, 45))
+            .await
+            .unwrap();
         assert!(store.load(ACCENT, voice, mode).await.unwrap().is_empty());
     }
 
@@ -467,22 +442,14 @@ mod tests {
         let only_digit = Uuid::new_v4();
         store
             .save(
-                45,
-                ACCENT,
-                only_bingo90_word,
-                BingoMode::Bingo90,
-                AudioPart::Word,
+                &id(only_bingo90_word, BingoMode::Bingo90, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
             )
             .await
             .unwrap();
         store
             .save(
-                45,
-                ACCENT,
-                only_digit,
-                BingoMode::Bingo90,
-                AudioPart::Digit,
+                &id(only_digit, BingoMode::Bingo90, 45, AudioPart::Digit),
                 NOT_MP3.to_vec(),
             )
             .await
@@ -522,11 +489,7 @@ mod tests {
         let readable = Uuid::new_v4();
         store
             .save(
-                45,
-                ACCENT,
-                readable,
-                BingoMode::Bingo90,
-                AudioPart::Word,
+                &id(readable, BingoMode::Bingo90, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
             )
             .await
@@ -552,11 +515,7 @@ mod tests {
         let outside = tempfile::NamedTempFile::new().unwrap();
         let file = store
             .save(
-                7,
-                ACCENT,
-                Uuid::new_v4(),
-                BingoMode::Bingo90,
-                AudioPart::Word,
+                &id(Uuid::new_v4(), BingoMode::Bingo90, 7, AudioPart::Word),
                 NOT_MP3.to_vec(),
             )
             .await
@@ -571,23 +530,17 @@ mod tests {
 
     #[test]
     fn digit_has_the_same_file_name_in_both_modes() {
-        assert_eq!(
-            file_name(45, BingoMode::Bingo90, AudioPart::Digit),
-            "45_digit.mp3"
-        );
-        assert_eq!(
-            file_name(45, BingoMode::Bingo75, AudioPart::Digit),
-            "45_digit.mp3"
-        );
-        assert_eq!(
-            file_name(45, BingoMode::Bingo75, AudioPart::Word),
-            "n45_word.mp3"
-        );
+        let voice = Uuid::new_v4();
+        let name = |mode, part| file_name(&id(voice, mode, 45, part));
+        assert_eq!(name(BingoMode::Bingo90, AudioPart::Digit), "45_digit.mp3");
+        assert_eq!(name(BingoMode::Bingo75, AudioPart::Digit), "45_digit.mp3");
+        assert_eq!(name(BingoMode::Bingo75, AudioPart::Word), "n45_word.mp3");
     }
 
     #[test]
     fn file_names_round_trip_and_reject_what_the_app_did_not_write() {
-        let parse = |name: &str, mode| parse_file_name(Path::new(name), mode);
+        let voice = Uuid::new_v4();
+        let parse = |name: &str, mode| parse_file_name(Path::new(name), ACCENT, voice, mode);
 
         for mode in BingoMode::ALL {
             for number in 1..=75 {
@@ -595,10 +548,8 @@ mod tests {
                     .into_iter()
                     .filter(|p| p.exists_for(number))
                 {
-                    assert_eq!(
-                        parse(&file_name(number, mode, part), mode),
-                        Some((number, part))
-                    );
+                    let id = id(voice, mode, number, part);
+                    assert_eq!(parse(&file_name(&id), mode), Some(id));
                 }
             }
         }

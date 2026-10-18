@@ -78,10 +78,11 @@ pub async fn search_library_voices(
 #[tauri::command]
 pub async fn get_account_subscription(
     elevenlabs: State<'_, ElevenLabs>,
+    dirs: State<'_, AppDirs>,
     account_id: Uuid,
 ) -> Result<SubscriptionInfo, ElevenLabsError> {
     elevenlabs
-        .client_for_account(account_id)?
+        .client_for_account(&dirs, account_id)?
         .subscription()
         .await
 }

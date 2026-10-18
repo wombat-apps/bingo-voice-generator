@@ -37,12 +37,20 @@ export interface Voice {
 }
 
 // Audio file types
-export interface AudioFile {
-  number: number;
-  part: AudioPart;
+/** A number of one Voice in one Bingo Mode: its Word and its Digit, whichever exist. */
+export interface VoiceNumber {
   accent: AccentId;
   voiceUuid: string;
   mode: BingoModeId;
+  number: number;
+}
+
+/** The Word or the Digit of a `VoiceNumber`: what names one audio file. */
+export interface AudioFileId extends VoiceNumber {
+  part: AudioPart;
+}
+
+export interface AudioFile extends AudioFileId {
   filePath: string;
   createdAt: string;
 }

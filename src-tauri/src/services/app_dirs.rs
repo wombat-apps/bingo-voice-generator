@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::account_store::AccountStore;
 use super::audio_store::AudioStore;
 
 /// Where the app keeps its data: `voices.json`, `accounts.json` and the audio of every
@@ -24,8 +25,8 @@ impl AppDirs {
         self.root.join("voices.json")
     }
 
-    pub fn accounts_file(&self) -> PathBuf {
-        self.root.join("accounts.json")
+    pub fn account_store(&self) -> AccountStore {
+        AccountStore::new(self.root.join("accounts.json"))
     }
 
     pub fn audio_store(&self) -> AudioStore {

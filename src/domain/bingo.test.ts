@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { columnLetter, displayNumber, gridOrder, hasDigit, numberStatus } from './bingo';
+import { columnLetter, displayNumber, gridColumns, gridOrder, hasDigit, maxNumber, numberStatus } from './bingo';
 
 describe('Bingo Mode rules', () => {
   it('splits Bingo 75 into five columns of fifteen, like BingoMode in Rust', () => {
@@ -9,8 +9,15 @@ describe('Bingo Mode rules', () => {
     expect(displayNumber(45, 'bingo90')).toBe('45');
   });
 
-  it('fills the Bingo 75 grid down its columns', () => {
+  it('plays Bingo 90 on ten columns and Bingo 75 on one per letter', () => {
+    expect([maxNumber('bingo90'), gridColumns('bingo90')]).toEqual([90, 10]);
+    expect([maxNumber('bingo75'), gridColumns('bingo75')]).toEqual([75, 5]);
+  });
+
+  it('fills the Bingo 75 grid down its columns and the Bingo 90 grid along its rows', () => {
     expect(gridOrder('bingo75').slice(0, 6)).toEqual([1, 16, 31, 46, 61, 2]);
+    expect(gridOrder('bingo75').slice(-2)).toEqual([60, 75]);
+    expect(gridOrder('bingo90').slice(0, 11)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(gridOrder('bingo90')).toHaveLength(90);
   });
 

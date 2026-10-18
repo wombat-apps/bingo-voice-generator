@@ -7,6 +7,8 @@ import type {
   Voice,
   VoiceKind,
   AudioFile,
+  AudioFileId,
+  VoiceNumber,
   NumberAudioPair,
   AccentId,
   BingoModeId,
@@ -96,23 +98,12 @@ export async function loadAudioFiles(
   return map;
 }
 
-export async function deleteAudioFile(
-  number: number,
-  accent: AccentId,
-  voice: Voice,
-  mode: BingoModeId,
-  part: AudioPart
-): Promise<void> {
-  return invoke('delete_audio_file', { number, accent, voiceUuid: voice.uuid, mode, part });
+export async function deleteAudioFile(id: AudioFileId): Promise<void> {
+  return invoke('delete_audio_file', { id });
 }
 
-export async function deleteAllAudioFilesForNumber(
-  number: number,
-  accent: AccentId,
-  voice: Voice,
-  mode: BingoModeId
-): Promise<void> {
-  return invoke('delete_all_audio_files', { number, accent, voiceUuid: voice.uuid, mode });
+export async function deleteAllAudioFilesForNumber(voiceNumber: VoiceNumber): Promise<void> {
+  return invoke('delete_all_audio_files', { voiceNumber });
 }
 
 /** UUIDs of the Accent's Voices with at least one Trimmed Audio in this Bingo Mode. */
