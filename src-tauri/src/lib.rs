@@ -91,6 +91,7 @@ pub fn run() {
     }
 
     builder
+        .manage(services::app_dirs::AppDirs::from_system())
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
             generate_speech,
@@ -103,18 +104,15 @@ pub fn run() {
             load_audio_files,
             delete_audio_file,
             delete_all_audio_files,
-            get_storage_directory,
+            voices_with_recordings,
             read_audio_file,
             get_voice_directory,
             // Voices commands
             load_voices,
-            save_voices,
             backfill_voice_kinds,
-            add_voice,
             create_voice,
             update_voice,
             delete_local_voice,
-            get_voice,
             // Account commands
             list_accounts,
             get_account_api_key,

@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use thiserror::Error;
 use tokio::fs;
 use uuid::Uuid;
 
+use tauri::State;
+
 use super::elevenlabs::{get_subscription, has_voices_read};
+use crate::services::app_dirs::AppDirs;
 
 const SERVICE_NAME: &str = "BingoVoiceGenerator";
 const API_KEY_ACCOUNT_PREFIX: &str = "elevenlabs_api_key";
@@ -126,15 +128,8 @@ pub struct AddAccountResult {
     pub missing_permissions: Vec<ApiKeyPermission>,
 }
 
-fn get_accounts_file_path() -> PathBuf {
-    let app_support = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    app_support
-        .join("BingoVoiceGenerator")
-        .join("accounts.json")
-}
-
-async fn load_state() -> Result<AccountsState, AccountsError> {
-    let path = get_accounts_file_path();
+async fn load_state(dirs: &AppDirs) -> Result<AccountsState, AccountsError> {
+    let path = dirs.accounts_file();
     if !path.exists() {
         return Ok(AccountsState::default());
     }
@@ -142,8 +137,8 @@ async fn load_state() -> Result<AccountsState, AccountsError> {
     Ok(serde_json::from_str(&content)?)
 }
 
-async fn save_state(state: &AccountsState) -> Result<(), AccountsError> {
-    let path = get_accounts_file_path();
+async fn save_state(dirs: &AppDirs, state: &AccountsState) -> Result<(), AccountsError> {
+    let path = dirs.accounts_file();
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).await?;
     }
@@ -157,8 +152,8 @@ fn keychain_entry(id: Uuid) -> Result<keyring::Entry, AccountsError> {
 }
 
 #[tauri::command]
-pub async fn list_accounts() -> Result<AccountsState, AccountsError> {
-    load_state().await
+pub async fn list_accounts(dirs: State<'_, AppDirs>) -> Result<AccountsState, AccountsError> {
+    load_state(&dirs).await
 }
 
 #[tauri::command]
@@ -171,7 +166,11 @@ pub async fn get_account_api_key(account_id: Uuid) -> Result<String, AccountsErr
 /// `text_to_speech` and `voices_write` cannot be checked without spending characters or
 /// saving a voice, so they are not tested.
 #[tauri::command]
-pub async fn add_account(name: String, api_key: String) -> Result<AddAccountResult, AccountsError> {
+pub async fn add_account(
+    dirs: State<'_, AppDirs>,
+    name: String,
+    api_key: String,
+) -> Result<AddAccountResult, AccountsError> {
     let api_key = api_key.trim().to_string();
     if name.trim().is_empty() {
         return Err(AccountsError::EmptyName);
@@ -180,7 +179,7 @@ pub async fn add_account(name: String, api_key: String) -> Result<AddAccountResu
         return Err(AccountsError::EmptyApiKey);
     }
 
-    let mut state = load_state().await?;
+    let mut state = load_state(&dirs).await?;
     for account in &state.accounts {
         if keychain_entry(account.id)?.get_password().ok().as_deref() == Some(api_key.as_str()) {
             return Err(AccountsError::DuplicateApiKey(account.name.clone()));
@@ -198,7 +197,7 @@ pub async fn add_account(name: String, api_key: String) -> Result<AddAccountResu
 
     let id = state.add(&name)?;
     keychain_entry(id)?.set_password(&api_key)?;
-    save_state(&state).await?;
+    save_state(&dirs, &state).await?;
     if !missing_permissions.is_empty() {
         log::warn!(
             "[add_account] Saved account \"{}\" without permissions: {:?}",
@@ -214,32 +213,39 @@ pub async fn add_account(name: String, api_key: String) -> Result<AddAccountResu
 
 #[tauri::command]
 pub async fn rename_account(
+    dirs: State<'_, AppDirs>,
     account_id: Uuid,
     name: String,
 ) -> Result<AccountsState, AccountsError> {
-    let mut state = load_state().await?;
+    let mut state = load_state(&dirs).await?;
     state.rename(account_id, &name)?;
-    save_state(&state).await?;
+    save_state(&dirs, &state).await?;
     Ok(state)
 }
 
 #[tauri::command]
-pub async fn delete_account(account_id: Uuid) -> Result<AccountsState, AccountsError> {
-    let mut state = load_state().await?;
+pub async fn delete_account(
+    dirs: State<'_, AppDirs>,
+    account_id: Uuid,
+) -> Result<AccountsState, AccountsError> {
+    let mut state = load_state(&dirs).await?;
     state.remove(account_id)?;
     match keychain_entry(account_id)?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => {}
         Err(e) => return Err(e.into()),
     }
-    save_state(&state).await?;
+    save_state(&dirs, &state).await?;
     Ok(state)
 }
 
 #[tauri::command]
-pub async fn set_active_account(account_id: Option<Uuid>) -> Result<AccountsState, AccountsError> {
-    let mut state = load_state().await?;
+pub async fn set_active_account(
+    dirs: State<'_, AppDirs>,
+    account_id: Option<Uuid>,
+) -> Result<AccountsState, AccountsError> {
+    let mut state = load_state(&dirs).await?;
     state.set_active(account_id)?;
-    save_state(&state).await?;
+    save_state(&dirs, &state).await?;
     Ok(state)
 }
 

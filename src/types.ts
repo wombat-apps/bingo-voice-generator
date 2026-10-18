@@ -59,7 +59,6 @@ export interface AudioFile {
   mode: BingoModeId;
   filePath: string;
   createdAt: string;
-  duration: number;
 }
 
 export interface NumberAudioPair {

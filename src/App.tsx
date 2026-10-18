@@ -27,6 +27,7 @@ import {
   deleteLocalVoice,
   getPlatformInfo,
   revealVoiceInFileManager,
+  voicesWithRecordings,
 } from './services/tauri';
 import {
   playAudioFile,
@@ -360,28 +361,19 @@ function App() {
 
   // Check which voices have recordings for the current Accent/mode
   useEffect(() => {
-    async function checkVoiceRecordings() {
-      const voicesForAccent = voices.filter((v) => v.accent === selectedAccent);
-      const recordingsMap = new Map<string, boolean>();
-
-      for (const voice of voicesForAccent) {
-        try {
-          const files = await loadAudioFiles(selectedAccent, voice, selectedMode);
-          const hasAny = Array.from(files.values()).some(
-            (pair) => pair.wordAudio !== null || pair.digitAudio !== null
-          );
-          recordingsMap.set(voice.uuid, hasAny);
-        } catch {
-          recordingsMap.set(voice.uuid, false);
-        }
-      }
-
-      setVoiceHasRecordings(recordingsMap);
-    }
-
-    if (voices.length > 0) {
-      checkVoiceRecordings();
-    }
+    if (voices.length === 0) return;
+    voicesWithRecordings(selectedAccent, selectedMode)
+      .then((uuids) => {
+        const withRecordings = new Set(uuids);
+        setVoiceHasRecordings(
+          new Map(
+            voices
+              .filter((v) => v.accent === selectedAccent)
+              .map((v) => [v.uuid, withRecordings.has(v.uuid)])
+          )
+        );
+      })
+      .catch((error) => console.error('Failed to check voice recordings:', error));
   }, [voices, selectedAccent, selectedMode]);
 
   // Set up playback end callback with sequential queue support

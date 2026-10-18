@@ -120,7 +120,7 @@ export async function loadAudioFiles(
 ): Promise<Map<number, NumberAudioPair>> {
   const result = await invoke<Record<string, NumberAudioPair>>('load_audio_files', {
     accent,
-    voice,
+    voiceUuid: voice.uuid,
     mode,
   });
 
@@ -138,7 +138,7 @@ export async function deleteAudioFile(
   mode: BingoModeId,
   part: AudioPart
 ): Promise<void> {
-  return invoke('delete_audio_file', { number, accent, voice, mode, part });
+  return invoke('delete_audio_file', { number, accent, voiceUuid: voice.uuid, mode, part });
 }
 
 export async function deleteAllAudioFilesForNumber(
@@ -147,11 +147,12 @@ export async function deleteAllAudioFilesForNumber(
   voice: Voice,
   mode: BingoModeId
 ): Promise<void> {
-  return invoke('delete_all_audio_files', { number, accent, voice, mode });
+  return invoke('delete_all_audio_files', { number, accent, voiceUuid: voice.uuid, mode });
 }
 
-export async function getStorageDirectory(): Promise<string> {
-  return invoke<string>('get_storage_directory');
+/** UUIDs of the Accent's Voices with at least one recording in this Bingo Mode. */
+export async function voicesWithRecordings(accent: AccentId, mode: BingoModeId): Promise<string[]> {
+  return invoke<string[]>('voices_with_recordings', { accent, mode });
 }
 
 export async function readAudioFile(filePath: string): Promise<Uint8Array> {
@@ -159,23 +160,19 @@ export async function readAudioFile(filePath: string): Promise<Uint8Array> {
   return new Uint8Array(result);
 }
 
-export interface VoiceDirectoryInfo {
+interface VoiceDirectoryInfo {
   path: string;
   exists: boolean;
-}
-
-export async function getVoiceDirectory(
-  accent: AccentId,
-  voice: Voice
-): Promise<VoiceDirectoryInfo> {
-  return invoke<VoiceDirectoryInfo>('get_voice_directory', { accent, voice });
 }
 
 export async function revealVoiceInFileManager(
   accent: AccentId,
   voice: Voice
 ): Promise<void> {
-  const dirInfo = await getVoiceDirectory(accent, voice);
+  const dirInfo = await invoke<VoiceDirectoryInfo>('get_voice_directory', {
+    accent,
+    voiceUuid: voice.uuid,
+  });
   if (dirInfo.exists) {
     await revealItemInDir(dirInfo.path);
   }
@@ -187,14 +184,6 @@ export async function revealVoiceInFileManager(
 
 export async function loadVoices(): Promise<Voice[]> {
   return invoke<Voice[]>('load_voices');
-}
-
-export async function saveVoices(voices: Voice[]): Promise<void> {
-  return invoke('save_voices', { voices });
-}
-
-export async function addVoice(voice: Voice): Promise<Voice[]> {
-  return invoke<Voice[]>('add_voice', { voice });
 }
 
 export async function createVoice(
@@ -240,10 +229,6 @@ export async function updateVoice(voice: Voice): Promise<Voice[]> {
 
 export async function deleteLocalVoice(voiceUuid: string): Promise<Voice[]> {
   return invoke<Voice[]>('delete_local_voice', { voiceUuid });
-}
-
-export async function getVoice(voiceUuid: string): Promise<Voice | null> {
-  return invoke<Voice | null>('get_voice', { voiceUuid });
 }
 
 // ============================================================================
