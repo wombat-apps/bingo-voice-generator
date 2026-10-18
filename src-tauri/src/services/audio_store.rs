@@ -21,12 +21,17 @@ pub enum StorageError {
     OutsideStore(String),
 }
 
+/// `{code: "STORAGE_ERROR", message}`, the shape `generate_audio` also uses for it.
 impl Serialize for StorageError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("code", "STORAGE_ERROR")?;
+        map.serialize_entry("message", &self.to_string())?;
+        map.end()
     }
 }
 
@@ -497,6 +502,18 @@ mod tests {
 
         assert_eq!(bingo75, vec![only_digit]);
         assert_eq!(bingo90, both);
+    }
+
+    #[test]
+    fn errors_serialize_with_a_code_and_message() {
+        let error = StorageError::FileNotFound("45_word.mp3".into());
+        assert_eq!(
+            serde_json::to_value(&error).unwrap(),
+            serde_json::json!({
+                "code": "STORAGE_ERROR",
+                "message": "File not found: 45_word.mp3",
+            })
+        );
     }
 
     #[tokio::test]
