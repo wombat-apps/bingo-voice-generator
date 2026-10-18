@@ -12,6 +12,7 @@ import type {
   ElevenLabsVoice,
   SharedVoicesResponse,
   SubscriptionInfo,
+  TtsModelId,
   VoiceSettings,
 } from '../types';
 
@@ -24,7 +25,7 @@ export async function generateSpeech(
   voiceId: string,
   languageCode: string,
   apiKey: string,
-  modelId?: string,
+  modelId: TtsModelId,
   outputFormat?: string,
   voiceSettings?: VoiceSettings
 ): Promise<Uint8Array> {

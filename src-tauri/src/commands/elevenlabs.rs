@@ -147,7 +147,7 @@ pub async fn generate_speech(
     voice_id: String,
     language_code: String,
     api_key: String,
-    model_id: Option<String>,
+    model_id: String,
     output_format: Option<String>,
     speed: Option<f64>,
     stability: Option<f64>,
@@ -164,7 +164,6 @@ pub async fn generate_speech(
         return Err(ElevenLabsError::NoApiKey);
     }
 
-    let model = model_id.unwrap_or_else(|| "eleven_turbo_v2_5".to_string());
     let format = output_format.unwrap_or_else(|| "mp3_44100_128".to_string());
     let speech_speed = speed.unwrap_or(1.0);
 
@@ -189,7 +188,7 @@ pub async fn generate_speech(
 
     let request_body = serde_json::json!({
         "text": text,
-        "model_id": model,
+        "model_id": model_id,
         "voice_settings": voice_settings,
         "language_code": language_code,
         "speed": speech_speed,

@@ -52,7 +52,7 @@ import type {
   SubscriptionInfo,
   ElevenLabsVoice,
 } from './types';
-import { DEFAULT_VOICE_SETTINGS } from './types';
+import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
 import './styles/index.css';
 import './App.css';
 
@@ -141,7 +141,12 @@ function App() {
     const saved = localStorage.getItem('voiceSettings');
     if (saved) {
       try {
-        return JSON.parse(saved) as VoiceSettings;
+        const parsed = JSON.parse(saved) as VoiceSettings;
+        // Saved models may have been removed from TTS_MODELS (e.g. deprecated by ElevenLabs)
+        if (!isTtsModelId(parsed.modelId)) {
+          return { ...parsed, modelId: DEFAULT_VOICE_SETTINGS.modelId };
+        }
+        return parsed;
       } catch {
         return DEFAULT_VOICE_SETTINGS;
       }

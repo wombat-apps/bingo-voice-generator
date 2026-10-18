@@ -56,9 +56,12 @@ Listado de funcionalidades presentes en la app nativa de macOS (retirada; consul
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/VoiceSettingsSection.swift`
 
 ### 2.2 Selección de modelo TTS
-- Eleven v3 (última versión, máxima calidad)
-- Turbo v2 (generación rápida)
-- Multilingual v2 (mejor para idiomas no ingleses)
+- Eleven v4 (máxima calidad, por defecto)
+- Eleven v4 Turbo (rápido y más barato)
+- Eleven v3 (generación anterior, expresivo)
+- Multilingual v2 (estable, buena lectura de números)
+
+En la app Tauri la lista es fija en `src/types.ts` (`TTS_MODELS`). Turbo v2.5 se quitó porque ElevenLabs lo deprecó.
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (propiedad `selectedModel`)
 

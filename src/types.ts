@@ -99,7 +99,11 @@ export interface GenerationProgress {
 }
 
 // TTS Model types
-export type TtsModelId = 'eleven_v3' | 'eleven_turbo_v2_5' | 'eleven_multilingual_v2';
+export type TtsModelId =
+  | 'eleven_v4'
+  | 'eleven_v4_turbo'
+  | 'eleven_v3'
+  | 'eleven_multilingual_v2';
 
 export interface TtsModel {
   id: TtsModelId;
@@ -108,10 +112,15 @@ export interface TtsModel {
 }
 
 export const TTS_MODELS: TtsModel[] = [
-  { id: 'eleven_v3', name: 'Eleven v3', description: 'Highest quality' },
-  { id: 'eleven_turbo_v2_5', name: 'Turbo v2.5', description: 'Fast generation' },
-  { id: 'eleven_multilingual_v2', name: 'Multilingual v2', description: 'Best for non-English' },
+  { id: 'eleven_v4', name: 'Eleven v4', description: 'Highest quality' },
+  { id: 'eleven_v4_turbo', name: 'Eleven v4 Turbo', description: 'Fast, lower cost' },
+  { id: 'eleven_v3', name: 'Eleven v3', description: 'Previous gen, expressive' },
+  { id: 'eleven_multilingual_v2', name: 'Multilingual v2', description: 'Stable, reliable numbers' },
 ];
+
+export function isTtsModelId(value: unknown): value is TtsModelId {
+  return TTS_MODELS.some((model) => model.id === value);
+}
 
 // Voice settings for ElevenLabs TTS
 export type StabilityPreset = 'creative' | 'natural' | 'robust';
@@ -137,7 +146,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   style: 0.9,
   useSpeakerBoost: true,
   speed: 1.0,
-  modelId: 'eleven_v3',
+  modelId: 'eleven_v4',
 };
 
 // App state
