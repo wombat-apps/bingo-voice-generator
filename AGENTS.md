@@ -34,13 +34,9 @@ Build outputs: `src-tauri/target/release/bundle/` (`.app` and `.dmg`).
 
 ## Keychain prompts in dev
 
-Debug builds are ad-hoc signed and their signature changes on every rebuild, so macOS asks for Keychain access on each launch even after "Always Allow". To avoid it, export a code-signing identity before `npm run tauri dev`:
+Debug builds are ad-hoc signed and their signature changes on every rebuild, so macOS would ask for Keychain access on each launch even after "Always Allow". `src-tauri/.cargo/config.toml` sets `src-tauri/scripts/dev-codesign-run.sh` as the Cargo runner on macOS: it re-signs the app binary with the release bundle identifier and a stable identity, so "Always Allow" is remembered across rebuilds and shared with the signed release app.
 
-```bash
-export BINGO_DEV_SIGNING_IDENTITY="Developer ID Application: <Name> (<TEAMID>)"   # see: security find-identity -v -p codesigning
-```
-
-`src-tauri/.cargo/config.toml` sets `src-tauri/scripts/dev-codesign-run.sh` as the Cargo runner on macOS. It re-signs the app binary with that identity and the release bundle identifier, so "Always Allow" is remembered across rebuilds and is shared with the signed release app. Without the variable, or for test binaries, it just runs them. Release builds and CI do not go through it.
+The identity is the "Developer ID Application" certificate of the release team (`78R7RLKRQD`) found in the login keychain, with no setup needed. To use another one, set `BINGO_DEV_SIGNING_IDENTITY` (see `security find-identity -v -p codesigning`). Without either, or for test binaries, the runner just runs them. Release builds and CI do not go through it.
 
 ## Logs
 
