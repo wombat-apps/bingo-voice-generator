@@ -35,3 +35,11 @@ _Avoid_: Shared voice, community voice, professional voice
 **Plan**:
 The ElevenLabs subscription of an ElevenLabs Account: Free, Starter, Creator, Pro, Scale, Business or Enterprise. It sets the account's character quota, whether it can use Library Voices, which audio formats it can request and how many requests it can make at once.
 _Avoid_: Tier, subscription level, free account / paid account
+
+**Original Audio**:
+The audio of a number exactly as ElevenLabs returned it, before the silence is trimmed. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
+_Avoid_: Raw audio, backup, untrimmed audio, master
+
+**Trimmed Audio**:
+The audio of a number after its trailing silence is removed: the one the app plays and the user takes to their bingo. When trimming fails, it is a copy of the Original Audio.
+_Avoid_: Final audio, processed audio

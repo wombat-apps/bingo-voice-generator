@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use thiserror::Error;
 
 use crate::models::Language;
-use crate::services::audio_trimmer::{trim_trailing_silence, TrimConfig};
 
 const BASE_URL: &str = "https://api.elevenlabs.io/v1";
 
@@ -352,44 +350,9 @@ pub async fn generate_speech(
         raw_bytes.len()
     );
 
-    // Apply silence trimming with timeout to prevent hanging
-    // Run blocking trimming on a dedicated thread pool with 10 second timeout
-    let config = TrimConfig::default();
-    let raw_bytes_for_trim = raw_bytes.clone();
-    let trim_result = tokio::time::timeout(
-        Duration::from_secs(10),
-        tokio::task::spawn_blocking(move || trim_trailing_silence(raw_bytes_for_trim, &config)),
-    )
-    .await;
-
-    let trimmed_bytes = match trim_result {
-        Ok(Ok(Ok(trimmed))) => {
-            log::debug!(
-                "[generate_speech] Trimmed: {} -> {} bytes",
-                raw_bytes.len(),
-                trimmed.len()
-            );
-            trimmed
-        }
-        Ok(Ok(Err(e))) => {
-            log::warn!("[generate_speech] Trim failed, using original: {}", e);
-            raw_bytes // Graceful fallback
-        }
-        Ok(Err(e)) => {
-            log::warn!(
-                "[generate_speech] Trim task panicked, using original: {}",
-                e
-            );
-            raw_bytes // Graceful fallback
-        }
-        Err(_) => {
-            log::warn!("[generate_speech] Trim timed out after 10s, using original");
-            raw_bytes // Graceful fallback on timeout
-        }
-    };
-
-    log::info!("[generate_speech] Success: {} bytes", trimmed_bytes.len());
-    Ok(trimmed_bytes)
+    // Untrimmed: save_audio_file keeps it as the Original Audio and trims it.
+    log::info!("[generate_speech] Success: {} bytes", raw_bytes.len());
+    Ok(raw_bytes)
 }
 
 #[tauri::command]

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,6 +11,7 @@ use tokio::io::AsyncWriteExt;
 use crate::models::{
     bingo75_letter, AudioFile, AudioPart, BingoMode, Language, NumberAudioPair, Voice,
 };
+use crate::services::audio_trimmer::{trim_trailing_silence, AudioTrimError, TrimConfig};
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -33,13 +35,7 @@ fn get_base_directory() -> PathBuf {
     app_support.join("BingoVoiceGenerator")
 }
 
-fn audio_file_path(
-    number: u32,
-    language: &Language,
-    voice: &Voice,
-    mode: &BingoMode,
-    part: &AudioPart,
-) -> PathBuf {
+fn audio_file_name(number: u32, mode: &BingoMode, part: &AudioPart) -> String {
     let base_filename = match mode {
         BingoMode::Bingo90 => number.to_string(),
         BingoMode::Bingo75 => {
@@ -48,12 +44,34 @@ fn audio_file_path(
         }
     };
 
-    let filename = format!("{}_{}.mp3", base_filename, part.file_suffix());
+    format!("{}_{}.mp3", base_filename, part.file_suffix())
+}
 
+/// Path of the Trimmed Audio, the one the app plays.
+fn audio_file_path(
+    number: u32,
+    language: &Language,
+    voice: &Voice,
+    mode: &BingoMode,
+    part: &AudioPart,
+) -> PathBuf {
+    voice_directory(language, voice).join(audio_file_name(number, mode, part))
+}
+
+/// Path of the Original Audio. It lives in a tree parallel to the voice
+/// directories so that copying a voice directory only copies Trimmed Audio.
+fn original_audio_path(
+    number: u32,
+    language: &Language,
+    voice: &Voice,
+    mode: &BingoMode,
+    part: &AudioPart,
+) -> PathBuf {
     get_base_directory()
+        .join("Originals")
         .join(language.raw_value())
         .join(voice.uuid.to_string())
-        .join(filename)
+        .join(audio_file_name(number, mode, part))
 }
 
 fn voice_directory(language: &Language, voice: &Voice) -> PathBuf {
@@ -62,6 +80,69 @@ fn voice_directory(language: &Language, voice: &Voice) -> PathBuf {
         .join(voice.uuid.to_string())
 }
 
+async fn write_file(path: &Path, data: &[u8]) -> Result<(), std::io::Error> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).await?;
+    }
+    let mut file = fs::File::create(path).await?;
+    file.write_all(data).await
+}
+
+/// Trims the trailing silence, or returns the audio untouched if trimming
+/// fails, panics or takes longer than 10 seconds.
+async fn trim_or_keep(original: Vec<u8>) -> Vec<u8> {
+    let config = TrimConfig::default();
+    let for_trim = original.clone();
+    let trim_result = tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::task::spawn_blocking(move || trim_trailing_silence(for_trim, &config)),
+    )
+    .await;
+
+    match trim_result {
+        Ok(Ok(Ok(trimmed))) => {
+            log::debug!(
+                "[save_audio_file] Trimmed: {} -> {} bytes",
+                original.len(),
+                trimmed.len()
+            );
+            trimmed
+        }
+        Ok(Ok(Err(AudioTrimError::NoSignificantSilence))) => {
+            log::info!("[save_audio_file] No trailing silence to trim, keeping original");
+            original
+        }
+        Ok(Ok(Err(e))) => {
+            log::warn!("[save_audio_file] Trim failed, using original: {}", e);
+            original
+        }
+        Ok(Err(e)) => {
+            log::warn!(
+                "[save_audio_file] Trim task panicked, using original: {}",
+                e
+            );
+            original
+        }
+        Err(_) => {
+            log::warn!("[save_audio_file] Trim timed out after 10s, using original");
+            original
+        }
+    }
+}
+
+/// Removes the Original Audio of a Trimmed Audio being deleted. It is only a
+/// safety net, so failing to remove it does not fail the deletion.
+async fn remove_original_audio(path: &Path) {
+    if !path.exists() {
+        return;
+    }
+    if let Err(e) = fs::remove_file(path).await {
+        log::warn!("Could not delete Original Audio {}: {}", path.display(), e);
+    }
+}
+
+/// Saves `data`, the audio exactly as ElevenLabs returned it, as the Original
+/// Audio, then saves its Trimmed Audio, the file the app plays.
 #[tauri::command]
 pub async fn save_audio_file(
     data: Vec<u8>,
@@ -71,16 +152,20 @@ pub async fn save_audio_file(
     mode: BingoMode,
     part: AudioPart,
 ) -> Result<AudioFile, StorageError> {
-    let path = audio_file_path(number, &language, &voice, &mode, &part);
-
-    // Create parent directories
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).await?;
+    // The Original Audio is only a safety net: failing to save it must not
+    // lose a generation that has already spent characters.
+    let original_path = original_audio_path(number, &language, &voice, &mode, &part);
+    if let Err(e) = write_file(&original_path, &data).await {
+        log::warn!(
+            "[save_audio_file] Could not save Original Audio {}: {}",
+            original_path.display(),
+            e
+        );
     }
 
-    // Write data
-    let mut file = fs::File::create(&path).await?;
-    file.write_all(&data).await?;
+    let path = audio_file_path(number, &language, &voice, &mode, &part);
+    let trimmed = trim_or_keep(data).await;
+    write_file(&path, &trimmed).await?;
 
     // For now, we don't calculate duration on the Rust side
     // The frontend can calculate it using Web Audio API
@@ -226,6 +311,10 @@ pub async fn delete_audio_file(
 ) -> Result<(), StorageError> {
     let path = audio_file_path(number, &language, &voice, &mode, &part);
     fs::remove_file(&path).await?;
+    remove_original_audio(&original_audio_path(
+        number, &language, &voice, &mode, &part,
+    ))
+    .await;
     Ok(())
 }
 
@@ -241,6 +330,10 @@ pub async fn delete_all_audio_files(
         if path.exists() {
             fs::remove_file(&path).await?;
         }
+        remove_original_audio(&original_audio_path(
+            number, &language, &voice, &mode, &part,
+        ))
+        .await;
     }
     Ok(())
 }
@@ -278,4 +371,31 @@ pub async fn get_voice_directory(
         path: dir.to_string_lossy().to_string(),
         exists,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::VoiceKind;
+
+    #[test]
+    fn original_audio_lives_outside_the_voice_directory_with_the_same_name() {
+        let voice = Voice::new(
+            "id".into(),
+            "Name".into(),
+            None,
+            Language::Spanish,
+            None,
+            VoiceKind::Default,
+        );
+        let mode = BingoMode::Bingo75;
+        let part = AudioPart::Word;
+
+        let trimmed = audio_file_path(12, &Language::Spanish, &voice, &mode, &part);
+        let original = original_audio_path(12, &Language::Spanish, &voice, &mode, &part);
+
+        assert_eq!(trimmed.file_name(), original.file_name());
+        assert!(!original.starts_with(voice_directory(&Language::Spanish, &voice)));
+        assert!(original.starts_with(get_base_directory().join("Originals")));
+    }
 }
