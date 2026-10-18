@@ -13,9 +13,9 @@ import {
   getLanguages,
   loadVoices,
   loadAudioFiles,
-  getApiKey,
-  setApiKey,
-  hasApiKey as checkHasApiKey,
+  listAccounts,
+  getAccountApiKey,
+  setActiveAccount,
   generateSpeech,
   saveAudioFile,
   buildTtsText,
@@ -42,6 +42,7 @@ import {
   stopPreview,
 } from './services/audioPlayer';
 import type {
+  AccountsState,
   Language,
   Voice,
   LanguageId,
@@ -91,9 +92,12 @@ function App() {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
 
-  // API key
-  const [apiKey, setApiKeyValue] = useState('');
-  const [hasApiKeyStored, setHasApiKeyStored] = useState(false);
+  // ElevenLabs accounts; apiKey is the Active Account's key ('' when there is none)
+  const [accountsState, setAccountsState] = useState<AccountsState>({ accounts: [], activeAccountId: null });
+  const [apiKey, setApiKey] = useState('');
+  const hasActiveAccount = apiKey !== '';
+  const activeAccountName =
+    accountsState.accounts.find((a) => a.id === accountsState.activeAccountId)?.name ?? '';
 
   // Subscription info
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
@@ -214,6 +218,33 @@ function App() {
     }
   }, []);
 
+  // Apply a new accounts state, loading the Active Account's key and subscription
+  const applyAccountsState = useCallback(async (state: AccountsState) => {
+    setAccountsState(state);
+    if (!state.activeAccountId) {
+      setApiKey('');
+      setSubscription(null);
+      return;
+    }
+    try {
+      const key = await getAccountApiKey(state.activeAccountId);
+      setApiKey(key);
+      refreshSubscription(key);
+    } catch (err) {
+      console.error('Failed to load the active account API key:', err);
+      setApiKey('');
+      setSubscription(null);
+    }
+  }, [refreshSubscription]);
+
+  const handleActiveAccountChange = useCallback(async (accountId: string | null) => {
+    try {
+      await applyAccountsState(await setActiveAccount(accountId));
+    } catch (err) {
+      console.error('Failed to change the active account:', err);
+    }
+  }, [applyAccountsState]);
+
   // Helper to ask user to select a voice to delete when limit is reached
   const askUserToSelectVoice = useCallback((voices: ElevenLabsVoice[]): Promise<string | null> => {
     return new Promise((resolve) => {
@@ -310,36 +341,29 @@ function App() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [langs, savedVoices, hasKey] = await Promise.all([
+        const [langs, savedVoices, accounts] = await Promise.all([
           getLanguages(),
           loadVoices(),
-          checkHasApiKey(),
+          listAccounts(),
         ]);
 
         setLanguages(langs);
         setVoices(savedVoices);
-        setHasApiKeyStored(hasKey);
-
-        if (hasKey) {
-          const key = await getApiKey();
-          setApiKeyValue(key);
-          // Fetch subscription info
-          refreshSubscription(key);
-        }
+        await applyAccountsState(accounts);
       } catch (error) {
         console.error('Failed to load initial data:', error);
       }
     }
 
     loadData();
-  }, [refreshSubscription]);
+  }, [applyAccountsState]);
 
-  // Auto-open settings panel if no API key is stored
+  // Auto-open settings panel if there is no Active Account
   useEffect(() => {
-    if (!hasApiKeyStored && languages.length > 0) {
+    if (accountsState.activeAccountId === null && languages.length > 0) {
       setIsSettingsPanelOpen(true);
     }
-  }, [hasApiKeyStored, languages.length]);
+  }, [accountsState.activeAccountId, languages.length]);
 
   // Load audio files when voice or mode changes
   useEffect(() => {
@@ -511,17 +535,6 @@ function App() {
       setSelectedVoice(voicesForLanguage[0]);
     }
   }, [selectedLanguage, voices, selectedVoice]);
-
-  const handleApiKeySave = useCallback(async () => {
-    try {
-      await setApiKey(apiKey);
-      setHasApiKeyStored(true);
-      // Refresh subscription info after saving API key
-      refreshSubscription(apiKey);
-    } catch (error) {
-      console.error('Failed to save API key:', error);
-    }
-  }, [apiKey, refreshSubscription]);
 
   // Cell click handler - plays complete audio (word + digit) sequentially
   const handleCellClick = useCallback(
@@ -705,11 +718,11 @@ function App() {
             return;
           }
         } else if (errorMsg.includes('No API key')) {
-          setError('Por favor, configura tu API key de ElevenLabs.');
+          setError('Por favor, selecciona una cuenta de ElevenLabs.');
         } else if (isQuotaExceededError(errorMsg)) {
           setError('Has alcanzado el límite de créditos de ElevenLabs. Actualiza tu plan o espera a que se renueve tu cuota.');
         } else if (isVoiceNotFoundError(errorMsg)) {
-          setError('La voz seleccionada ya no existe en ElevenLabs. Por favor, selecciona otra voz.');
+          setError(`La voz seleccionada no existe en la cuenta "${activeAccountName}". Cambia de cuenta o selecciona otra voz.`);
         } else {
           setError(`Error al generar audio: ${errorMsg}`);
         }
@@ -717,7 +730,7 @@ function App() {
         setGenerating(false);
       }
     },
-    [selectedNumber, selectedVoice, apiKey, selectedLanguage, selectedMode, languages, voiceSettings, askUserToSelectVoice]
+    [selectedNumber, selectedVoice, apiKey, activeAccountName, selectedLanguage, selectedMode, languages, voiceSettings, askUserToSelectVoice]
   );
 
   const handleGenerateWord = useCallback(() => {
@@ -1100,11 +1113,13 @@ function App() {
           voices={voices}
           selectedLanguage={selectedLanguage}
           selectedVoice={selectedVoice}
-          hasApiKey={hasApiKeyStored}
+          hasApiKey={hasActiveAccount}
+          accountsState={accountsState}
           subscription={subscription}
           voiceHasRecordings={voiceHasRecordings}
           platform={platform}
           onLanguageChange={setSelectedLanguage}
+          onActiveAccountChange={handleActiveAccountChange}
           onVoiceChange={setSelectedVoice}
           onOpenVoiceForm={handleOpenVoiceForm}
           onToggleFavorite={handleToggleFavorite}
@@ -1240,7 +1255,7 @@ function App() {
           onDelete={handleDeleteAudio}
           isGeneratingWord={isGeneratingWord}
           isGeneratingDigit={isGeneratingDigit}
-          apiKeyConfigured={hasApiKeyStored}
+          apiKeyConfigured={hasActiveAccount}
           voiceSelected={selectedVoice !== null}
           selectedHasWord={selectedHasWord}
           selectedHasDigit={selectedHasDigit}
@@ -1252,12 +1267,10 @@ function App() {
       {/* Settings Panel - right sidebar (integrated in layout) */}
       <SettingsPanel
         isOpen={isSettingsPanelOpen}
-        apiKey={apiKey}
-        hasApiKey={hasApiKeyStored}
+        accountsState={accountsState}
         voiceSettings={voiceSettings}
         onClose={() => setIsSettingsPanelOpen(false)}
-        onApiKeyChange={setApiKeyValue}
-        onApiKeySave={handleApiKeySave}
+        onAccountsChange={applyAccountsState}
         onVoiceSettingsChange={setVoiceSettings}
       />
 

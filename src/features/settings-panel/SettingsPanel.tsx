@@ -1,32 +1,26 @@
-import { useState } from 'react';
-import { X, Settings, Eye, EyeOff, Check } from 'lucide-react';
+import { X, Settings } from 'lucide-react';
 import { VoiceSettings } from '../sidebar/VoiceSettings';
-import type { VoiceSettings as VoiceSettingsType } from '../../types';
+import { AccountsSection } from './AccountsSection';
+import type { AccountsState, VoiceSettings as VoiceSettingsType } from '../../types';
 import './SettingsPanel.css';
 
 interface SettingsPanelProps {
   isOpen: boolean;
-  apiKey: string;
-  hasApiKey: boolean;
+  accountsState: AccountsState;
   voiceSettings: VoiceSettingsType;
   onClose: () => void;
-  onApiKeyChange: (apiKey: string) => void;
-  onApiKeySave: () => void;
+  onAccountsChange: (state: AccountsState) => void;
   onVoiceSettingsChange: (settings: VoiceSettingsType) => void;
 }
 
 export function SettingsPanel({
   isOpen,
-  apiKey,
-  hasApiKey,
+  accountsState,
   voiceSettings,
   onClose,
-  onApiKeyChange,
-  onApiKeySave,
+  onAccountsChange,
   onVoiceSettingsChange,
 }: SettingsPanelProps) {
-  const [showApiKey, setShowApiKey] = useState(false);
-
   return (
     <aside className={`settings-panel ${isOpen ? 'open' : ''}`}>
         <header className="settings-panel-header">
@@ -45,48 +39,10 @@ export function SettingsPanel({
         </header>
 
         <div className="settings-panel-content">
-          {/* API Key Section */}
+          {/* ElevenLabs Accounts */}
           <section className="settings-section">
-            <h3 className="settings-section-title">API Key</h3>
-            <div className="api-key-section">
-              <div className="api-key-input-wrapper">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  className="input"
-                  placeholder="Enter ElevenLabs API key..."
-                  value={apiKey}
-                  onChange={(e) => onApiKeyChange(e.target.value)}
-                />
-                <div className="api-key-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm btn-icon"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    title={showApiKey ? 'Hide API key' : 'Show API key'}
-                  >
-                    {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={onApiKeySave}
-                    disabled={!apiKey}
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <div className={`api-key-status ${hasApiKey ? 'saved' : 'not-saved'}`}>
-                {hasApiKey ? (
-                  <>
-                    <Check size={12} />
-                    <span>API key saved</span>
-                  </>
-                ) : (
-                  <span>No API key configured</span>
-                )}
-              </div>
-            </div>
+            <h3 className="settings-section-title">ElevenLabs Accounts</h3>
+            <AccountsSection accountsState={accountsState} onAccountsChange={onAccountsChange} />
           </section>
 
           {/* Voice Settings */}

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import type {
+  AccountsState,
   Language,
   BingoMode,
   Voice,
@@ -235,23 +236,32 @@ export async function getVoice(voiceUuid: string): Promise<Voice | null> {
 }
 
 // ============================================================================
-// Keychain Commands
+// Account Commands
 // ============================================================================
 
-export async function getApiKey(): Promise<string> {
-  return invoke<string>('get_api_key');
+export async function listAccounts(): Promise<AccountsState> {
+  return invoke<AccountsState>('list_accounts');
 }
 
-export async function setApiKey(apiKey: string): Promise<void> {
-  return invoke('set_api_key', { apiKey });
+export async function getAccountApiKey(accountId: string): Promise<string> {
+  return invoke<string>('get_account_api_key', { accountId });
 }
 
-export async function deleteApiKey(): Promise<void> {
-  return invoke('delete_api_key');
+/** Validates the key against ElevenLabs before saving it. */
+export async function addAccount(name: string, apiKey: string): Promise<AccountsState> {
+  return invoke<AccountsState>('add_account', { name, apiKey });
 }
 
-export async function hasApiKey(): Promise<boolean> {
-  return invoke<boolean>('has_api_key');
+export async function renameAccount(accountId: string, name: string): Promise<AccountsState> {
+  return invoke<AccountsState>('rename_account', { accountId, name });
+}
+
+export async function deleteAccount(accountId: string): Promise<AccountsState> {
+  return invoke<AccountsState>('delete_account', { accountId });
+}
+
+export async function setActiveAccount(accountId: string | null): Promise<AccountsState> {
+  return invoke<AccountsState>('set_active_account', { accountId });
 }
 
 // ============================================================================

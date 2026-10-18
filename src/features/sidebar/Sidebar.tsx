@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Music, Star, Play } from 'lucide-react';
 import { SubscriptionInfo } from './SubscriptionInfo';
 import { VoiceContextMenu } from './VoiceContextMenu';
-import type { Language, Voice, LanguageId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
+import type { AccountsState, Language, Voice, LanguageId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -11,10 +11,12 @@ interface SidebarProps {
   selectedLanguage: LanguageId;
   selectedVoice: Voice | null;
   hasApiKey: boolean;
+  accountsState: AccountsState;
   subscription: SubscriptionInfoType | null;
   voiceHasRecordings: Map<string, boolean>;
   platform: string;
   onLanguageChange: (language: LanguageId) => void;
+  onActiveAccountChange: (accountId: string | null) => void;
   onVoiceChange: (voice: Voice | null) => void;
   onOpenVoiceForm: (voice?: Voice) => void;
   onToggleFavorite: (voice: Voice) => void;
@@ -29,10 +31,12 @@ export function Sidebar({
   selectedLanguage,
   selectedVoice,
   hasApiKey,
+  accountsState,
   subscription,
   voiceHasRecordings,
   platform,
   onLanguageChange,
+  onActiveAccountChange,
   onVoiceChange,
   onOpenVoiceForm,
   onToggleFavorite,
@@ -150,10 +154,27 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Subscription info - anchored at bottom */}
-      {subscription && (
+      {/* Active Account and its subscription - anchored at bottom */}
+      {accountsState.accounts.length > 0 && (
         <div className="sidebar-actions">
-          <SubscriptionInfo subscription={subscription} />
+          <div className="form-group">
+            <label className="form-label">ElevenLabs Account</label>
+            <select
+              className="select"
+              value={accountsState.activeAccountId ?? ''}
+              onChange={(e) => onActiveAccountChange(e.target.value || null)}
+            >
+              {accountsState.activeAccountId === null && (
+                <option value="">Select an account…</option>
+              )}
+              {accountsState.accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {subscription && <SubscriptionInfo subscription={subscription} />}
         </div>
       )}
 

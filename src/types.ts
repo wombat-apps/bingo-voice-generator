@@ -80,6 +80,17 @@ export interface SharedVoicesResponse {
   hasMore: boolean;
 }
 
+// ElevenLabs accounts (API keys stay in the Keychain)
+export interface ElevenLabsAccount {
+  id: string;
+  name: string;
+}
+
+export interface AccountsState {
+  accounts: ElevenLabsAccount[];
+  activeAccountId: string | null;
+}
+
 export interface SubscriptionInfo {
   tier: string;
   characterCount: number;

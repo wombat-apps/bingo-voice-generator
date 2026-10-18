@@ -187,6 +187,9 @@
   margin-top: auto;
   padding-top: var(--spacing-md);
   border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .sidebar-actions .subscription-info {

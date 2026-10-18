@@ -99,11 +99,13 @@ pub fn run() {
             update_voice,
             delete_local_voice,
             get_voice,
-            // Keychain commands
-            get_api_key,
-            set_api_key,
-            delete_api_key,
-            has_api_key,
+            // Account commands
+            list_accounts,
+            get_account_api_key,
+            add_account,
+            rename_account,
+            delete_account,
+            set_active_account,
             // Utility commands
             build_tts_text,
             get_languages,

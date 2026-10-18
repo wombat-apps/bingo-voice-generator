@@ -53,7 +53,7 @@ src/services/tauri.ts  ←IPC→   src-tauri/src/commands/
     ↓                               ├── elevenlabs.rs (TTS API)
 src/features/                       ├── storage.rs (file I/O)
     ├── grid/                       ├── voices.rs (voice CRUD)
-    ├── sidebar/                    └── keychain.rs (secure storage)
+    ├── sidebar/                    └── accounts.rs (ElevenLabs Accounts, keys in Keychain)
     ├── player/
     └── voices/
 ```
