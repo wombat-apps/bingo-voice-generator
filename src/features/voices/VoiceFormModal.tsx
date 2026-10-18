@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft } from 'lucide-react';
-import type { SharedVoice, LanguageId, SubscriptionInfo, Voice } from '../../types';
+import type { SharedVoice, LanguageId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
 import { searchSharedVoices, createVoice, updateVoice, addSharedVoice, listPremadeVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
-import { libraryVoicesUnavailableReason } from '../../services/voiceAvailability';
+import { voiceKindUnavailableReason } from '../../services/voiceAvailability';
 import './VoiceFormModal.css';
 
 // Extended type for combined voice list
 interface VoiceOption extends SharedVoice {
-  isPremade: boolean;
+  kind: VoiceKind;
 }
 
 interface VoiceFormModalProps {
@@ -134,13 +134,13 @@ export function VoiceFormModal({
           useCase: null,
           freeUsersAllowed: true, // Premade voices are free
           publicOwnerId: null,
-          isPremade: true,
+          kind: 'default',
         }));
 
       // Convert shared voices to VoiceOption format
       const sharedOptions: VoiceOption[] = sharedResponse.voices.map((v) => ({
         ...v,
-        isPremade: false,
+        kind: 'library',
       }));
 
       // Combine: premade first (free), then shared
@@ -179,8 +179,10 @@ export function VoiceFormModal({
     [audioElement, playingVoiceId]
   );
 
-  // Why the Active Account's Plan cannot add Library Voices, or null if it can
-  const libraryUnavailableReason = libraryVoicesUnavailableReason(subscription);
+  // Why the Active Account's Plan cannot generate with the selected voice, or null if it can
+  const selectedUnavailableReason = selectedVoice
+    ? voiceKindUnavailableReason(selectedVoice.kind, subscription)
+    : null;
 
   const handleSelectVoice = useCallback((voiceOption: VoiceOption) => {
     setSelectedVoice(voiceOption);
@@ -208,11 +210,10 @@ export function VoiceFormModal({
       if (mode === 'add' && selectedVoice) {
         let voiceIdToUse = selectedVoice.voiceId;
 
-        // Only call addSharedVoice for non-premade voices (library voices)
-        if (!selectedVoice.isPremade) {
-          if (libraryUnavailableReason) {
-            throw new Error(libraryUnavailableReason);
-          }
+        // Save Library Voices in the account. Not needed to use them (docs/elevenlabs-plans.md),
+        // and skipped when the Plan cannot use them: ElevenLabs saves the voice on its own the
+        // first time an account whose Plan allows it generates with it.
+        if (selectedVoice.kind === 'library' && !selectedUnavailableReason) {
           if (!selectedVoice.publicOwnerId) {
             throw new Error('Voice does not have a public owner ID');
           }
@@ -231,7 +232,7 @@ export function VoiceFormModal({
           trimmedName,
           currentLanguage,
           formGender || 'unknown',
-          selectedVoice.isPremade ? 'default' : 'library'
+          selectedVoice.kind
         );
         onVoiceSaved(updatedVoices);
       } else if (mode === 'edit' && voice) {
@@ -251,7 +252,7 @@ export function VoiceFormModal({
     } finally {
       setIsSaving(false);
     }
-  }, [mode, selectedVoice, voice, customName, currentLanguage, formGender, onVoiceSaved, libraryUnavailableReason]);
+  }, [mode, selectedVoice, voice, customName, currentLanguage, formGender, onVoiceSaved, selectedUnavailableReason]);
 
   const handleClose = useCallback(() => {
     if (audioElement) {
@@ -347,7 +348,7 @@ export function VoiceFormModal({
               ) : (
                 <div className="voice-picker-list">
                   {searchResults.map((voiceOption) => {
-                    const unavailableReason = voiceOption.isPremade ? null : libraryUnavailableReason;
+                    const unavailableReason = voiceKindUnavailableReason(voiceOption.kind, subscription);
                     return (
                       <div
                         key={voiceOption.voiceId}
@@ -363,16 +364,16 @@ export function VoiceFormModal({
                               {voiceOption.gender && <span className={`badge badge-${voiceOption.gender}`}>{voiceOption.gender}</span>}
                               {voiceOption.accent && <span className="voice-tag">{voiceOption.accent}</span>}
                               {voiceOption.age && <span className="voice-tag">{voiceOption.age}</span>}
-                              {/* On a Plan that cannot add Library Voices the reason below replaces the badge */}
+                              {/* When the Plan cannot use the voice, the reason below replaces the badge */}
                               {!unavailableReason &&
-                                (voiceOption.isPremade || voiceOption.freeUsersAllowed ? (
+                                (voiceOption.kind === 'default' || voiceOption.freeUsersAllowed ? (
                                   <span className="badge badge-free">Free</span>
                                 ) : (
                                   <span className="badge badge-paid">Paid</span>
                                 ))}
                             </span>
                             {unavailableReason && (
-                              <span className="voice-picker-unavailable">{unavailableReason}</span>
+                              <span className="unavailable-reason">{unavailableReason}</span>
                             )}
                             {voiceOption.description && (
                               <span className="voice-picker-description">{voiceOption.description}</span>
@@ -398,8 +399,6 @@ export function VoiceFormModal({
                             type="button"
                             className="btn btn-primary btn-sm"
                             onClick={() => handleSelectVoice(voiceOption)}
-                            disabled={unavailableReason !== null}
-                            title={unavailableReason ?? undefined}
                           >
                             Select
                           </button>
@@ -420,6 +419,13 @@ export function VoiceFormModal({
                 <div className="original-voice-info">
                   <span className="original-voice-label">ElevenLabs Voice:</span>
                   <span className="original-voice-name">{selectedVoice.name}</span>
+                </div>
+              )}
+
+              {mode === 'add' && selectedUnavailableReason && (
+                <div className="modal-warning">
+                  {selectedUnavailableReason}: podrás añadirla, pero no generar audio con ella
+                  mientras la cuenta activa esté en el plan Free.
                 </div>
               )}
 

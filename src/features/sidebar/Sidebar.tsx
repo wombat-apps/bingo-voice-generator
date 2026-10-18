@@ -142,7 +142,7 @@ export function Sidebar({
                     <span className="voice-name">{voice.customName}</span>
                     <span className={`badge badge-${voice.gender}`}>{voice.gender}</span>
                     {unavailableReason && (
-                      <span className="voice-unavailable">{unavailableReason}</span>
+                      <span className="unavailable-reason">{unavailableReason}</span>
                     )}
                   </button>
                   <button
