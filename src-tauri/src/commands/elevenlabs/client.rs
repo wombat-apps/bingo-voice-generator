@@ -8,8 +8,8 @@ use super::types::{
     AddSharedVoiceResponse, ElevenLabsVoice, LibraryVoiceSort, SharedVoicesResponse,
     SubscriptionInfo, VoicesResponse,
 };
-use crate::commands::accounts;
 use crate::models::{Accent, TtsText, VoiceSettings};
+use crate::services::account_store::AccountsError;
 use crate::services::app_dirs::AppDirs;
 
 const BASE_URL: &str = "https://api.elevenlabs.io";
@@ -39,8 +39,8 @@ impl From<reqwest::Error> for ElevenLabsError {
     }
 }
 
-impl From<accounts::AccountsError> for ElevenLabsError {
-    fn from(error: accounts::AccountsError) -> Self {
+impl From<AccountsError> for ElevenLabsError {
+    fn from(error: AccountsError) -> Self {
         ElevenLabsError::Account(error.to_string())
     }
 }
@@ -176,21 +176,24 @@ impl ElevenLabs {
     /// A client for any saved ElevenLabs Account.
     pub fn client_for_account(
         &self,
+        dirs: &AppDirs,
         account_id: Uuid,
     ) -> Result<ElevenLabsClient, ElevenLabsError> {
-        Ok(self.client_for_key(accounts::account_api_key(account_id)?))
+        Ok(self.client_for_key(dirs.account_store().api_key(account_id)?))
     }
 
     /// A client for the Active Account, or `NoActiveAccount` when there is none.
     pub async fn active_client(&self, dirs: &AppDirs) -> Result<ElevenLabsClient, ElevenLabsError> {
-        let id = accounts::active_account_id(dirs)
+        let store = dirs.account_store();
+        let id = store
+            .active_account_id()
             .await?
             .ok_or(ElevenLabsError::NoActiveAccount)?;
         let mut cached = self.active_key.lock().await;
         let key = match cached.as_ref() {
             Some((cached_id, key)) if *cached_id == id => key.clone(),
             _ => {
-                let key = accounts::account_api_key(id)?;
+                let key = store.api_key(id)?;
                 *cached = Some((id, key.clone()));
                 key
             }

@@ -68,15 +68,15 @@ src/features/                       ├── elevenlabs/ (client.rs: one client
     ├── grid/                       │                types.rs: DTOs; mod.rs: commands)
     ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
     ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
-    │   player.ts reducer)          └── accounts.rs (ElevenLabs Accounts, keys in Keychain)
+    │   player.ts reducer)          └── accounts.rs (ElevenLabs Accounts commands)
     ├── settings-panel/         src-tauri/src/services/
     └── voices/                     ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
-src/domain/                         ├── audio_store.rs (file names, Original/Trimmed Audio)
-    ├── bingo.ts (Bingo Mode rules) └── audio_trimmer.rs
-    └── plan.ts (Plan rules)
+src/domain/                         ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
+    ├── bingo.ts (Bingo Mode rules) ├── audio_store.rs (file names, Original/Trimmed Audio)
+    └── plan.ts (Plan rules)        └── audio_trimmer.rs
 ```
 
-API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
+API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`, through `AccountStore`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
 
 **IPC Pattern**: Frontend calls `invoke()` from `@tauri-apps/api` → Rust commands in `src-tauri/src/commands/` → Results serialized back to TypeScript.
 
