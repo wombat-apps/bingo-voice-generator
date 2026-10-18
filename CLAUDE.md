@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A cross-platform desktop application that generates bingo number audio files using the ElevenLabs TTS API. Built with Tauri 2 (Rust backend) and React 19 (TypeScript frontend).
+A desktop application (macOS, Apple Silicon only for now) that generates bingo number audio files using the ElevenLabs TTS API. Built with Tauri 2 (Rust backend) and React 19 (TypeScript frontend).
 
 ## Commands
 
@@ -30,10 +30,17 @@ cargo fmt                      # Format Rust code
 cargo test                     # Run Rust tests
 ```
 
-Build outputs:
-- macOS: `src-tauri/target/release/bundle/dmg/`
-- Windows: `src-tauri/target/release/bundle/msi/`
-- Linux: `src-tauri/target/release/bundle/appimage/`
+Build outputs: `src-tauri/target/release/bundle/` (`.app` and `.dmg`).
+
+## CI / Release
+
+- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
+- `.github/workflows/release.yml`: runs on `v*` tags, on macOS. tauri-action builds for `aarch64-apple-darwin`, signs with Developer ID, notarizes, and publishes a GitHub Release containing `latest.json` for `tauri-plugin-updater` plus a stable-name `BingoVoiceGenerator.dmg`. The version comes from the tag and is injected into `tauri.conf.json`, so never bump it by hand. Running it with `workflow_dispatch` is a dry run that uploads the bundle as an artifact.
+- The updater public key is in `tauri.conf.json`. The private key is the `TAURI_SIGNING_PRIVATE_KEY` secret; if it is lost, existing installs can no longer update.
+
+## History
+
+The former native SwiftUI app is preserved at the `swift-final` tag (`git show swift-final:<path>`). `PENDING_FEATURES.md` lists the features still to port and links to the Swift sources there. See `docs/adr/0001-tauri-replaces-native-swift.md`.
 
 ## Architecture
 

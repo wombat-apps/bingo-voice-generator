@@ -1,6 +1,6 @@
-# Bingo Voice Generator (Tauri)
+# Bingo Voice Generator
 
-Cross-platform desktop application that generates audio files for bingo numbers using the ElevenLabs text-to-speech API.
+Desktop application (macOS, Apple Silicon) that generates audio files for bingo numbers using the ElevenLabs text-to-speech API.
 
 ## Features
 
@@ -62,7 +62,7 @@ npm run tauri build
 ## Project Structure
 
 ```
-bingo-voice-generator-tauri/
+bingo-voice-generator/
 ├── src/                       # Frontend React
 │   ├── App.tsx               # Main application
 │   ├── types.ts              # TypeScript types
@@ -95,11 +95,25 @@ bingo-voice-generator-tauri/
 # Build for current platform
 npm run tauri build
 
-# The built application will be in:
-# macOS: src-tauri/target/release/bundle/dmg/
-# Windows: src-tauri/target/release/bundle/msi/
-# Linux: src-tauri/target/release/bundle/appimage/
+# The built application will be in src-tauri/target/release/bundle/
 ```
+
+## Release
+
+Releases are built by GitHub Actions (`.github/workflows/release.yml`) on a macOS runner: Apple Silicon only, signed with Developer ID, notarized, and published with a signed `latest.json` for the in-app updater.
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+The tag is the only source of truth for the version, so there is no need to bump `tauri.conf.json` or `package.json` by hand. To test signing and notarization without publishing, run the workflow manually (Actions → Release → Run workflow); the bundle is uploaded as a workflow artifact.
+
+Stable download URL: `https://github.com/wombat-apps/bingo-voice-generator/releases/latest/download/BingoVoiceGenerator.dmg`
+
+## History
+
+This app replaced an earlier native SwiftUI version, which is preserved at the `swift-final` tag. See `docs/adr/0001-tauri-replaces-native-swift.md`.
 
 ## License
 

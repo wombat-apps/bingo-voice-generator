@@ -1,6 +1,6 @@
 # Funcionalidades Pendientes - Port Tauri
 
-Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Developer/bingo-voice-generator`) que faltan en el port de Tauri.
+Listado de funcionalidades presentes en la app nativa de macOS (retirada; consultar con `git show swift-final:<ruta>`, ver `docs/adr/0001-tauri-replaces-native-swift.md`) que faltan en el port de Tauri.
 
 ---
 
@@ -11,14 +11,14 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - ✅ Cambiar idioma asignado
 - ✅ Cambiar género
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Voices/VoiceFormSheet.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/VoiceFormSheet.swift`
 **Implementación Tauri:** `src/features/voices/VoiceFormModal.tsx`
 
 ### 1.2 Voces favoritas ✅ COMPLETADO
 - ✅ Marcar/desmarcar voces como favoritas (estrella)
 - ✅ Ordenar favoritas primero en la lista
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Voices/VoiceStore.swift` (propiedades `favoriteVoices`, `toggleFavorite()`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/VoiceStore.swift` (propiedades `favoriteVoices`, `toggleFavorite()`)
 **Implementación Tauri:** `src/features/sidebar/Sidebar.tsx` (star icon + sorting)
 
 ### 1.3 Importar voces desde ZIP
@@ -26,21 +26,21 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - Parsear `voice.yml` con metadatos
 - Copiar archivos de audio al storage
 
-**Referencia macOS:** `BingoVoiceGenerator/Services/ImportExportService.swift` (método `importVoice()`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Services/ImportService.swift`
 
 ### 1.4 Exportar voces a ZIP
 - Exportar voz seleccionada con todos sus audios
 - Generar `voice.yml` con metadatos
 - Incluir audios de ambos modos (Bingo 90 y 75)
 
-**Referencia macOS:** `BingoVoiceGenerator/Services/ImportExportService.swift` (método `exportVoice()`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Services/ExportService.swift`
 
 ### 1.5 Sidebar de voces mejorado
 - Voces agrupadas por idioma
 - Búsqueda de voces por nombre
 - Menú contextual (click derecho): editar, eliminar, exportar
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Voices/VoiceSidebar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/VoiceSidebar.swift`
 
 ---
 
@@ -53,14 +53,14 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - **Speaker Boost:** Toggle on/off (mejorar claridad)
 - **Speed:** Slider 0.7-1.2 (velocidad del habla)
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Settings/ElevenLabsSettingsSidebar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/VoiceSettingsSection.swift`
 
 ### 2.2 Selección de modelo TTS
 - Eleven v3 (última versión, máxima calidad)
 - Turbo v2 (generación rápida)
 - Multilingual v2 (mejor para idiomas no ingleses)
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Settings/SettingsState.swift` (propiedad `selectedModel`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (propiedad `selectedModel`)
 
 ### 2.3 Selección de formato de salida
 - MP3 44.1kHz 128kbps (estándar)
@@ -68,12 +68,12 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - MP3 22kHz 32kbps (tamaño pequeño)
 - Formatos PCM: 16kHz, 22kHz, 44.1kHz
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Settings/SettingsState.swift` (propiedad `selectedOutputFormat`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (propiedad `selectedOutputFormat`)
 
 ### 2.4 Restablecer ajustes por defecto
 - Botón para resetear todos los ajustes de voz a valores predeterminados
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Settings/SettingsState.swift` (método `resetToDefaults()`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/State/SettingsState.swift` (método `resetToDefaults()`)
 
 ---
 
@@ -87,7 +87,7 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - ✅ Fecha del próximo reset (formato relativo)
 - ✅ Caracteres restantes
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Subscription/SubscriptionInfoView.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/APIKeySection.swift`
 **Implementación Tauri:** `src/features/sidebar/SubscriptionInfo.tsx`
 
 ---
@@ -98,19 +98,19 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - Botones para ir al número anterior/siguiente
 - Navegación circular (del último al primero)
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift` (botones previous/next)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift` (botones previous/next)
 
 ### 4.2 Selector de parte (Word/Digit)
 - Botones W/D para reproducir parte específica
 - Indicador visual de parte actual
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 
 ### 4.3 Waveform interactivo ✅ COMPLETADO
 - ✅ Click para hacer seek en el audio
 - ✅ Arrastrar para navegar
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 **Implementación Tauri:** `src/features/player/WaveformSlider.tsx`
 
 ### 4.4 Display de tiempo ✅ COMPLETADO
@@ -118,18 +118,18 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - ✅ Actualización en tiempo real (50ms)
 - ✅ Formato con décimas para audios cortos (< 10s)
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 **Implementación Tauri:** `src/features/player/WaveformSlider.tsx`, `src/services/audioPlayer.ts`
 
 ### 4.5 Contador de audios
 - Indicador "X / Total" de audios generados
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 
 ### 4.6 Botón regenerar
 - Regenerar audio del número actual
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/NowPlaying/NowPlayingBar.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 
 ---
 
@@ -144,17 +144,17 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
   - Reproducir Digit
   - Eliminar audios
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Grid/BingoCellView.swift` (`.contextMenu`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Grid/BingoCellView.swift` (`.contextMenu`)
 
 ### 5.2 Display de duración en celdas
 - Mostrar duración del audio en cada celda
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Grid/BingoCellView.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Grid/BingoCellView.swift`
 
 ### 5.3 Tooltips en hover
 - Información adicional al pasar el ratón
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Grid/BingoCellView.swift` (`.help()`)
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Grid/BingoCellView.swift` (`.help()`)
 
 ---
 
@@ -164,7 +164,7 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - ✅ Eliminar silencios al final del audio generado
 - Parámetros: umbral -40dB, padding 150ms, fade-out 80ms, silencio final 80ms
 
-**Referencia macOS:** `BingoVoiceGenerator/Services/AudioTrimmer.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Services/SilenceTrimmingService.swift`
 **Implementación Tauri:** `src-tauri/src/services/audio_trimmer.rs`
 
 ---
@@ -175,14 +175,14 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - Pantalla de bienvenida cuando no hay voces
 - Guía para añadir primera voz
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Voices/EmptyStateView.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/EmptyStateView.swift`
 
 ### 7.2 Header de progreso
 - Barra de progreso durante generación batch
 - Porcentaje completado
 - Contador completados/total
 
-**Referencia macOS:** `BingoVoiceGenerator/Features/Grid/ProgressHeader.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Grid/ProgressHeader.swift`
 
 ---
 
@@ -193,7 +193,7 @@ Listado de funcionalidades presentes en la app nativa de macOS (`/Volumes/Develo
 - Menú "Buscar actualizaciones..." (Cmd+Option+U)
 - Descarga e instalación automática
 
-**Referencia macOS:** `BingoVoiceGenerator/Services/UpdaterService.swift`
+**Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Services/UpdaterService.swift`
 
 ---
 
