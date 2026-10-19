@@ -25,6 +25,7 @@ import {
   getPlatformInfo,
   revealVoiceInFileManager,
   voicesWithTrimmedAudio,
+  confirmDeletion,
 } from './services/tauri';
 import { playPreview, stopPreview } from './services/audioPlayer';
 import type {
@@ -492,7 +493,8 @@ function App() {
   }, []);
 
   const handleDeleteVoice = useCallback(async (voice: Voice) => {
-    const confirmed = window.confirm(
+    const confirmed = await confirmDeletion(
+      'Delete Voice',
       `Are you sure you want to delete the voice "${voice.customName}"?\n\nThis will remove the voice from the app but will not delete it from ElevenLabs.`
     );
 

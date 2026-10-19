@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { ask } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import type {
   AccountsState,
@@ -132,6 +133,19 @@ export async function revealVoiceInFileManager(
   if (dirInfo.exists) {
     await revealItemInDir(dirInfo.path);
   }
+}
+
+// ============================================================================
+// Dialogs
+// ============================================================================
+
+/**
+ * Native warning dialog; resolves to true only when the user confirms.
+ * Use instead of `window.confirm`, which the dialog plugin replaces with a
+ * version that returns a Promise.
+ */
+export async function confirmDeletion(title: string, message: string): Promise<boolean> {
+  return ask(message, { title, kind: 'warning', okLabel: 'Delete', cancelLabel: 'Cancel' });
 }
 
 // ============================================================================
