@@ -1,6 +1,8 @@
 /**
  * Error shapes received from Tauri commands and the Spanish messages shown for them.
  * ElevenLabs codes are listed in docs/elevenlabs-plans.md (section Errors).
+ * Updater errors (`UpdateError`, src-tauri/src/commands/updater.rs) are shown in English,
+ * like the rest of the updater UI.
  */
 
 import type { ElevenLabsError } from '../types';
@@ -73,4 +75,12 @@ export function describeGenerationError(err: unknown, accountName: string | null
   if (status === 429) return busy;
   if (status >= 500) return `ElevenLabs no está disponible en este momento (${status}). Inténtalo más tarde.`;
   return `Error al generar audio (${status}): ${message}`;
+}
+
+/**
+ * Message for a failed update check or install: a serialized `UpdateError`
+ * (`{code: "UPDATE_ERROR", message}`) or anything else.
+ */
+export function describeUpdateError(err: unknown): string {
+  return `Couldn't update: ${errorMessage(err)}`;
 }

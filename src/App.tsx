@@ -9,6 +9,7 @@ import { Sidebar } from './features/sidebar';
 import { SettingsPanel } from './features/settings-panel';
 import { ActionBar } from './features/player';
 import { VoiceFormModal } from './features/voices';
+import { UpdateButton, useUpdater } from './features/updater';
 import {
   getAccents,
   loadVoices,
@@ -122,6 +123,9 @@ function App() {
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  // Updates offered in the header
+  const updater = useUpdater();
 
   // Settings panel state (right sidebar)
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
@@ -689,15 +693,27 @@ function App() {
             size="md"
           />
 
-          {/* Settings button */}
-          <button
-            type="button"
-            className="btn btn-icon"
-            onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
-            title={isSettingsPanelOpen ? "Hide Settings" : "Show Settings"}
-          >
-            <Settings size={18} />
-          </button>
+          <div className="app-header-actions">
+            {updater.update && (
+              <UpdateButton
+                update={updater.update}
+                isGenerating={isGeneratingWord || isGeneratingDigit}
+                isInstalling={updater.isInstalling}
+                onInstall={updater.install}
+                onLater={updater.later}
+              />
+            )}
+
+            {/* Settings button */}
+            <button
+              type="button"
+              className="btn btn-icon"
+              onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
+              title={isSettingsPanelOpen ? "Hide Settings" : "Show Settings"}
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </header>
 
         <main className="app-main">

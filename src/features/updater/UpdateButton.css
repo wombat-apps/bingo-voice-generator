@@ -1,0 +1,45 @@
+.update-button {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.update-button > .btn {
+  white-space: nowrap;
+}
+
+.update-popover {
+  position: absolute;
+  top: calc(100% + var(--spacing-sm));
+  right: 0;
+  z-index: 1000;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--surface-popover);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.update-popover-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.update-popover-notes {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  white-space: pre-line;
+}
+
+.update-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}

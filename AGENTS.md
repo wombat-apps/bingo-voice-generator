@@ -63,20 +63,22 @@ The former native SwiftUI app is preserved at the `swift-final` tag (`git show s
 ```
 Frontend (React/TypeScript)     Backend (Rust/Tauri)
 ─────────────────────────────   ────────────────────────────────────────
-src/App.tsx                     src-tauri/src/lib.rs (manages AppDirs, ElevenLabs)
-    ↓                               ↓
+src/App.tsx                     src-tauri/src/lib.rs (manages AppDirs, ElevenLabs, PendingUpdate)
+    ↓                           src-tauri/src/menu.rs (app menu, "Check for Updates…")
 src/services/tauri.ts  ←IPC→   src-tauri/src/commands/
     ↓                               ├── generation.rs (generate_audio: text → TTS → save)
 src/features/                       ├── elevenlabs/ (client.rs: one client per key, errors;
     ├── grid/                       │                types.rs: DTOs; mod.rs: commands)
     ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
     ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
-    │   player.ts reducer)          └── accounts.rs (ElevenLabs Accounts commands)
-    ├── settings-panel/         src-tauri/src/services/
-    └── voices/                     ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
-src/domain/                         ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
-    ├── bingo.ts (Bingo Mode rules) ├── audio_store.rs (file names, Original/Trimmed Audio)
-    └── plan.ts (Plan rules)        └── audio_trimmer.rs
+    │   player.ts reducer)          ├── accounts.rs (ElevenLabs Accounts commands)
+    ├── settings-panel/             └── updater.rs (check_for_update, install_update)
+    ├── updater/ (useUpdater,   src-tauri/src/services/
+    │   update.ts rules)            ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
+    └── voices/                     ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
+src/domain/                         ├── audio_store.rs (file names, Original/Trimmed Audio)
+    ├── bingo.ts (Bingo Mode rules) └── audio_trimmer.rs
+    └── plan.ts (Plan rules)
 ```
 
 API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`, through `AccountStore`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
@@ -124,10 +126,11 @@ Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioF
 ## Conventions
 
 - Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
-- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, `StorageError` to `{code: "STORAGE_ERROR", message}`, and `GenerationError` adds `NO_DIGIT`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
+- Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, `StorageError` to `{code: "STORAGE_ERROR", message}`, `UpdateError` to `{code: "UPDATE_ERROR", message}`, and `GenerationError` adds `NO_DIGIT`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
 - Commands take `State<AppDirs>` and `State<ElevenLabs>` instead of building paths or HTTP clients themselves
 - API keys stored securely via system keychain (not in config files)
 - TypeScript strict mode enabled
+- Plugins the webview does not need (updater, process) are used from Rust only; do not add their JS packages or permissions. The updater runs through `check_for_update` and `install_update` (`src-tauri/src/commands/updater.rs`), and the app menu (`src-tauri/src/menu.rs`) only emits `check-for-update-requested` to the webview
 
 ## Agent skills
 

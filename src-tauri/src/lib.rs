@@ -1,4 +1,5 @@
 mod commands;
+mod menu;
 mod models;
 mod services;
 
@@ -63,7 +64,7 @@ fn get_platform_info() -> PlatformInfo {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(
             // Writes to stdout and to ~/Library/Logs/com.wombatapps.bingovoicegenerator/
             tauri_plugin_log::Builder::new()
@@ -81,17 +82,13 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init());
-
-    // Add updater plugin only on desktop
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-    }
-
-    builder
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .menu(menu::build)
+        .on_menu_event(menu::on_event)
         .manage(services::app_dirs::AppDirs::from_system())
         .manage(ElevenLabs::default())
+        .manage(PendingUpdate::default())
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
             generate_audio,
@@ -119,6 +116,9 @@ pub fn run() {
             rename_account,
             delete_account,
             set_active_account,
+            // Updater commands
+            check_for_update,
+            install_update,
             // Utility commands
             get_accents,
             // Platform detection

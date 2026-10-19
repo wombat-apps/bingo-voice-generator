@@ -141,6 +141,13 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   flex-shrink: 0;
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
 /* Drag strip */
 .drag-strip {
   position: absolute;

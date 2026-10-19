@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeGenerationError } from './errors';
+import { describeGenerationError, describeUpdateError } from './errors';
 
 const api = (status: number, apiCode: string | null, message = 'msg') => ({
   code: 'API_ERROR' as const,
@@ -22,5 +22,17 @@ describe('describeGenerationError', () => {
     expect(describeGenerationError({ code: 'NO_ACTIVE_ACCOUNT', message: '' }, null)).toMatch(/selecciona una cuenta/);
     expect(describeGenerationError({ code: 'STORAGE_ERROR', message: 'disk full' }, null)).toMatch(/disk full/);
     expect(describeGenerationError('boom', null)).toMatch(/boom/);
+  });
+});
+
+describe('describeUpdateError', () => {
+  it('shows the message of an UPDATE_ERROR', () => {
+    expect(describeUpdateError({ code: 'UPDATE_ERROR', message: 'signature mismatch' })).toBe(
+      "Couldn't update: signature mismatch",
+    );
+  });
+
+  it('falls back to any error message', () => {
+    expect(describeUpdateError(new Error('offline'))).toBe("Couldn't update: offline");
   });
 });
