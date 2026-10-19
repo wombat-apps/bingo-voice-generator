@@ -34,8 +34,8 @@ tokio = { version = "1", features = ["fs", "macros", "rt", "sync", "time"] }
 # HTTP client
 reqwest = { version = "0.13", features = ["json"] }
 
-# Keychain access
-keyring = { version = "3", features = ["apple-native"] }
+# Keychain access (the macOS store is under the target section below)
+keyring-core = "1"
 
 # UUID generation
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -63,3 +63,6 @@ custom-protocol = ["tauri/custom-protocol"]
 [dev-dependencies]
 tempfile = "3"
 wiremock = "0.6.5"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1", default-features = false, features = ["keychain"] }

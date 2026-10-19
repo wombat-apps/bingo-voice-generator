@@ -21,7 +21,7 @@ pub enum AccountsError {
     #[error("Invalid API key: {0}")]
     InvalidApiKey(String),
     #[error("Keyring error: {0}")]
-    Keyring(#[from] keyring::Error),
+    Keyring(#[from] keyring_core::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("JSON error: {0}")]
@@ -168,15 +168,25 @@ impl AccountStore {
     /// Removes an account's API key, if it still has one.
     pub fn delete_api_key(&self, id: Uuid) -> Result<(), AccountsError> {
         match keychain_entry(id)?.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Ok(()) | Err(keyring_core::Error::NoEntry) => Ok(()),
             Err(e) => Err(e.into()),
         }
     }
 }
 
-fn keychain_entry(id: Uuid) -> Result<keyring::Entry, AccountsError> {
+fn keychain_entry(id: Uuid) -> Result<keyring_core::Entry, AccountsError> {
     let account = format!("{}_{}", API_KEY_ACCOUNT_PREFIX, id);
-    Ok(keyring::Entry::new(SERVICE_NAME, &account)?)
+    Ok(keyring_core::Entry::new(SERVICE_NAME, &account)?)
+}
+
+/// Makes the login keychain the store every Keychain entry is read from and written to.
+/// Call it once at startup, before any API key is read. It is the legacy keychain that
+/// keyring 3 wrote to, so keys saved by earlier versions are still found. Other platforms
+/// have no store, and reading a key there fails with `NoDefaultStore`.
+pub fn use_login_keychain() -> Result<(), AccountsError> {
+    #[cfg(target_os = "macos")]
+    keyring_core::set_default_store(apple_native_keyring_store::keychain::Store::new()?);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -184,6 +194,11 @@ mod tests {
     use super::*;
 
     fn store() -> (tempfile::TempDir, AccountStore) {
+        // Tests keep API keys in memory instead of the Keychain
+        static MOCK_KEYCHAIN: std::sync::Once = std::sync::Once::new();
+        MOCK_KEYCHAIN.call_once(|| {
+            keyring_core::set_default_store(keyring_core::mock::Store::new().unwrap())
+        });
         let dir = tempfile::tempdir().unwrap();
         let store = AccountStore::new(dir.path().join("accounts.json"));
         (dir, store)
@@ -205,6 +220,31 @@ mod tests {
 
         assert_eq!(store.load().await.unwrap(), state);
         assert_eq!(store.active_account_id().await.unwrap(), Some(id));
+    }
+
+    #[test]
+    fn a_saved_api_key_is_read_back_and_can_be_replaced() {
+        let (_dir, store) = store();
+        let id = Uuid::new_v4();
+        store.set_api_key(id, "sk_first").unwrap();
+        assert_eq!(store.api_key(id).unwrap(), "sk_first");
+
+        store.set_api_key(id, "sk_second").unwrap();
+        assert_eq!(store.api_key(id).unwrap(), "sk_second");
+    }
+
+    #[test]
+    fn a_deleted_api_key_is_gone_and_deleting_it_again_succeeds() {
+        let (_dir, store) = store();
+        let id = Uuid::new_v4();
+        store.set_api_key(id, "sk_abcdef").unwrap();
+
+        store.delete_api_key(id).unwrap();
+        assert!(matches!(
+            store.api_key(id),
+            Err(AccountsError::Keyring(keyring_core::Error::NoEntry))
+        ));
+        store.delete_api_key(id).unwrap();
     }
 
     #[test]

@@ -84,6 +84,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|_| {
+            // After the log plugin, so a failure is logged
+            if let Err(e) = services::account_store::use_login_keychain() {
+                log::error!("Could not open the login keychain: {e}");
+            }
+            Ok(())
+        })
         .menu(menu::build)
         .on_menu_event(menu::on_event)
         .manage(services::app_dirs::AppDirs::from_system())
