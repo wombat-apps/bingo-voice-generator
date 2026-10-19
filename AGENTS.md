@@ -128,7 +128,7 @@ Key types: `AccentId`, `BingoModeId`, `AudioPart` (word/digit), `Voice`, `AudioF
 - Feature-based organization in `src/features/` (component + CSS + index.ts per feature)
 - Rust commands use `#[tauri::command]` attribute and return `Result<T, E>`, where `E` is a `thiserror` enum that implements `Serialize` (e.g. `ElevenLabsError` serializes to `{code, message}`, plus `status` and `apiCode` for `API_ERROR`, `StorageError` to `{code: "STORAGE_ERROR", message}`, `UpdateError` to `{code: "UPDATE_ERROR", message}`, and `GenerationError` adds `NO_DIGIT`, so the frontend receives a plain object, not an `Error`; see `src/services/errors.ts`)
 - Commands take `State<AppDirs>` and `State<ElevenLabs>` instead of building paths or HTTP clients themselves
-- API keys stored securely via system keychain (not in config files)
+- API keys stored securely via system keychain (not in config files), through `keyring-core` and `apple-native-keyring-store`'s legacy `keychain` store, which is where keyring 3 saved them (`protected` would not see them). `run()` registers it in `.setup` (`account_store::use_login_keychain`); tests use `keyring_core::mock`
 - TypeScript strict mode enabled
 - Plugins the webview does not need (updater, process) are used from Rust only; do not add their JS packages or permissions. The updater runs through `check_for_update` and `install_update` (`src-tauri/src/commands/updater.rs`), and the app menu (`src-tauri/src/menu.rs`) only emits `check-for-update-requested` to the webview
 
