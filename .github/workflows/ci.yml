@@ -58,6 +58,10 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # tsc already ran in the build; this catches what types cannot (see eslint.config.js).
+      - name: Frontend lint
+        run: npx eslint src
+
       - name: Frontend tests
         run: npm test
 
@@ -72,3 +76,12 @@ jobs:
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
+
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete
+
+      - name: Rust unused dependencies
+        working-directory: src-tauri
+        run: cargo machete

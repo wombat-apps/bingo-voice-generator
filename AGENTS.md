@@ -24,6 +24,9 @@ npm run dev
 # Frontend tests (vitest)
 npm test
 
+# Typecheck + ESLint
+npm run lint
+
 # Rust commands (run from src-tauri/)
 # Note: May need to set PATH first: export PATH="$HOME/.cargo/bin:$PATH"
 cargo build                    # Build Rust backend
@@ -47,7 +50,7 @@ The identity is the "Developer ID Application" certificate of the release team (
 
 ## CI / Release
 
-- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `npm test`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`, all of which must pass. macOS-only `#[cfg]` code is only compiled during release.
+- `.github/workflows/ci.yml`: runs on Linux on every PR and on pushes to `main`. It runs `npm run build` (tsc + vite), `eslint src`, `npm test`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` and `cargo machete` (unused crates), all of which must pass. ESLint forbids `alert`/`confirm`/`prompt`: Tauri plugins replace them at runtime, so call the plugin through `src/services/tauri.ts`. macOS-only `#[cfg]` code is only compiled during release.
 - `.github/workflows/release.yml`: runs on `v*` tags, on macOS. tauri-action builds for `aarch64-apple-darwin`, signs with Developer ID, notarizes, and publishes a GitHub Release containing `latest.json` for `tauri-plugin-updater` plus a stable-name `BingoVoiceGenerator.dmg`. The version comes from the tag and is injected into `tauri.conf.json`, so never bump it by hand. Running it with `workflow_dispatch` is a dry run that uploads the bundle as an artifact.
 - The updater public key is in `tauri.conf.json`. The private key is the `TAURI_SIGNING_PRIVATE_KEY` secret; if it is lost, existing installs can no longer update.
 
