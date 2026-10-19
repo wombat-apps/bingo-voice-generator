@@ -1,7 +1,7 @@
 {
   "name": "bingo-voice-generator-tauri",
   "private": true,
-  "version": "0.3.3-dev",
+  "version": "0.3.4-dev",
   "type": "module",
   "scripts": {
     "dev": "vite",
