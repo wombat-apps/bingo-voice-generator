@@ -5,4 +5,4 @@ The app takes the name of the bingo!! family it produces voices for (bingo!!, bi
 ## Consequences
 
 - Installed copies keep their `Bingo Voice Generator.app` file name after updating, because the updater replaces the bundle in place; a fresh install from the DMG is `bingo!! studio.app`.
-- GitHub turns `bingo!! studio_X.dmg` into `bingo..studio_X.dmg` in release assets, so `release.yml` applies the same rule to replace the versioned DMG.
+- Release assets are named `bingo-studio_<version>_<arch><ext>` (`assetNamePattern` in `release.yml`), not after the product name: GitHub turns the `!!` into dots and tauri-action does not, so with the default names it could not pair the updater archive with its `.sig` and skipped `latest.json` (v0.3.2 shipped without it, and it was uploaded by hand).
