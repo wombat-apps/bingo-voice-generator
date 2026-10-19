@@ -189,3 +189,9 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 export type ElevenLabsError =
   | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR' | 'NO_DIGIT' | 'STORAGE_ERROR'; message: string }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };
+
+/** An update `check_for_update` found and `install_update` will install. */
+export interface UpdateInfo {
+  version: string;
+  notes: string | null;
+}

@@ -126,6 +126,10 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  /* backdrop-filter makes the header and .app-content separate stacking contexts;
+     keep the header (and its popovers) above the content that follows it. */
+  position: relative;
+  z-index: 10;
 }
 
 /* Voice info container - flexible, can shrink */
@@ -138,6 +142,13 @@ html.platform-macos .app.sidebar-collapsed .app-header {
 /* Header mode selector - push to right with flexible space */
 .app-header .segmented-control {
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
   flex-shrink: 0;
 }
 

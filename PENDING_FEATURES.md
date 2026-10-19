@@ -193,12 +193,13 @@ Si se implementa, solo se deben ofrecer los formatos que permita el Plan de la A
 
 ## 8. Actualizaciones Automáticas
 
-### 8.1 Sistema de auto-actualización
-- Integración con Sparkle para actualizaciones automáticas
-- Menú "Buscar actualizaciones..." (Cmd+Option+U)
-- Descarga e instalación automática
+### 8.1 Sistema de auto-actualización ✅ COMPLETADO
+- ✅ Tauri updater (en lugar de Sparkle), comprobación silenciosa al arrancar
+- ✅ Menú "Check for Updates…" (Cmd+Option+U)
+- ✅ Botón "Update to X" en la cabecera: instala y reinicia
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Services/UpdaterService.swift`
+**Implementación Tauri:** `src-tauri/src/commands/updater.rs`, `src-tauri/src/menu.rs`, `src/features/updater/`
 
 ---
 
@@ -223,4 +224,4 @@ Si se implementa, solo se deben ofrecer los formatos que permita el Plan de la A
 - [ ] Importar/exportar voces (ZIP)
 - [ ] Vista de estado vacío
 - [ ] Selección de formato de salida
-- [ ] Actualizaciones automáticas (Sparkle/Tauri updater)
+- [x] Actualizaciones automáticas (Sparkle/Tauri updater)

@@ -1,5 +1,7 @@
+import { getVersion } from '@tauri-apps/api/app';
 import { invoke } from '@tauri-apps/api/core';
-import { ask } from '@tauri-apps/plugin-dialog';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { ask, message } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import type {
   AccountsState,
@@ -19,6 +21,7 @@ import type {
   LibraryVoiceSort,
   SubscriptionInfo,
   VoiceSettings,
+  UpdateInfo,
 } from '../types';
 
 // ============================================================================
@@ -146,6 +149,37 @@ export async function revealVoiceInFileManager(
  */
 export async function confirmDeletion(title: string, message: string): Promise<boolean> {
   return ask(message, { title, kind: 'warning', okLabel: 'Delete', cancelLabel: 'Cancel' });
+}
+
+/** Native dialog with an OK button. Use instead of `window.alert`. */
+export async function showMessage(title: string, text: string, kind: 'info' | 'error'): Promise<void> {
+  await message(text, { title, kind });
+}
+
+// ============================================================================
+// Updater Commands
+// ============================================================================
+
+/**
+ * Checks for a newer release; the backend keeps it for `installUpdate`.
+ * Debug builds always resolve to null. Rejects with an `UpdateError`.
+ */
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>('check_for_update');
+}
+
+/** Installs the update the last `checkForUpdate` found and restarts. Rejects with an `UpdateError`. */
+export async function installUpdate(): Promise<void> {
+  return invoke('install_update');
+}
+
+export async function getAppVersion(): Promise<string> {
+  return getVersion();
+}
+
+/** Calls `handler` when the user picks "Check for Updates…" in the app menu. */
+export async function onCheckForUpdateRequested(handler: () => void): Promise<UnlistenFn> {
+  return listen('check-for-update-requested', handler);
 }
 
 // ============================================================================
