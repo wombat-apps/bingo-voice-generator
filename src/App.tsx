@@ -801,6 +801,8 @@ function App() {
       <SettingsPanel
         isOpen={isSettingsPanelOpen}
         voiceSettings={voiceSettings}
+        accent={selectedAccent}
+        number={selectedNumber}
         onClose={() => setIsSettingsPanelOpen(false)}
         onVoiceSettingsChange={setVoiceSettings}
       />

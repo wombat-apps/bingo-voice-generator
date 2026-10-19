@@ -36,6 +36,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
   };
 
   const currentStabilityPreset = getCurrentStabilityPreset();
+  const usesStyleAndSpeed = TTS_MODELS.find((model) => model.id === settings.modelId)?.usesStyleAndSpeed ?? true;
 
   return (
     <div className="voice-settings">
@@ -70,39 +71,43 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
           />
         </div>
 
-        {/* Style - Slider */}
-        <div className="setting-group">
-          <div className="setting-header">
-            <label className="setting-label">Style</label>
-            <span className="setting-value">{settings.style.toFixed(2)}</span>
-          </div>
-          <input
-            type="range"
-            className="slider"
-            min="0"
-            max="1"
-            step="0.01"
-            value={settings.style}
-            onChange={(e) => handleSliderChange('style', parseFloat(e.target.value))}
-          />
-        </div>
+        {usesStyleAndSpeed && (
+          <>
+            {/* Style - Slider */}
+            <div className="setting-group">
+              <div className="setting-header">
+                <label className="setting-label">Style</label>
+                <span className="setting-value">{settings.style.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                className="slider"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.style}
+                onChange={(e) => handleSliderChange('style', parseFloat(e.target.value))}
+              />
+            </div>
 
-        {/* Speed - Slider */}
-        <div className="setting-group">
-          <div className="setting-header">
-            <label className="setting-label">Speed</label>
-            <span className="setting-value">{settings.speed.toFixed(2)}x</span>
-          </div>
-          <input
-            type="range"
-            className="slider"
-            min="0.7"
-            max="1.2"
-            step="0.01"
-            value={settings.speed}
-            onChange={(e) => handleSliderChange('speed', parseFloat(e.target.value))}
-          />
-        </div>
+            {/* Speed - Slider */}
+            <div className="setting-group">
+              <div className="setting-header">
+                <label className="setting-label">Speed</label>
+                <span className="setting-value">{settings.speed.toFixed(2)}x</span>
+              </div>
+              <input
+                type="range"
+                className="slider"
+                min="0.7"
+                max="1.2"
+                step="0.01"
+                value={settings.speed}
+                onChange={(e) => handleSliderChange('speed', parseFloat(e.target.value))}
+              />
+            </div>
+          </>
+        )}
 
         {/* Speaker Boost - Toggle */}
         <div className="setting-group setting-row">

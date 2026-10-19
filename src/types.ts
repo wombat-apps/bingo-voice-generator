@@ -153,13 +153,15 @@ export interface TtsModel {
   id: TtsModelId;
   name: string;
   description: string;
+  /** Whether the model uses Style and Speed; Eleven v4 ignores them (see docs/elevenlabs-plans.md). */
+  usesStyleAndSpeed: boolean;
 }
 
 export const TTS_MODELS: TtsModel[] = [
-  { id: 'eleven_v4', name: 'Eleven v4', description: 'Highest quality' },
-  { id: 'eleven_v4_turbo', name: 'Eleven v4 Turbo', description: 'Fast, lower cost' },
-  { id: 'eleven_v3', name: 'Eleven v3', description: 'Previous gen, expressive' },
-  { id: 'eleven_multilingual_v2', name: 'Multilingual v2', description: 'Stable, reliable numbers' },
+  { id: 'eleven_v4', name: 'Eleven v4', description: 'Highest quality', usesStyleAndSpeed: false },
+  { id: 'eleven_v4_turbo', name: 'Eleven v4 Turbo', description: 'Fast, lower cost', usesStyleAndSpeed: false },
+  { id: 'eleven_v3', name: 'Eleven v3', description: 'Previous gen, expressive', usesStyleAndSpeed: true },
+  { id: 'eleven_multilingual_v2', name: 'Multilingual v2', description: 'Stable, reliable numbers', usesStyleAndSpeed: true },
 ];
 
 export function isTtsModelId(value: unknown): value is TtsModelId {
@@ -195,12 +197,38 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 
 /**
  * Serialized `ElevenLabsError` (src-tauri/src/commands/elevenlabs/client.rs), or a
- * `GenerationError` (src-tauri/src/commands/generation.rs), which adds `NO_DIGIT` and
- * `STORAGE_ERROR`.
+ * `GenerationError` (src-tauri/src/commands/generation.rs), which adds `NO_DIGIT`,
+ * `STORAGE_ERROR` and `FORMAT_ERROR`.
  */
 export type ElevenLabsError =
-  | { code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR' | 'NO_DIGIT' | 'STORAGE_ERROR'; message: string }
+  | {
+      code: 'NO_ACTIVE_ACCOUNT' | 'ACCOUNT_ERROR' | 'NETWORK_ERROR' | 'NO_DIGIT' | 'STORAGE_ERROR' | 'FORMAT_ERROR';
+      message: string;
+    }
   | { code: 'API_ERROR'; status: number; apiCode: string | null; message: string };
+
+/**
+ * A Word Format or a Digit Format the user added (see GLOSSARY.md). The Default one is not
+ * listed: it is `selectedId: null`.
+ */
+export interface PartFormat {
+  id: string;
+  language: string;
+  part: AudioPart;
+  /** The Bingo Mode of a Word Format; a Digit Format has none. */
+  bingoMode?: BingoModeId;
+  format: string;
+}
+
+/** The formats of one Language and Audio Part (and, for the Word, Bingo Mode). */
+export interface Formats {
+  formats: PartFormat[];
+  /** The text of the Default one, in the same syntax. */
+  defaultFormat: string;
+  /** The placeholders these formats can use, such as `{num}`. */
+  placeholders: string[];
+  selectedId: string | null;
+}
 
 /** An update `check_for_update` found and `install_update` will install. */
 export interface UpdateInfo {

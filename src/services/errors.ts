@@ -41,6 +41,7 @@ export function describeGenerationError(err: unknown, accountName: string | null
       return 'No se pudo conectar con ElevenLabs. Comprueba tu conexión a internet.';
     case 'NO_DIGIT':
     case 'STORAGE_ERROR':
+    case 'FORMAT_ERROR':
       return `Error al generar audio: ${err.message}`;
     case 'API_ERROR':
       break;

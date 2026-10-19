@@ -1,14 +1,14 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use super::{Accent, AudioPart, BingoMode, Language, COLUMN_LETTERS};
+use super::{Accent, AudioPart, BingoMode, FormatSlot, Language, SelectedFormats, COLUMN_LETTERS};
 
 pub struct SpeechPatterns {
-    pub word_single_digit_90: &'static str,
-    pub word_two_digit_90: &'static str,
-    pub word_single_digit_75: &'static str,
-    pub word_two_digit_75: &'static str,
-    /// The Digit is the same in every Bingo Mode.
+    /// The Default Word Formats (see `build_word_text_with_format`).
+    pub word_90: &'static str,
+    pub word_75: &'static str,
+    /// The Default Digit Format (see `build_digit_text_with_format`), the same in every
+    /// Bingo Mode.
     pub digit: &'static str,
 }
 
@@ -147,11 +147,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "\u{a1}{num_word}!",
-                word_two_digit_90: "\u{a1}{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "\u{a1}{Num}!",
+                word_75: "{Letter} \u{a1}{num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -259,11 +257,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -371,11 +367,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -483,11 +477,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -595,11 +587,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -707,11 +697,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -819,11 +807,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -931,11 +917,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -1043,11 +1027,9 @@ impl LanguageConfig {
             numbers,
             letters: COLUMN_LETTERS,
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}!",
-                word_two_digit_90: "{num_word}!",
-                word_single_digit_75: "{letter} !{num_word}!",
-                word_two_digit_75: "{letter} !{num_word}!",
-                digit: "{d1} {d2}",
+                word_90: "{Num}!",
+                word_75: "{Letter} {num}!",
+                digit: "{First} {second}",
             },
         }
     }
@@ -1155,11 +1137,9 @@ impl LanguageConfig {
             numbers,
             letters: ["ビー", "アイ", "エヌ", "ジー", "オー"],
             patterns: SpeechPatterns {
-                word_single_digit_90: "{num_word}！",
-                word_two_digit_90: "{num_word}！",
-                word_single_digit_75: "{letter}、{num_word}！",
-                word_two_digit_75: "{letter}、{num_word}！",
-                digit: "{d1}、{d2}",
+                word_90: "{Num}！",
+                word_75: "{Letter}、{num}！",
+                digit: "{first}、{second}",
             },
         }
     }
@@ -1175,48 +1155,74 @@ pub struct TtsText {
     pub next_text: Option<String>,
 }
 
-/// Builds the text and its context. The Word knows the scene and that the Digit follows;
-/// the Digit knows the scene and that the Word has just been said. The Digit serves every
-/// Bingo Mode, so its context is the Bingo 90 Word, without the letter.
-/// Returns `None` for the Digit of a number below 10, which has none.
+/// Builds the text and its context, in the `formats` selected for the Accent's Language.
+/// The Word knows the scene and that the Digit follows; the Digit knows the scene and that
+/// the Word has just been said. The Digit serves every Bingo Mode, so its context is the
+/// Bingo 90 Word, without the letter. Returns `None` for the Digit of a number below 10,
+/// which has none.
 pub fn build_tts_text(
     number: u32,
     accent: Accent,
     mode: BingoMode,
     part: AudioPart,
+    formats: &SelectedFormats,
 ) -> Option<TtsText> {
     if !part.exists_for(number) {
         return None;
     }
     let scene = accent.scene();
+    let word = |mode| word_text(number, accent, mode, formats.word(mode));
+    let digit = || digit_text(number, accent, formats.digit());
     let tts = match part {
         AudioPart::Word => TtsText {
-            text: build_text(number, accent, mode, AudioPart::Word),
+            text: word(mode),
             previous_text: scene.to_string(),
-            next_text: AudioPart::Digit
-                .exists_for(number)
-                .then(|| build_digit_text(number, accent)),
+            next_text: AudioPart::Digit.exists_for(number).then(digit),
         },
         AudioPart::Digit => TtsText {
-            text: build_digit_text(number, accent),
-            previous_text: format!(
-                "{} {}",
-                scene,
-                build_text(number, accent, BingoMode::Bingo90, AudioPart::Word)
-            ),
+            text: digit(),
+            previous_text: format!("{} {}", scene, word(BingoMode::Bingo90)),
             next_text: None,
         },
     };
     Some(tts)
 }
 
-pub fn build_text(number: u32, accent: Accent, mode: BingoMode, part: AudioPart) -> String {
-    let text = match (mode, part) {
-        (BingoMode::Bingo90, AudioPart::Word) => build_word_text_90(number, accent),
-        (BingoMode::Bingo75, AudioPart::Word) => build_word_text_75(number, accent),
-        (_, AudioPart::Digit) => return build_digit_text(number, accent),
-    };
-    capitalize_first_letter(&text, accent.language())
+fn word_text(number: u32, accent: Accent, mode: BingoMode, format: Option<&str>) -> String {
+    let slot = FormatSlot::new(accent.language(), AudioPart::Word, mode);
+    let format = format.map_or_else(|| default_format(slot), str::to_string);
+    build_word_text_with_format(&format, number, accent, mode)
+}
+
+fn digit_text(number: u32, accent: Accent, format: Option<&str>) -> String {
+    let slot = FormatSlot::new(accent.language(), AudioPart::Digit, BingoMode::Bingo90);
+    let format = format.map_or_else(|| default_format(slot), str::to_string);
+    build_digit_text_with_format(&format, number, accent)
+}
+
+/// The text of one Audio Part of `number` in `format`, or in the Default one when `None`.
+pub fn build_part_text(
+    number: u32,
+    accent: Accent,
+    mode: BingoMode,
+    part: AudioPart,
+    format: Option<&str>,
+) -> String {
+    match part {
+        AudioPart::Word => word_text(number, accent, mode, format),
+        AudioPart::Digit => digit_text(number, accent, format),
+    }
+}
+
+/// The Default Word Format or Digit Format of `slot`, in the same syntax as the user's.
+pub fn default_format(slot: FormatSlot) -> String {
+    let patterns = LanguageConfig::for_language(slot.language).patterns;
+    match (slot.part, slot.bingo_mode) {
+        (AudioPart::Digit, _) => patterns.digit,
+        (AudioPart::Word, Some(BingoMode::Bingo75)) => patterns.word_75,
+        (AudioPart::Word, _) => patterns.word_90,
+    }
+    .to_string()
 }
 
 /// Upper-cases the first letter, skipping leading punctuation such as Spanish "¡".
@@ -1243,45 +1249,80 @@ fn number_word(config: &LanguageConfig, number: u32) -> String {
         .unwrap_or_else(|| number.to_string())
 }
 
-fn build_word_text_90(number: u32, accent: Accent) -> String {
+/// Writes the Word of `number` in a Word Format, exactly as written: `{num}`, `{Num}` and
+/// `{NUM}` give the number words in lower case, with a capital first letter or in upper case,
+/// `{#}` the number in figures ("75"), and `{letter}`, `{Letter}` and `{LETTER}` the Bingo 75
+/// column letter in the same three cases. Nothing else is capitalized.
+pub fn build_word_text_with_format(
+    format: &str,
+    number: u32,
+    accent: Accent,
+    mode: BingoMode,
+) -> String {
     let config = LanguageConfig::for_accent(accent);
-    let pattern = if number < 10 {
-        config.patterns.word_single_digit_90
-    } else {
-        config.patterns.word_two_digit_90
-    };
-    pattern.replace("{num_word}", &number_word(&config, number))
+    let language = accent.language();
+    let num = lower_case(&number_word(&config, number), language);
+    let letter = mode
+        .column(number)
+        .map(|column| lower_case(config.letters[column], language))
+        .unwrap_or_default();
+    format
+        .replace("{num}", &num)
+        .replace("{Num}", &capitalize_first_letter(&num, language))
+        .replace("{NUM}", &upper_case(&num, language))
+        .replace("{#}", &number.to_string())
+        .replace("{letter}", &letter)
+        .replace("{Letter}", &capitalize_first_letter(&letter, language))
+        .replace("{LETTER}", &upper_case(&letter, language))
 }
 
-fn build_word_text_75(number: u32, accent: Accent) -> String {
-    let config = LanguageConfig::for_accent(accent);
-    let pattern = if number < 10 {
-        config.patterns.word_single_digit_75
-    } else {
-        config.patterns.word_two_digit_75
-    };
-    let column = BingoMode::Bingo75
-        .column(number.clamp(1, 75))
-        .expect("every number from 1 to 75 has a column");
-    let letter = config.letters[column];
-    pattern
-        .replace("{letter}", letter)
-        .replace("{num_word}", &number_word(&config, number))
+/// Turkish keeps the dot: "i" is the lower case of "İ", and "ı" that of "I".
+fn lower_case(text: &str, language: Language) -> String {
+    match language {
+        Language::Turkish => text
+            .replace('\u{130}', "i")
+            .replace('I', "\u{131}")
+            .to_lowercase(),
+        _ => text.to_lowercase(),
+    }
 }
 
-fn build_digit_text(number: u32, accent: Accent) -> String {
+fn upper_case(text: &str, language: Language) -> String {
+    match language {
+        Language::Turkish => text.replace('i', "\u{130}").to_uppercase(),
+        _ => text.to_uppercase(),
+    }
+}
+
+/// Writes the Digit of `number` in a Digit Format, exactly as written: `{first}`, `{First}`
+/// and `{FIRST}` give the first digit in words in lower case, with a capital first letter or
+/// in upper case, and `{#1}` in figures ("7"); `{second}`, `{Second}`, `{SECOND}` and `{#2}`
+/// the same for the second digit.
+pub fn build_digit_text_with_format(format: &str, number: u32, accent: Accent) -> String {
     let config = LanguageConfig::for_accent(accent);
-    let text = config
-        .patterns
-        .digit
-        .replace("{d1}", &number_word(&config, number / 10))
-        .replace("{d2}", &number_word(&config, number % 10));
-    capitalize_first_letter(&text, accent.language())
+    let language = accent.language();
+    let (first, second) = (number / 10, number % 10);
+    let first_word = lower_case(&number_word(&config, first), language);
+    let second_word = lower_case(&number_word(&config, second), language);
+    format
+        .replace("{first}", &first_word)
+        .replace("{First}", &capitalize_first_letter(&first_word, language))
+        .replace("{FIRST}", &upper_case(&first_word, language))
+        .replace("{#1}", &first.to_string())
+        .replace("{second}", &second_word)
+        .replace("{Second}", &capitalize_first_letter(&second_word, language))
+        .replace("{SECOND}", &upper_case(&second_word, language))
+        .replace("{#2}", &second.to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The text of one Audio Part of `number` in the Default formats.
+    fn build_text(number: u32, accent: Accent, mode: BingoMode, part: AudioPart) -> String {
+        build_part_text(number, accent, mode, part, None)
+    }
 
     const SPANISH_SCENE: &str = "En una sala de bingo de Espa\u{f1}a, el cantor saca la siguiente bola del bombo y la anuncia con energ\u{ed}a, alto y claro:";
 
@@ -1292,6 +1333,7 @@ mod tests {
             Accent::PeninsularSpanish,
             BingoMode::Bingo90,
             AudioPart::Word,
+            &SelectedFormats::default(),
         )
         .unwrap();
 
@@ -1312,6 +1354,7 @@ mod tests {
             Accent::PeninsularSpanish,
             BingoMode::Bingo90,
             AudioPart::Digit,
+            &SelectedFormats::default(),
         )
         .unwrap();
 
@@ -1327,7 +1370,15 @@ mod tests {
 
     #[test]
     fn digit_is_the_same_in_both_modes_and_its_context_has_no_letter() {
-        let digit = |mode| build_tts_text(45, Accent::PeninsularSpanish, mode, AudioPart::Digit);
+        let digit = |mode| {
+            build_tts_text(
+                45,
+                Accent::PeninsularSpanish,
+                mode,
+                AudioPart::Digit,
+                &SelectedFormats::default(),
+            )
+        };
 
         assert_eq!(digit(BingoMode::Bingo75), digit(BingoMode::Bingo90));
     }
@@ -1339,12 +1390,14 @@ mod tests {
             Accent::PeninsularSpanish,
             BingoMode::Bingo90,
             AudioPart::Word,
+            &SelectedFormats::default(),
         );
         let digit = build_tts_text(
             7,
             Accent::PeninsularSpanish,
             BingoMode::Bingo90,
             AudioPart::Digit,
+            &SelectedFormats::default(),
         );
 
         assert_eq!(word.unwrap().next_text, None);
@@ -1379,8 +1432,61 @@ mod tests {
             )
         };
 
-        assert_eq!(word(8), "B !ocho!");
-        assert_eq!(word(74), "O !setenta y cuatro!");
+        assert_eq!(word(8), "B \u{a1}ocho!");
+        assert_eq!(word(74), "O \u{a1}setenta y cuatro!");
+    }
+
+    #[test]
+    fn a_word_format_writes_the_number_and_the_letter_in_the_case_asked() {
+        let word = |format, number| {
+            build_word_text_with_format(
+                format,
+                number,
+                Accent::PeninsularSpanish,
+                BingoMode::Bingo75,
+            )
+        };
+
+        assert_eq!(word("¡{letter} {num}!", 75), "¡o setenta y cinco!");
+        assert_eq!(word("¡{Letter} {Num}!", 75), "¡O Setenta y cinco!");
+        assert_eq!(word("¡{LETTER} {NUM}!", 75), "¡O SETENTA Y CINCO!");
+    }
+
+    #[test]
+    fn a_word_format_keeps_the_turkish_dotted_i() {
+        let word = build_word_text_with_format("{NUM}", 2, Accent::Turkish, BingoMode::Bingo90);
+
+        assert_eq!(word, "\u{130}K\u{130}");
+    }
+
+    #[test]
+    fn the_selected_formats_write_the_parts_and_their_context() {
+        let formats = SelectedFormats {
+            word_90: Some("{NUM}...".into()),
+            word_75: Some("{LETTER}, {#}".into()),
+            digit: Some("{#1}... {SECOND}".into()),
+        };
+        let tts = |mode, part| {
+            build_tts_text(75, Accent::PeninsularSpanish, mode, part, &formats).unwrap()
+        };
+
+        let word_90 = tts(BingoMode::Bingo90, AudioPart::Word);
+        let word_75 = tts(BingoMode::Bingo75, AudioPart::Word);
+        let digit = tts(BingoMode::Bingo75, AudioPart::Digit);
+
+        assert_eq!(word_90.text, "SETENTA Y CINCO...");
+        assert_eq!(word_90.next_text.as_deref(), Some("7... CINCO"));
+        assert_eq!(word_75.text, "O, 75");
+        assert_eq!(digit.text, "7... CINCO");
+        assert!(digit.previous_text.ends_with(" SETENTA Y CINCO..."));
+    }
+
+    #[test]
+    fn the_default_digit_format_capitalizes_the_first_digit() {
+        assert_eq!(
+            build_digit_text_with_format("{First} {second}", 45, Accent::PeninsularSpanish),
+            "Cuatro cinco"
+        );
     }
 
     #[test]
@@ -1397,7 +1503,15 @@ mod tests {
 
     #[test]
     fn accents_of_a_language_say_the_same_text_with_their_own_scene() {
-        let word = |accent| build_tts_text(45, accent, BingoMode::Bingo75, AudioPart::Word);
+        let word = |accent| {
+            build_tts_text(
+                45,
+                accent,
+                BingoMode::Bingo75,
+                AudioPart::Word,
+                &SelectedFormats::default(),
+            )
+        };
         let peninsular = word(Accent::PeninsularSpanish).unwrap();
         let rioplatense = word(Accent::RioplatenseSpanish).unwrap();
 
@@ -1424,7 +1538,14 @@ mod tests {
                     if mode == BingoMode::Bingo75 && number > 75 {
                         continue;
                     }
-                    let tts = build_tts_text(number, accent, mode, AudioPart::Word).unwrap();
+                    let tts = build_tts_text(
+                        number,
+                        accent,
+                        mode,
+                        AudioPart::Word,
+                        &SelectedFormats::default(),
+                    )
+                    .unwrap();
                     assert!(
                         !tts.text.chars().any(|c| c.is_ascii_digit()),
                         "{:?} {} {:?}: {}",

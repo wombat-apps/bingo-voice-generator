@@ -1,6 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 /// The language the numbers are said in. It sets the number words; the user picks an Accent,
 /// which belongs to one. See GLOSSARY.md.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Language {
     Spanish,
     English,

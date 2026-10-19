@@ -71,13 +71,15 @@ src/features/                       ├── elevenlabs/ (client.rs: one client
     ├── grid/                       │                types.rs: DTOs; mod.rs: commands)
     ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
     ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
-    │   player.ts reducer)          ├── accounts.rs (ElevenLabs Accounts commands)
-    ├── accounts/ (AccountSwitcher  └── updater.rs (check_for_update, install_update)
-    │   at the sidebar's bottom)
+    │   player.ts reducer)          ├── formats.rs (Word/Digit Format CRUD, selection, preview)
+    ├── accounts/ (AccountSwitcher  ├── accounts.rs (ElevenLabs Accounts commands)
+    │   at the sidebar's bottom)    └── updater.rs (check_for_update, install_update)
     ├── settings-panel/ (Voice Settings)
-    ├── updater/ (useUpdater,   src-tauri/src/services/
-    │   update.ts rules)            ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
-    └── voices/                     ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
+    ├── formats/ (Word and Digit    src-tauri/src/services/
+    │   Format pickers, editors)          ├── app_dirs.rs (data root: voices.json, accounts.json,
+    ├── updater/ (useUpdater,       │                formats.json, audio)
+    │   update.ts rules)            ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
+    └── voices/                     ├── format_store.rs (formats.json, selection per Language)
 src/domain/                         ├── audio_store.rs (file names, Original/Trimmed Audio)
     ├── bingo.ts (Bingo Mode rules) └── audio_trimmer.rs
     └── plan.ts (Plan rules)
@@ -113,7 +115,7 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 
 1. User selects Accent/mode/voice in Sidebar (an Accent belongs to a Language, which sets the number words; see `GLOSSARY.md`)
 2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` calls `generate_audio` once
-3. `generate_audio` builds the TTS text for the Voice's Accent (`number_words.rs` for the Language's words, `accent.rs` for the scene) and calls ElevenLabs with the Active Account
+3. `generate_audio` builds the TTS text for the Voice's Accent (`number_words.rs` for the Language's words, written in the Word Format and Digit Format selected for its Language, also in the context, `accent.rs` for the scene) and calls ElevenLabs with the Active Account
 4. `audio_store` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<accent>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<accent>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`)
 5. The Player (`usePlayer`) loads the Trimmed Audio bytes and plays them through `<audio>`
 

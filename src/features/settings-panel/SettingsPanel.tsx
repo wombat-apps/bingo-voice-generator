@@ -1,11 +1,15 @@
 import { X, SlidersVertical } from 'lucide-react';
 import { VoiceSettings } from '../sidebar/VoiceSettings';
-import type { VoiceSettings as VoiceSettingsType } from '../../types';
+import { FormatSettings } from '../formats';
+import type { AccentId, VoiceSettings as VoiceSettingsType } from '../../types';
 import './SettingsPanel.css';
 
 interface SettingsPanelProps {
   isOpen: boolean;
   voiceSettings: VoiceSettingsType;
+  accent: AccentId;
+  /** The number selected in the grid, which the format previews show. */
+  number: number | null;
   onClose: () => void;
   onVoiceSettingsChange: (settings: VoiceSettingsType) => void;
 }
@@ -13,6 +17,8 @@ interface SettingsPanelProps {
 export function SettingsPanel({
   isOpen,
   voiceSettings,
+  accent,
+  number,
   onClose,
   onVoiceSettingsChange,
 }: SettingsPanelProps) {
@@ -40,6 +46,14 @@ export function SettingsPanel({
               settings={voiceSettings}
               onChange={onVoiceSettingsChange}
             />
+          </section>
+
+          {/* Word Formats and Digit Formats of the Accent's Language */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">Formats</h3>
+            <FormatSettings title="Word · Bingo 90" accent={accent} part="word" mode="bingo90" number={number} />
+            <FormatSettings title="Word · Bingo 75" accent={accent} part="word" mode="bingo75" number={number} />
+            <FormatSettings title="Digit" accent={accent} part="digit" mode="bingo90" number={number} />
           </section>
         </div>
     </aside>

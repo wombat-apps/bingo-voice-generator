@@ -4,10 +4,12 @@ use thiserror::Error;
 
 use super::elevenlabs::{ElevenLabs, ElevenLabsClient, ElevenLabsError};
 use crate::models::{
-    build_tts_text, AudioFile, AudioPart, BingoMode, Voice, VoiceNumber, VoiceSettings,
+    build_tts_text, AudioFile, AudioFileId, AudioPart, BingoMode, SelectedFormats, Voice,
+    VoiceNumber, VoiceSettings,
 };
 use crate::services::app_dirs::AppDirs;
 use crate::services::audio_store::{AudioStore, StorageError};
+use crate::services::format_store::FormatError;
 
 #[derive(Debug, Error)]
 pub enum GenerationError {
@@ -17,10 +19,12 @@ pub enum GenerationError {
     ElevenLabs(#[from] ElevenLabsError),
     #[error("Could not save the audio: {0}")]
     Storage(#[from] StorageError),
+    #[error(transparent)]
+    Format(#[from] FormatError),
 }
 
-/// ElevenLabs errors keep their own shape; the others add `NO_DIGIT` and `STORAGE_ERROR`
-/// codes to it. `src/services/errors.ts` reads them.
+/// ElevenLabs errors keep their own shape; the others add `NO_DIGIT`, `STORAGE_ERROR` and
+/// `FORMAT_ERROR` codes to it. `src/services/errors.ts` reads them.
 impl Serialize for GenerationError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -31,6 +35,7 @@ impl Serialize for GenerationError {
             GenerationError::ElevenLabs(e) => return e.serialize(serializer),
             GenerationError::NoDigit(_) => "NO_DIGIT",
             GenerationError::Storage(_) => "STORAGE_ERROR",
+            GenerationError::Format(_) => "FORMAT_ERROR",
         };
         let mut map = serializer.serialize_map(Some(2))?;
         map.serialize_entry("code", code)?;
@@ -39,8 +44,9 @@ impl Serialize for GenerationError {
     }
 }
 
-/// Generates the Word or the Digit of `number` with `voice` and the Active Account, and
-/// saves its Original Audio and Trimmed Audio, replacing any already there.
+/// Generates the Word or the Digit of `number` with `voice` and the Active Account, in the
+/// formats selected for its Language, and saves its Original Audio and Trimmed Audio,
+/// replacing any already there.
 #[tauri::command]
 pub async fn generate_audio(
     elevenlabs: State<'_, ElevenLabs>,
@@ -52,14 +58,18 @@ pub async fn generate_audio(
     settings: VoiceSettings,
 ) -> Result<AudioFile, GenerationError> {
     let client = elevenlabs.active_client(&dirs).await?;
+    let formats = dirs
+        .format_store()
+        .selected_formats(voice.accent.language())
+        .await?;
+    let id = VoiceNumber::new(voice.accent, voice.uuid, mode, number).with_part(part);
     generate(
         &client,
         &dirs.audio_store(),
-        number,
         &voice,
-        mode,
-        part,
+        id,
         &settings,
+        &formats,
     )
     .await
 }
@@ -70,14 +80,20 @@ pub async fn generate_audio(
 async fn generate(
     client: &ElevenLabsClient,
     store: &AudioStore,
-    number: u32,
     voice: &Voice,
-    mode: BingoMode,
-    part: AudioPart,
+    id: AudioFileId,
     settings: &VoiceSettings,
+    formats: &SelectedFormats,
 ) -> Result<AudioFile, GenerationError> {
-    let accent = voice.accent;
-    let tts = build_tts_text(number, accent, mode, part).ok_or(GenerationError::NoDigit(number))?;
+    let AudioFileId {
+        accent,
+        mode,
+        number,
+        part,
+        ..
+    } = id;
+    let tts = build_tts_text(number, accent, mode, part, formats)
+        .ok_or(GenerationError::NoDigit(number))?;
     log::info!(
         "[generate_audio] {} {:?} {:?} in {} with {} ({})",
         number,
@@ -95,7 +111,6 @@ async fn generate(
             settings,
         )
         .await?;
-    let id = VoiceNumber::new(accent, voice.uuid, mode, number).with_part(part);
     Ok(store.save(&id, original).await?)
 }
 
@@ -132,6 +147,10 @@ mod tests {
         (server, dir, store)
     }
 
+    fn id(voice: &Voice, mode: BingoMode, number: u32, part: AudioPart) -> AudioFileId {
+        VoiceNumber::new(voice.accent, voice.uuid, mode, number).with_part(part)
+    }
+
     fn client(server: &MockServer) -> ElevenLabsClient {
         ElevenLabs::new(server.uri()).client_for_key("key".into())
     }
@@ -145,11 +164,10 @@ mod tests {
         let file = generate(
             &client(&server),
             &store,
-            45,
             &voice,
-            BingoMode::Bingo75,
-            AudioPart::Word,
+            id(&voice, BingoMode::Bingo75, 45, AudioPart::Word),
             &VoiceSettings::default(),
+            &SelectedFormats::default(),
         )
         .await
         .unwrap();
@@ -165,6 +183,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_word_is_sent_in_the_selected_word_format() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(body_partial_json(
+                serde_json::json!({ "text": "\u{a1}N CUARENTA Y CINCO!" }),
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"mp3".to_vec()))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let dir = tempfile::tempdir().unwrap();
+        let store = AudioStore::new(dir.path().to_path_buf());
+        let voice = voice();
+
+        generate(
+            &client(&server),
+            &store,
+            &voice,
+            id(&voice, BingoMode::Bingo75, 45, AudioPart::Word),
+            &VoiceSettings::default(),
+            &SelectedFormats {
+                word_75: Some("\u{a1}{LETTER} {NUM}!".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
     async fn a_failed_request_saves_nothing() {
         let (server, _dir, store) = setup(ResponseTemplate::new(402).set_body_string(
             r#"{"detail":{"code":"paid_plan_required","message":"Free users cannot"}}"#,
@@ -175,11 +223,10 @@ mod tests {
         let error = generate(
             &client(&server),
             &store,
-            45,
             &voice,
-            BingoMode::Bingo90,
-            AudioPart::Word,
+            id(&voice, BingoMode::Bingo90, 45, AudioPart::Word),
             &VoiceSettings::default(),
+            &SelectedFormats::default(),
         )
         .await
         .unwrap_err();
@@ -203,11 +250,10 @@ mod tests {
         let error = generate(
             &client(&server),
             &store,
-            7,
             &voice(),
-            BingoMode::Bingo90,
-            AudioPart::Digit,
+            id(&voice(), BingoMode::Bingo90, 7, AudioPart::Digit),
             &VoiceSettings::default(),
+            &SelectedFormats::default(),
         )
         .await
         .unwrap_err();

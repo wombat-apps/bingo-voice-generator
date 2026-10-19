@@ -117,6 +117,12 @@ pub fn run() {
             create_voice,
             update_voice,
             delete_local_voice,
+            // Word Format and Digit Format commands
+            list_formats,
+            save_format,
+            delete_format,
+            select_format,
+            preview_format,
             // Account commands
             list_accounts,
             reveal_account_api_key,

@@ -23,6 +23,7 @@ import type {
   SubscriptionInfo,
   VoiceSettings,
   UpdateInfo,
+  Formats,
 } from '../types';
 
 // ============================================================================
@@ -271,6 +272,61 @@ export async function deleteAccount(accountId: string): Promise<AccountsState> {
 
 export async function setActiveAccount(accountId: string | null): Promise<AccountsState> {
   return invoke<AccountsState>('set_active_account', { accountId });
+}
+
+// ============================================================================
+// Word Format and Digit Format Commands
+// ============================================================================
+
+// Formats belong to a Language: each command takes the Accent, which belongs to one, the
+// Audio Part, and the Word's Bingo Mode, which the Digit ignores.
+
+export async function listFormats(accent: AccentId, part: AudioPart, mode: BingoModeId): Promise<Formats> {
+  return invoke<Formats>('list_formats', { accent, part, mode });
+}
+
+/** Adds a format, or changes the one with `id`, and selects it. */
+export async function saveFormat(
+  accent: AccentId,
+  part: AudioPart,
+  mode: BingoModeId,
+  id: string | null,
+  format: string
+): Promise<Formats> {
+  return invoke<Formats>('save_format', { accent, part, mode, id, format });
+}
+
+export async function deleteFormat(
+  accent: AccentId,
+  part: AudioPart,
+  mode: BingoModeId,
+  id: string
+): Promise<Formats> {
+  return invoke<Formats>('delete_format', { accent, part, mode, id });
+}
+
+/** Selects a format, or the Default one with `null`. */
+export async function selectFormat(
+  accent: AccentId,
+  part: AudioPart,
+  mode: BingoModeId,
+  id: string | null
+): Promise<Formats> {
+  return invoke<Formats>('select_format', { accent, part, mode, id });
+}
+
+/**
+ * The Word or the Digit of `number` written in `format`, or in the Default one with `null`,
+ * as it would be sent to ElevenLabs. Rejects an invalid format with `FORMAT_ERROR`.
+ */
+export async function previewFormat(
+  accent: AccentId,
+  part: AudioPart,
+  mode: BingoModeId,
+  number: number,
+  format: string | null
+): Promise<string> {
+  return invoke<string>('preview_format', { accent, part, mode, number, format });
 }
 
 // ============================================================================

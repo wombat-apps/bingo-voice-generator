@@ -56,9 +56,17 @@ _Avoid_: Mode (on its own), game type
 The audio of a number said as a word, the way the caller announces it ("¡Cuarenta y cinco!"). It belongs to one Bingo Mode: in Bingo 75 it carries the column letter ("N ¡cuarenta y cinco!"), in Bingo 90 it does not.
 _Avoid_: Number audio, announcement
 
+**Word Format**:
+A way of writing the Word, saying where the number and, in Bingo 75, the column letter go, and how they are written, down to upper and lower case ("¡{LETTER} {NUM}!" gives "¡O SETENTA Y CINCO!"). Each one belongs to one Language and one Bingo Mode and serves every number. It has no name: it is told apart by how it is written. Each Language and Bingo Mode always has the Default one, which cannot be changed or deleted, and the user can add more, each written differently. One of them is selected for each Language and Bingo Mode, for all its Voices. Like Voice Settings, it is not part of an audio file's identity: regenerating a Word with another Word Format replaces the existing file.
+_Avoid_: Template, variation, pattern, text (for the concept)
+
 **Digit**:
 The audio of a number said digit by digit, right after its Word ("cuatro cinco"). It does not depend on the Bingo Mode: the same Digit serves Bingo 90 and Bingo 75, so it is generated once. Numbers below 10 have no Digit; their Word is enough.
 _Avoid_: Digits audio, spelled number
+
+**Digit Format**:
+A way of writing the Digit, saying where its first and second digit go and how they are written ("{FIRST}… {second}" gives "SIETE… cinco"). Like the Digit, it belongs to one Language and not to a Bingo Mode. Otherwise it works like a Word Format: it has no name, there is always the Default one, the user can add more, and one is selected for each Language, for all its Voices.
+_Avoid_: Word Format (for the Digit), template, pattern
 
 **Original Audio**:
 The audio of a number exactly as ElevenLabs returned it, before the silence is trimmed. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
