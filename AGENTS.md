@@ -46,7 +46,7 @@ The identity is the "Developer ID Application" certificate of the release team (
 
 ## Logs
 
-`tauri-plugin-log` writes Rust `log::*` output, plus the webview's `console.error`/`console.warn` and uncaught errors, to stdout and to `~/Library/Logs/com.wombatapps.bingovoicegenerator/bingo-voice-generator.log`, in dev and in release builds. Failed ElevenLabs calls log the HTTP status and the raw response body. Use `log::*` macros, never `println!`. Keep `tauri-plugin-log` (Cargo) and `@tauri-apps/plugin-log` (npm) on the same minor version.
+`tauri-plugin-log` writes Rust `log::*` output, plus the webview's `console.error`/`console.warn` and uncaught errors, to stdout and to `~/Library/Logs/com.wombatapps.bingovoicegenerator/bingo-voice-generator.log`, in dev and in release builds. Every ElevenLabs call logs, at debug level, its method, URL and request body (never the `xi-api-key` header), its status and, for JSON, the response body; failed calls also log the status and raw body as errors. The app's own crate logs at debug level in release builds too; the file rotates at 5 MB and keeps 3. Use `log::*` macros, never `println!`. Keep `tauri-plugin-log` (Cargo) and `@tauri-apps/plugin-log` (npm) on the same minor version.
 
 ## CI / Release
 

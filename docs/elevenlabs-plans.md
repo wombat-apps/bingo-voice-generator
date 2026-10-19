@@ -49,7 +49,7 @@ The accent of the audio comes only from the voice: the TTS API has no accent or 
 - Used by the app before and known to work: `peninsular`, `american`, `british`, `brazilian`.
 - Seen in a third-party catalogue of ElevenLabs voices (Famulor), not yet tried live: `latin american` (Spanish), `argentine`, `mexican`, `australian`.
 - Guesses, not seen anywhere: `new zealand`, `indian`, `canadian`, `european` (Portuguese). Languages with one Accent use `standard`.
-- When an Accent's label returns no voices, the app searches the whole Language and says so in the voice picker. Untested: whether `locale=es-AR` (or `en-NZ`) narrows better than `accent`.
+- When an Accent's label returns no voices, the app searches the whole Language and says so in the voice picker. A search with text always searches the whole Language, without the label: on 2026-10-19 `accent=peninsular&search=Jacobo` returned nothing while the whole of `es` returned the (andalusian) voice. Untested: whether `locale=es-AR` (or `en-NZ`) narrows better than `accent`.
 
 ### Popularity in the Voice Library
 
@@ -67,6 +67,10 @@ Library Voices have no rating, stars, likes or score. The closest signals in eac
 `eleven_v4`, `eleven_v3` and `eleven_multilingual_v2` cost the same per character ($0.08 per 1,000 on the API page); `eleven_v4_turbo` and Flash cost half ($0.04). Verified live: `eleven_v4` charges 1 character per spoken character. Source: [pricing/api](https://elevenlabs.io/pricing/api), 2026-10-18.
 
 No Plan restricts which TTS Model can be used. Source: [models](https://elevenlabs.io/docs/overview/models), [changelog 2026-09-28](https://elevenlabs.io/docs/changelog/2026/9/28).
+
+### Voice settings in Eleven v4
+
+Eleven v4 (both `eleven_v4` and `eleven_v4_turbo`) uses only Stability and Similarity; it has no Style or Speed, so Voice Settings hides those two for v4. The page does not mention Speaker Boost. Verified live with `eleven_v4` on 2026-10-19: `speed` 0.7 gives audio as long as 1.0, and the same request with the same settings returns different audio every time (no `seed` sent), as `eleven_multilingual_v2` does. So the size of the MP3 cannot tell whether a setting changed the audio: sizes come in steps of 1,254 bytes (about 78 ms at 128 kbps), and different takes often share one. Whether Stability and Similarity change the audio audibly needs listening, not hashing. Source: [What is Eleven v4?](https://elevenlabs.io/docs/help-center/product/core-capabilities/text-to-speech/what-is-eleven-v4), 2026-10-19.
 
 ### Context (`previous_text` / `next_text`)
 

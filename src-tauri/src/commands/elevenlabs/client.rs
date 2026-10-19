@@ -30,6 +30,8 @@ pub enum ElevenLabsError {
     },
     #[error("Network error: {0}")]
     NetworkError(reqwest::Error),
+    #[error("Invalid response from ElevenLabs: {0}")]
+    InvalidResponse(serde_json::Error),
 }
 
 impl From<reqwest::Error> for ElevenLabsError {
@@ -58,7 +60,10 @@ impl Serialize for ElevenLabsError {
             ElevenLabsError::NoActiveAccount => "NO_ACTIVE_ACCOUNT",
             ElevenLabsError::Account(_) => "ACCOUNT_ERROR",
             ElevenLabsError::ApiError { .. } => "API_ERROR",
-            ElevenLabsError::NetworkError(_) => "NETWORK_ERROR",
+            // A body that does not parse was a reqwest decode error before, shown as one.
+            ElevenLabsError::NetworkError(_) | ElevenLabsError::InvalidResponse(_) => {
+                "NETWORK_ERROR"
+            }
         };
         map.serialize_entry("code", code)?;
         match self {
@@ -225,12 +230,45 @@ impl ElevenLabsClient {
             .header("xi-api-key", &self.api_key)
     }
 
+    /// Sends `request` and logs it and its status at debug level, never the key header.
+    async fn execute(
+        &self,
+        label: &str,
+        request: RequestBuilder,
+    ) -> Result<Response, ElevenLabsError> {
+        let request = request.build()?;
+        let body = request
+            .body()
+            .and_then(|b| b.as_bytes())
+            .map(String::from_utf8_lossy)
+            .unwrap_or_default();
+        log::debug!(
+            "[{}] → {} {} {}",
+            label,
+            request.method(),
+            request.url(),
+            body
+        );
+        let response = self.http.execute(request).await?;
+        log::debug!(
+            "[{}] ← {} {}",
+            label,
+            response.status(),
+            response
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or_default()
+        );
+        Ok(response)
+    }
+
     async fn send(
         &self,
         label: &str,
         request: RequestBuilder,
     ) -> Result<Response, ElevenLabsError> {
-        let response = request.send().await?;
+        let response = self.execute(label, request).await?;
         let status = response.status();
         if status.is_success() {
             return Ok(response);
@@ -240,16 +278,27 @@ impl ElevenLabsClient {
         Err(error_from_response(status, &body))
     }
 
+    /// Reads a successful JSON response, logging its body at debug level.
+    async fn json<T: DeserializeOwned>(
+        &self,
+        label: &str,
+        response: Response,
+    ) -> Result<T, ElevenLabsError> {
+        let body = response.text().await?;
+        log::debug!("[{}] ← {}", label, body);
+        serde_json::from_str(&body).map_err(|e| {
+            log::error!("[{}] Could not parse the response: {}", label, e);
+            ElevenLabsError::InvalidResponse(e)
+        })
+    }
+
     async fn get_json<T: DeserializeOwned>(
         &self,
         label: &str,
         path: &str,
     ) -> Result<T, ElevenLabsError> {
-        Ok(self
-            .send(label, self.request(Method::GET, path))
-            .await?
-            .json()
-            .await?)
+        let response = self.send(label, self.request(Method::GET, path)).await?;
+        self.json(label, response).await
     }
 
     /// The untrimmed MP3 for `tts`, said by `voice_id` in `language_code`.
@@ -261,7 +310,6 @@ impl ElevenLabsClient {
         settings: &VoiceSettings,
     ) -> Result<Vec<u8>, ElevenLabsError> {
         let body = speech_body(language_code, tts, settings);
-        log::debug!("[text_to_speech] voice_id={}, body={}", voice_id, body);
         let path = format!(
             "/v1/text-to-speech/{}?output_format=mp3_44100_128",
             urlencoding::encode(voice_id)
@@ -329,8 +377,8 @@ impl ElevenLabsClient {
         let request = self
             .request(Method::POST, &path)
             .json(&serde_json::json!({ "new_name": new_name }));
-        let response: AddSharedVoiceResponse =
-            self.send("add_shared_voice", request).await?.json().await?;
+        let response = self.send("add_shared_voice", request).await?;
+        let response: AddSharedVoiceResponse = self.json("add_shared_voice", response).await?;
         Ok(response.voice_id)
     }
 
@@ -340,13 +388,14 @@ impl ElevenLabsClient {
     pub async fn has_voices_read(&self) -> bool {
         let request = self.request(Method::GET, "/v2/voices?page_size=1&voice_type=default");
         let result = async {
-            let response = request.send().await?;
+            let response = self.execute("has_voices_read", request).await?;
             let status = response.status();
             if status.is_success() {
                 return Ok(());
             }
             // A missing permission is an expected outcome here, so it is not logged as an error.
             let body = response.text().await.unwrap_or_default();
+            log::debug!("[has_voices_read] ← {}", body);
             Err(error_from_response(status, &body))
         }
         .await;

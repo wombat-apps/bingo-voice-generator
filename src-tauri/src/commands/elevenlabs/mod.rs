@@ -57,6 +57,11 @@ pub async fn search_library_voices(
             page_size.unwrap_or(20),
         )
     };
+    // A search by text looks across the whole Language: a name or a word in the description
+    // rarely matches within one accent label, and each result shows its own accent.
+    if search.as_deref().is_some_and(|s| !s.trim().is_empty()) {
+        return fetch(None).await;
+    }
     let in_accent = fetch(Some(accent.elevenlabs_accent())).await?;
     if !in_accent.voices.is_empty() {
         return Ok(in_accent);

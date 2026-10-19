@@ -14,6 +14,9 @@ const SORT_OPTIONS: { value: LibraryVoiceSort; label: string }[] = [
   { value: 'created_date', label: 'Newest' },
 ];
 
+/** How long typing must pause before the text is searched. */
+const SEARCH_DELAY_MS = 400;
+
 const compactNumber = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
 // Extended type for combined voice list
@@ -83,6 +86,7 @@ export function VoiceFormModal({
         setCustomName('');
         setFormGender('');
         setSearchQuery('');
+        setAppliedQuery('');
         setGenderFilter('');
         setSort('trending');
         setSearchResults([]);
@@ -103,15 +107,18 @@ export function VoiceFormModal({
     };
   }, [audioElement]);
 
-  // The text is searched on demand, so a fetch reads its latest value without depending on it
-  const searchQueryRef = useRef(searchQuery);
-  searchQueryRef.current = searchQuery;
+  // The text being searched: the typed text once typing pauses, or at once on Enter or Search
+  const [appliedQuery, setAppliedQuery] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setAppliedQuery(searchQuery), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   // Only the latest search may show its results
   const latestSearchRef = useRef(0);
 
   const fetchVoices = useCallback(async () => {
     if (!activeAccountId) return;
-    const query = searchQueryRef.current;
+    const query = appliedQuery;
     const searchId = ++latestSearchRef.current;
 
     setIsSearching(true);
@@ -163,9 +170,15 @@ export function VoiceFormModal({
     } finally {
       if (searchId === latestSearchRef.current) setIsSearching(false);
     }
-  }, [currentAccent, activeAccountId, genderFilter, sort]);
+  }, [currentAccent, activeAccountId, genderFilter, sort, appliedQuery]);
 
-  // Search again when the modal opens and whenever the gender filter or the order changes
+  // Searches the typed text now, or searches again when it is already the applied one
+  const searchNow = () => {
+    if (searchQuery === appliedQuery) fetchVoices();
+    else setAppliedQuery(searchQuery);
+  };
+
+  // Search again when the modal opens and whenever the text, the gender filter or the order changes
   useEffect(() => {
     if (isOpen && mode === 'add') {
       fetchVoices();
@@ -292,6 +305,7 @@ export function VoiceFormModal({
     }
     setPlayingVoiceId(null);
     setSearchQuery('');
+    setAppliedQuery('');
     setGenderFilter('');
     setSort('trending');
     setAddStep('search');
@@ -346,7 +360,7 @@ export function VoiceFormModal({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') fetchVoices();
+                    if (e.key === 'Enter') searchNow();
                   }}
                 />
               </div>
@@ -378,7 +392,7 @@ export function VoiceFormModal({
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={fetchVoices}
+                onClick={searchNow}
                 disabled={isSearching}
               >
                 {isSearching ? 'Loading...' : 'Search'}
@@ -398,7 +412,9 @@ export function VoiceFormModal({
                 <div className="modal-loading">Loading voices...</div>
               ) : searchResults.length === 0 ? (
                 <div className="modal-empty">
-                  No voices found for this accent. Try a different search.
+                  {appliedQuery
+                    ? 'No voices in this language match your search. Try a different search.'
+                    : 'No voices found for this accent. Try a different search.'}
                 </div>
               ) : (
                 <div className="voice-picker-list">
