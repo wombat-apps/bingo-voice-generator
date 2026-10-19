@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Eye, EyeOff, Pencil, Trash2, Check, X } from 'lucide-react';
 import {
   addAccount,
+  confirmDeletion,
   deleteAccount,
   getAccountSubscription,
   renameAccount,
@@ -104,7 +105,8 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
   };
 
   const handleDelete = async (account: ElevenLabsAccount) => {
-    const confirmed = window.confirm(
+    const confirmed = await confirmDeletion(
+      'Delete Account',
       `Are you sure you want to delete the account "${account.name}"?\n\nIts API key will be removed from the Keychain.`
     );
     if (!confirmed) return;
