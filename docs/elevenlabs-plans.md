@@ -30,7 +30,7 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 - Saving or editing a voice uses one of the Plan's monthly voice add/edit operations.
 - When an owner stops sharing a Library Voice, accounts that saved it keep it for the notice period (30 days to 2 years); it then disappears. `GET /v1/voices/{voice_id}` shows the date in `disable_at_unix`.
 - Some Library Voices are paid-only or have a credit multiplier (a 2x voice costs twice the characters).
-- **`free_users_allowed` on a Library Voice does not mean the Free Plan can use it via the API.** The 402 above applies to every Library Voice, so the app shows "Free" only on Default Voices.
+- **`free_users_allowed` on a Library Voice does not mean the Free Plan can use it via the API.** The 402 above applies to every Library Voice, so the app marks only Default Voices as usable on every Plan, labelled "Default" as ElevenLabs does (never "Free", which reads as "costs nothing").
 
 ### Default Voices in `GET /v2/voices`
 

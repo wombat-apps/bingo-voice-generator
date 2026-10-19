@@ -32,13 +32,17 @@ _Avoid_: Current key, selected key
 A voice the user has added to the app for one Accent, under a name they chose, pointing at an ElevenLabs voice. Voices belong to the app, not to an ElevenLabs Account: every account sees the same Voices and the same audio files. A Voice is either a Default Voice or a Library Voice. Whether the Active Account can generate with it depends on that account's Plan allowing that kind of voice, not on the voice having been saved in the account beforehand.
 _Avoid_: Speaker, account voice
 
+**Voice Details**:
+How ElevenLabs describes a Voice's ElevenLabs voice: its ElevenLabs accent, age, description and use case. They are kept as ElevenLabs gave them when the Voice was added, so they stay visible without a connection or an Active Account, and after a Library Voice stops being shared. The user does not edit them. Popularity signals (featured, how many users added the voice) are not part of them. The ElevenLabs accent is ElevenLabs' free-form label (such as "castilian" or "mexican") and need not match the Voice's Accent.
+_Avoid_: Labels, tags, metadata; accent (on its own, for the ElevenLabs accent)
+
 **Default Voice**:
 A Voice whose ElevenLabs voice is one of the voices ElevenLabs gives every account. Any ElevenLabs Account can generate with it, whatever its Plan.
-_Avoid_: Premade voice (ElevenLabs' term for it in the API), stock voice
+_Avoid_: Free voice (it still spends characters; "Free" is a Plan), premade voice (ElevenLabs' term for it in the API), stock voice
 
 **Library Voice**:
 A Voice whose ElevenLabs voice another ElevenLabs user shares in the Voice Library. An account on the Free Plan cannot generate with it, even if the voice is saved in that account. It can disappear if its owner stops sharing it.
-_Avoid_: Shared voice (ElevenLabs' term for it in the API), community voice, professional voice
+_Avoid_: Paid voice, shared voice (ElevenLabs' term for it in the API), community voice, professional voice
 
 **Plan**:
 The ElevenLabs subscription of an ElevenLabs Account: Free, Starter, Creator, Pro, Scale, Business or Enterprise. It sets the account's character quota, whether it can use Library Voices, which audio formats it can request and how many requests it can make at once.

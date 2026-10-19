@@ -9,6 +9,7 @@ import type {
   Accent,
   Voice,
   VoiceKind,
+  VoiceDetails,
   AudioFile,
   AudioFileId,
   VoiceNumber,
@@ -196,7 +197,8 @@ export async function createVoice(
   customName: string,
   accent: AccentId,
   gender: string,
-  kind: VoiceKind
+  kind: VoiceKind,
+  details: VoiceDetails
 ): Promise<Voice[]> {
   // Tauri expects camelCase field names by default
   const payload = {
@@ -207,6 +209,7 @@ export async function createVoice(
       accent,
       gender,
       kind,
+      details,
     },
   };
 
@@ -225,6 +228,11 @@ export async function createVoice(
 /** Stores the kind of Voices saved without one; asks ElevenLabs only if some Voice lacks it. */
 export async function backfillVoiceKinds(): Promise<Voice[]> {
   return invoke<Voice[]>('backfill_voice_kinds');
+}
+
+/** Stores the Voice Details of Voices saved without them that the Active Account can find. */
+export async function backfillVoiceDetails(): Promise<Voice[]> {
+  return invoke<Voice[]>('backfill_voice_details');
 }
 
 export async function updateVoice(voice: Voice): Promise<Voice[]> {

@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use thiserror::Error;
 use tokio::fs;
 
-use crate::commands::{ElevenLabs, ElevenLabsError};
-use crate::models::{Voice, VoiceKind};
+use crate::commands::{ElevenLabs, ElevenLabsError, ElevenLabsVoice};
+use crate::models::{Voice, VoiceDetails, VoiceKind};
 use crate::services::app_dirs::AppDirs;
 
 #[derive(Debug, Error)]
@@ -61,6 +63,9 @@ pub struct CreateVoiceInput {
     pub accent: crate::models::Accent,
     pub gender: String,
     pub kind: crate::models::VoiceKind,
+    /// As the voice picker showed them; `None` leaves them to the backfill.
+    #[serde(default)]
+    pub details: Option<VoiceDetails>,
 }
 
 /// Creates a new voice with the given parameters (UUID generated server-side)
@@ -76,7 +81,7 @@ pub async fn create_voice(
     log::debug!("[create_voice] accent: {:?}", input.accent);
     log::debug!("[create_voice] gender: {}", input.gender);
 
-    let voice = Voice::new(
+    let mut voice = Voice::new(
         input.elevenlabs_id,
         input.elevenlabs_name,
         Some(input.custom_name),
@@ -84,6 +89,7 @@ pub async fn create_voice(
         Some(input.gender),
         input.kind,
     );
+    voice.details = input.details;
 
     log::debug!("[create_voice] Created voice: {:?}", voice);
 
@@ -114,9 +120,14 @@ pub async fn update_voice(
     let mut voices = read_voices(&dirs).await?;
 
     if let Some(existing) = voices.iter_mut().find(|v| v.uuid == voice.uuid) {
-        // A copy taken before the backfill must not erase the stored kind.
+        // A copy taken before a backfill must not erase the stored kind or details.
         let kind = voice.kind.or(existing.kind);
-        *existing = Voice { kind, ..voice };
+        let details = voice.details.or_else(|| existing.details.take());
+        *existing = Voice {
+            kind,
+            details,
+            ..voice
+        };
         write_voices(&dirs, &voices).await?;
         Ok(voices)
     } else {
@@ -188,6 +199,65 @@ pub async fn backfill_voice_kinds(
     Ok(voices)
 }
 
+/// Sets the Voice Details of each Voice that has none and whose ElevenLabs voice is in
+/// `elevenlabs_voices` (by id). Returns whether any Voice changed.
+fn fill_missing_details(
+    voices: &mut [Voice],
+    elevenlabs_voices: &HashMap<String, ElevenLabsVoice>,
+) -> bool {
+    let mut changed = false;
+    for voice in voices.iter_mut().filter(|v| v.details.is_none()) {
+        if let Some(found) = elevenlabs_voices.get(&voice.elevenlabs_id) {
+            voice.details = Some(found.details_for(voice.accent));
+            changed = true;
+        }
+    }
+    changed
+}
+
+/// Stores the Voice Details of Voices saved before details existed, asking ElevenLabs with the
+/// Active Account. Voices it cannot find (a Library Voice not saved in this account, or no
+/// longer shared) keep none, to be tried again with another account or on the next launch.
+#[tauri::command]
+pub async fn backfill_voice_details(
+    elevenlabs: State<'_, ElevenLabs>,
+    dirs: State<'_, AppDirs>,
+) -> Result<Vec<Voice>, VoicesError> {
+    let voices = read_voices(&dirs).await?;
+    let mut missing: Vec<String> = voices
+        .iter()
+        .filter(|v| v.details.is_none())
+        .map(|v| v.elevenlabs_id.clone())
+        .collect();
+    if missing.is_empty() {
+        return Ok(voices);
+    }
+    missing.sort();
+    missing.dedup();
+
+    let client = elevenlabs.active_client(&dirs).await?;
+    let mut found = HashMap::new();
+    for voice_id in missing {
+        match client.voice(&voice_id).await {
+            Ok(voice) => {
+                found.insert(voice_id, voice);
+            }
+            Err(err) => log::warn!(
+                "[backfill_voice_details] No details for {} with this account: {}",
+                voice_id,
+                err
+            ),
+        }
+    }
+    // Reload after the requests so edits made while they were in flight are kept.
+    let mut voices = read_voices(&dirs).await?;
+    if fill_missing_details(&mut voices, &found) {
+        log::info!("[backfill_voice_details] Stored the details of Voices saved without them");
+        write_voices(&dirs, &voices).await?;
+    }
+    Ok(voices)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,5 +295,29 @@ mod tests {
 
         assert!(!changed);
         assert_eq!(voices[0].kind, Some(VoiceKind::Library));
+    }
+
+    #[test]
+    fn backfill_stores_details_only_for_voices_found_and_without_them() {
+        let mut found_voice = voice("found", Some(VoiceKind::Library));
+        found_voice.accent = Accent::RioplatenseSpanish;
+        let mut kept = voice("found", Some(VoiceKind::Library));
+        kept.details = Some(VoiceDetails::default());
+        let mut voices = vec![found_voice, voice("gone", Some(VoiceKind::Library)), kept];
+        let elevenlabs_voice: ElevenLabsVoice = serde_json::from_str(
+            r#"{"voice_id":"found","name":"Lucía","category":"professional",
+                "labels":{"accent":"argentine","age":"young"}}"#,
+        )
+        .unwrap();
+        let found = HashMap::from([("found".to_string(), elevenlabs_voice)]);
+
+        let changed = fill_missing_details(&mut voices, &found);
+
+        assert!(changed);
+        let details = voices[0].details.as_ref().unwrap();
+        assert_eq!(details.elevenlabs_accent.as_deref(), Some("argentine"));
+        assert_eq!(details.age.as_deref(), Some("young"));
+        assert_eq!(voices[1].details, None);
+        assert_eq!(voices[2].details, Some(VoiceDetails::default()));
     }
 }

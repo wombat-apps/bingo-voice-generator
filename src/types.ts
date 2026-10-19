@@ -34,6 +34,17 @@ export interface Voice {
   favorite: boolean;
   /** null for Voices saved before kinds were stored, until `backfillVoiceKinds` runs. */
   kind: VoiceKind | null;
+  /** null for Voices saved before details were stored, until `backfillVoiceDetails` finds them. */
+  details: VoiceDetails | null;
+}
+
+/** How ElevenLabs describes the voice, kept from when the Voice was added; see GLOSSARY.md. */
+export interface VoiceDetails {
+  /** ElevenLabs' free-form label (e.g. "castilian"), not the Voice's Accent. */
+  elevenlabsAccent: string | null;
+  age: string | null;
+  description: string | null;
+  useCase: string | null;
 }
 
 // Audio file types
@@ -69,6 +80,7 @@ export interface DefaultVoice {
   accent: string | null;
   age: string | null;
   description: string | null;
+  useCase: string | null;
   previewUrl: string | null;
 }
 

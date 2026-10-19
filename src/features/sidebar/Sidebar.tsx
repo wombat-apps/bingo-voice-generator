@@ -3,8 +3,16 @@ import { EighthNotes, Star, Play } from 'lucide-react';
 import { AccountSwitcher } from '../accounts';
 import { VoiceContextMenu } from './VoiceContextMenu';
 import { unavailableReason as planUnavailableReason } from '../../domain/plan';
-import type { AccountsState, Accent, Voice, AccentId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
+import { detailLabel } from '../../domain/voiceDetails';
+import { groupVoicesByKind } from '../../domain/voiceList';
+import type { AccountsState, Accent, Voice, VoiceKind, AccentId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
 import './Sidebar.css';
+
+/** The header over each kind of Voice, in ElevenLabs' terms (see GLOSSARY.md). */
+const VOICE_GROUP_TITLES: Record<VoiceKind, { title: string; hint: string }> = {
+  default: { title: 'Default', hint: 'any plan' },
+  library: { title: 'Library', hint: 'paid plans' },
+};
 
 interface SidebarProps {
   accents: Accent[];
@@ -67,17 +75,55 @@ export function Sidebar({
     setContextMenu(null);
   }, []);
 
-  // Filter by Accent, then sort: favorites first, then alphabetically
-  const filteredVoices = voices
-    .filter((v) => v.accent === selectedAccent)
-    .sort((a, b) => {
-      // Favorites first
-      if (a.favorite && !b.favorite) return -1;
-      if (!a.favorite && b.favorite) return 1;
-      // Then alphabetically by custom name
-      return a.customName.localeCompare(b.customName);
-    });
+  const voiceGroups = groupVoicesByKind(voices.filter((v) => v.accent === selectedAccent));
   const currentAccent = accents.find((l) => l.id === selectedAccent);
+
+  const renderVoice = (voice: Voice) => {
+    const unavailableReason = planUnavailableReason(voice.kind, subscription);
+    return (
+      <div
+        key={voice.uuid}
+        className={`voice-item ${selectedVoice?.uuid === voice.uuid ? 'active' : ''} ${unavailableReason ? 'is-unavailable' : ''}`}
+        onContextMenu={(e) => handleContextMenu(e, voice)}
+      >
+        <button
+          type="button"
+          className={`btn btn-icon btn-sm voice-favorite ${voice.favorite ? 'is-favorite' : ''}`}
+          onClick={() => onToggleFavorite(voice)}
+          title={voice.favorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Star size={14} fill={voice.favorite ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          type="button"
+          className="voice-item-content"
+          onClick={() => onVoiceChange(voice)}
+        >
+          <span className="voice-name">{voice.customName}</span>
+          <span className="voice-badges">
+            <span className={`badge badge-${voice.gender}`}>{voice.gender}</span>
+            {voice.details?.elevenlabsAccent && (
+              <span className="badge badge-accent" title="ElevenLabs accent">
+                {detailLabel(voice.details.elevenlabsAccent)}
+              </span>
+            )}
+          </span>
+          {unavailableReason && (
+            <span className="unavailable-reason">{unavailableReason}</span>
+          )}
+        </button>
+        <button
+          type="button"
+          className="btn btn-icon btn-sm voice-play"
+          onClick={() => onPlayVoiceSample(voice)}
+          disabled={!voiceHasRecordings.get(voice.uuid)}
+          title={voiceHasRecordings.get(voice.uuid) ? 'Play sample' : 'No recordings'}
+        >
+          <Play size={14} />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="sidebar">
@@ -115,52 +161,28 @@ export function Sidebar({
         </div>
 
         <div className="voice-list">
-          {filteredVoices.length === 0 ? (
+          {voiceGroups.length === 0 ? (
             <p className="text-muted text-center">
               No voices for {currentAccent?.displayName || selectedAccent}.
               <br />
               Click "Add Voice" to get started.
             </p>
           ) : (
-            filteredVoices.map((voice) => {
-              const unavailableReason = planUnavailableReason(voice.kind, subscription);
-              return (
-                <div
-                  key={voice.uuid}
-                  className={`voice-item ${selectedVoice?.uuid === voice.uuid ? 'active' : ''} ${unavailableReason ? 'is-unavailable' : ''}`}
-                  onContextMenu={(e) => handleContextMenu(e, voice)}
-                >
-                  <button
-                    type="button"
-                    className={`btn btn-icon btn-sm voice-favorite ${voice.favorite ? 'is-favorite' : ''}`}
-                    onClick={() => onToggleFavorite(voice)}
-                    title={voice.favorite ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <Star size={14} fill={voice.favorite ? 'currentColor' : 'none'} />
-                  </button>
-                  <button
-                    type="button"
-                    className="voice-item-content"
-                    onClick={() => onVoiceChange(voice)}
-                  >
-                    <span className="voice-name">{voice.customName}</span>
-                    <span className={`badge badge-${voice.gender}`}>{voice.gender}</span>
-                    {unavailableReason && (
-                      <span className="unavailable-reason">{unavailableReason}</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-icon btn-sm voice-play"
-                    onClick={() => onPlayVoiceSample(voice)}
-                    disabled={!voiceHasRecordings.get(voice.uuid)}
-                    title={voiceHasRecordings.get(voice.uuid) ? 'Play sample' : 'No recordings'}
-                  >
-                    <Play size={14} />
-                  </button>
+            voiceGroups.map((group) =>
+              group.kind ? (
+                <div key={group.kind} className="voice-group">
+                  <div className="voice-group-header">
+                    <span>{VOICE_GROUP_TITLES[group.kind].title}</span>
+                    <span className="voice-group-hint">{VOICE_GROUP_TITLES[group.kind].hint}</span>
+                  </div>
+                  {group.voices.map(renderVoice)}
                 </div>
-              );
-            })
+              ) : (
+                <div key="unknown" className="voice-group">
+                  {group.voices.map(renderVoice)}
+                </div>
+              )
+            )
           )}
         </div>
       </div>

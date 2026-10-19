@@ -113,6 +113,7 @@ pub fn run() {
             // Voices commands
             load_voices,
             backfill_voice_kinds,
+            backfill_voice_details,
             create_voice,
             update_voice,
             delete_local_voice,

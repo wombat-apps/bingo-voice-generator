@@ -20,6 +20,20 @@ pub struct Voice {
     /// `None` for Voices saved before kinds were stored, until they are backfilled.
     #[serde(default)]
     pub kind: Option<VoiceKind>,
+    /// `None` for Voices saved before details were stored, until they are backfilled.
+    #[serde(default)]
+    pub details: Option<VoiceDetails>,
+}
+
+/// How ElevenLabs describes the voice, as it did when the Voice was added. See GLOSSARY.md.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceDetails {
+    /// ElevenLabs' free-form label (e.g. "castilian"), not the Voice's Accent.
+    pub elevenlabs_accent: Option<String>,
+    pub age: Option<String>,
+    pub description: Option<String>,
+    pub use_case: Option<String>,
 }
 
 /// Whether a Voice is a Default Voice or a Library Voice. See GLOSSARY.md.
@@ -52,6 +66,7 @@ impl Voice {
             gender: gender.unwrap_or_else(|| "male".to_string()),
             favorite: false,
             kind: Some(kind),
+            details: None,
         }
     }
 }
@@ -67,6 +82,7 @@ mod tests {
         let voice: Voice = serde_json::from_str(json).unwrap();
 
         assert_eq!(voice.kind, None);
+        assert_eq!(voice.details, None);
         assert_eq!(voice.custom_name, "Ana");
         assert_eq!(voice.accent, Accent::PeninsularSpanish);
     }

@@ -14,6 +14,7 @@ import {
   getAccents,
   loadVoices,
   backfillVoiceKinds,
+  backfillVoiceDetails,
   loadAudioFiles,
   listAccounts,
   setActiveAccount,
@@ -46,6 +47,7 @@ import { hasDigit } from './domain/bingo';
 import { usePlayer } from './features/player/usePlayer';
 import { describeGenerationError, errorMessage } from './services/errors';
 import { unavailableReason } from './domain/plan';
+import { detailLabel } from './domain/voiceDetails';
 import './styles/index.css';
 import './App.css';
 
@@ -294,6 +296,32 @@ function App() {
         backfilledAccountRef.current = null; // retry on the next account change
       });
   }, [activeAccountId, needsKindBackfill]);
+
+  // Store the Voice Details of Voices saved before details existed (once per Active Account:
+  // another account may find the Library Voices this one has not saved)
+  const needsDetailsBackfill = voices.some((v) => v.details === null);
+  const detailsBackfilledAccountRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !activeAccountId ||
+      !needsDetailsBackfill ||
+      detailsBackfilledAccountRef.current === activeAccountId
+    ) {
+      return;
+    }
+    detailsBackfilledAccountRef.current = activeAccountId;
+    backfillVoiceDetails()
+      .then((updatedVoices) => {
+        setVoices(updatedVoices);
+        setSelectedVoice((current) =>
+          current ? updatedVoices.find((v) => v.uuid === current.uuid) ?? current : current
+        );
+      })
+      .catch((err) => {
+        console.error('Failed to backfill voice details:', err);
+        detailsBackfilledAccountRef.current = null; // retry on the next account change
+      });
+  }, [activeAccountId, needsDetailsBackfill]);
 
   // Whether the Active Account's Plan can generate with the selected Voice
   const selectedVoiceUnavailableReason = selectedVoice
@@ -648,14 +676,26 @@ function App() {
               <div className="header-voice">
                 <div className="header-voice-info">
                   <div className="header-voice-primary">
-                    <span className="header-voice-name">{selectedVoice.customName}</span>
+                    <span
+                      className="header-voice-name"
+                      title={selectedVoice.details?.description ?? undefined}
+                    >
+                      {selectedVoice.customName}
+                    </span>
                     <span className={`badge badge-${selectedVoice.gender}`}>{selectedVoice.gender}</span>
+                    {selectedVoice.details?.elevenlabsAccent && (
+                      <span className="badge badge-accent" title="ElevenLabs accent">
+                        {detailLabel(selectedVoice.details.elevenlabsAccent)}
+                      </span>
+                    )}
                     {selectedVoice.favorite && (
                       <Star size={14} className="header-voice-favorite" fill="currentColor" />
                     )}
                   </div>
                   <div className="header-voice-secondary">
-                    {selectedVoice.elevenlabsName} • {selectedVoice.elevenlabsId}
+                    {selectedVoice.elevenlabsName}
+                    {selectedVoice.details?.age && ` • ${detailLabel(selectedVoice.details.age)}`}
+                    {` • ${selectedVoice.elevenlabsId}`}
                   </div>
                 </div>
                 <div className="header-voice-actions">

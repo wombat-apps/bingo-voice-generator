@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::models::Accent;
+use crate::models::{Accent, VoiceDetails};
 
 // API Response Models
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,7 +45,49 @@ pub struct DefaultVoice {
     pub accent: Option<String>,
     pub age: Option<String>,
     pub description: Option<String>,
+    pub use_case: Option<String>,
     pub preview_url: Option<String>,
+}
+
+impl ElevenLabsVoice {
+    /// The languages ElevenLabs has verified the voice speaks that are the Language of `accent`.
+    fn verified_in_language(&self, accent: Accent) -> Vec<&VerifiedLanguage> {
+        self.verified_languages
+            .iter()
+            .filter(|v| v.language == accent.elevenlabs_code())
+            .collect()
+    }
+
+    /// The verified language in `accent` if there is one, then any in its Language.
+    fn verified_for(&self, accent: Accent) -> Option<&VerifiedLanguage> {
+        let in_language = self.verified_in_language(accent);
+        in_language
+            .iter()
+            .find(|v| v.accent.as_deref() == Some(accent.elevenlabs_accent()))
+            .or_else(|| in_language.first())
+            .copied()
+    }
+
+    fn label(&self, key: &str) -> Option<String> {
+        self.labels.get(key).cloned()
+    }
+
+    /// The Voice Details of this voice for a Voice of `accent`: the ElevenLabs accent it is
+    /// verified in for that Language if any, its label otherwise.
+    pub fn details_for(&self, accent: Accent) -> VoiceDetails {
+        VoiceDetails {
+            elevenlabs_accent: self
+                .verified_for(accent)
+                .and_then(|v| v.accent.clone())
+                .or_else(|| self.label("accent")),
+            age: self.label("age"),
+            description: self
+                .description
+                .clone()
+                .or_else(|| self.label("description")),
+            use_case: self.label("use_case"),
+        }
+    }
 }
 
 impl DefaultVoice {
@@ -53,27 +95,25 @@ impl DefaultVoice {
     /// speaks it. The preview is the one in the Accent if there is one, then any in the
     /// Language, then the generic one.
     pub fn for_accent(voice: &ElevenLabsVoice, accent: Accent) -> Option<Self> {
-        let in_language: Vec<&VerifiedLanguage> = voice
-            .verified_languages
-            .iter()
-            .filter(|v| v.language == accent.elevenlabs_code())
-            .collect();
-        let verified = in_language
-            .iter()
-            .find(|v| v.accent.as_deref() == Some(accent.elevenlabs_accent()))
-            .or_else(|| in_language.first())?;
-        let label = |key: &str| voice.labels.get(key).cloned();
+        let verified = voice.verified_for(accent)?;
+        let details = voice.details_for(accent);
         Some(DefaultVoice {
             voice_id: voice.voice_id.clone(),
             name: voice.name.clone(),
-            gender: label("gender"),
-            accent: verified.accent.clone().or_else(|| label("accent")),
-            age: label("age"),
-            description: voice.description.clone().or_else(|| label("description")),
+            gender: voice.label("gender"),
+            accent: details.elevenlabs_accent,
+            age: details.age,
+            description: details.description,
+            use_case: details.use_case,
             preview_url: verified
                 .preview_url
                 .clone()
-                .or_else(|| in_language.iter().find_map(|v| v.preview_url.clone()))
+                .or_else(|| {
+                    voice
+                        .verified_in_language(accent)
+                        .iter()
+                        .find_map(|v| v.preview_url.clone())
+                })
                 .or_else(|| voice.preview_url.clone()),
         })
     }
@@ -219,6 +259,28 @@ mod tests {
         let picked = DefaultVoice::for_accent(&voice, Accent::PeninsularSpanish).unwrap();
 
         assert_eq!(picked.preview_url.as_deref(), Some("generic.mp3"));
+    }
+
+    #[test]
+    fn details_of_a_voice_not_verified_in_the_language_come_from_its_labels() {
+        let voice: ElevenLabsVoice = serde_json::from_str(
+            r#"{"voice_id":"v2","name":"Lucía","category":"professional",
+                "labels":{"accent":"castilian","age":"middle_aged","use_case":"narrative_story",
+                          "description":"warm"}}"#,
+        )
+        .unwrap();
+
+        let details = voice.details_for(Accent::PeninsularSpanish);
+
+        assert_eq!(
+            details,
+            VoiceDetails {
+                elevenlabs_accent: Some("castilian".into()),
+                age: Some("middle_aged".into()),
+                description: Some("warm".into()),
+                use_case: Some("narrative_story".into()),
+            }
+        );
     }
 
     #[test]

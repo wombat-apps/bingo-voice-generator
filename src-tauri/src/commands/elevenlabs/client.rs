@@ -290,6 +290,12 @@ impl ElevenLabsClient {
         Ok(response.voices)
     }
 
+    /// One voice the account can use: a Default Voice or one saved in the account.
+    pub async fn voice(&self, voice_id: &str) -> Result<ElevenLabsVoice, ElevenLabsError> {
+        let path = format!("/v1/voices/{}", urlencoding::encode(voice_id));
+        self.get_json("voice", &path).await
+    }
+
     /// Library Voices in the Language of `accent`, under `accent_label` if given.
     pub async fn library_voices(
         &self,

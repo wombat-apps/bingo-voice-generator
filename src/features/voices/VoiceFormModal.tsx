@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lucide-react';
-import type { SharedVoice, LibraryVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceKind } from '../../types';
+import type { SharedVoice, LibraryVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceDetails, VoiceKind } from '../../types';
 import { searchLibraryVoices, createVoice, updateVoice, addLibraryVoice, listDefaultVoices } from '../../services/tauri';
 import { errorMessage } from '../../services/errors';
+import { detailLabel } from '../../domain/voiceDetails';
 import { unavailableReason as planUnavailableReason, worksOnEveryPlan } from '../../domain/plan';
 import './VoiceFormModal.css';
 
@@ -137,7 +138,6 @@ export function VoiceFormModal({
           language: null,
           locale: null,
           category: 'premade',
-          useCase: null,
           publicOwnerId: null,
           clonedByCount: null,
           featured: null,
@@ -257,7 +257,13 @@ export function VoiceFormModal({
           trimmedName,
           currentAccent,
           formGender || 'unknown',
-          selectedVoice.kind
+          selectedVoice.kind,
+          {
+            elevenlabsAccent: selectedVoice.accent,
+            age: selectedVoice.age,
+            description: selectedVoice.description,
+            useCase: selectedVoice.useCase,
+          }
         );
         onVoiceSaved(updatedVoices);
       } else if (mode === 'edit' && voice) {
@@ -431,7 +437,7 @@ export function VoiceFormModal({
                                 </span>
                               )}
                               {worksOnEveryPlan(voiceOption.kind) && (
-                                <span className="badge badge-free">Free</span>
+                                <span className="badge badge-default" title="Default Voice: works on every ElevenLabs Plan">Default</span>
                               )}
                             </span>
                             {unavailableReason && (
@@ -497,6 +503,8 @@ export function VoiceFormModal({
                   <span className="original-voice-name">{voice.elevenlabsName}</span>
                 </div>
               )}
+
+              {mode === 'edit' && voice?.details && <VoiceDetailsList details={voice.details} />}
 
               <div className="form-group">
                 <label className="form-label" htmlFor="customName">
@@ -567,5 +575,27 @@ export function VoiceFormModal({
         )}
       </div>
     </div>
+  );
+}
+
+/** The Voice Details ElevenLabs gave, read-only; a missing one is left out. */
+function VoiceDetailsList({ details }: { details: VoiceDetails }) {
+  const rows: [string, string | null][] = [
+    ['ElevenLabs accent', details.elevenlabsAccent],
+    ['Age', details.age],
+    ['Use case', details.useCase],
+    ['Description', details.description],
+  ];
+  const shown = rows.filter((row): row is [string, string] => !!row[1]);
+  if (shown.length === 0) return null;
+  return (
+    <dl className="voice-details">
+      {shown.map(([label, value]) => (
+        <div key={label} className="voice-details-row">
+          <dt>{label}</dt>
+          <dd>{detailLabel(value)}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
