@@ -27,7 +27,7 @@ pub struct AddAccountResult {
 pub async fn list_accounts(dirs: State<'_, AppDirs>) -> Result<AccountsState, AccountsError> {
     let store = dirs.account_store();
     let mut state = store.load().await?;
-    let mut changed = false;
+    let mut changed = state.activate_only_account();
     // The Active Account's key is checked every time, so a key gone from the
     // Keychain clears its hint and the UI stops offering to generate.
     let active_id = state.active_account_id;

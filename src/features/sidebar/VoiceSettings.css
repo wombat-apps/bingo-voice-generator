@@ -4,31 +4,6 @@
   gap: var(--spacing-sm);
 }
 
-.voice-settings-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin: var(--spacing-sm) 0;
-}
-
-.voice-settings-divider-line {
-  flex: 1;
-  height: 1px;
-  background-color: var(--border-subtle);
-}
-
-.voice-settings-divider-text {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-
 .voice-settings-content {
   display: flex;
   flex-direction: column;

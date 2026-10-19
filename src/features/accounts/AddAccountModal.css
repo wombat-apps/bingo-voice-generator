@@ -1,0 +1,60 @@
+.add-account-modal {
+  background-color: var(--surface-popover);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-subtle);
+}
+
+.add-account-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+}
+
+.add-account-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.api-key-input-wrapper {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.api-key-input-wrapper .input {
+  flex: 1;
+}
+
+.account-add-help {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-subtle);
+}
+
+.account-add-error {
+  font-size: var(--font-size-sm);
+  color: var(--status-error);
+}
+
+.account-add-warning {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background-color: var(--status-warning-bg);
+  color: var(--status-warning);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.account-add-warning ul {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+}

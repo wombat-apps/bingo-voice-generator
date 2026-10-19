@@ -100,8 +100,21 @@ impl AccountsState {
         self.accounts.remove(index);
         if self.active_account_id == Some(id) {
             self.active_account_id = None;
+            self.activate_only_account();
         }
         Ok(())
+    }
+
+    /// With no Active Account and a single saved account, makes that one active: there is
+    /// nothing to choose. Returns whether it changed the state.
+    pub fn activate_only_account(&mut self) -> bool {
+        match self.accounts.as_slice() {
+            [only] if self.active_account_id.is_none() => {
+                self.active_account_id = Some(only.id);
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn set_active(&mut self, id: Option<Uuid>) -> Result<(), AccountsError> {
@@ -269,13 +282,41 @@ mod tests {
     }
 
     #[test]
-    fn removing_active_account_leaves_none_active() {
+    fn removing_active_account_leaves_none_active_when_several_remain() {
         let mut state = AccountsState::default();
         let first = state.add("Personal", "key").unwrap();
         state.add("Client", "key").unwrap();
+        state.add("Studio", "key").unwrap();
         state.remove(first).unwrap();
         assert_eq!(state.active_account_id, None);
-        assert_eq!(state.accounts.len(), 1);
+        assert_eq!(state.accounts.len(), 2);
+    }
+
+    #[test]
+    fn removing_active_account_activates_the_only_one_left() {
+        let mut state = AccountsState::default();
+        let first = state.add("Personal", "key").unwrap();
+        let second = state.add("Client", "key").unwrap();
+        state.remove(first).unwrap();
+        assert_eq!(state.active_account_id, Some(second));
+    }
+
+    #[test]
+    fn removing_the_last_account_leaves_none_active() {
+        let mut state = AccountsState::default();
+        let only = state.add("Personal", "key").unwrap();
+        state.remove(only).unwrap();
+        assert_eq!(state.active_account_id, None);
+    }
+
+    #[test]
+    fn a_single_account_without_active_one_becomes_active() {
+        let mut state = AccountsState::default();
+        let only = state.add("Personal", "key").unwrap();
+        state.set_active(None).unwrap();
+        assert!(state.activate_only_account());
+        assert_eq!(state.active_account_id, Some(only));
+        assert!(!state.activate_only_account());
     }
 
     #[test]

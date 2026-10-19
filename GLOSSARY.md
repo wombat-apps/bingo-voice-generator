@@ -25,7 +25,7 @@ An ElevenLabs account the user has saved in the app under a name they chose, rea
 _Avoid_: API key (for the concept; the key is only the account's credential), profile
 
 **Active Account**:
-The single ElevenLabs Account the whole app uses at a given moment: for generating, listing voices and showing the subscription. It stays the same across restarts until the user switches it. There may be no Active Account (none saved, or the active one was deleted), and then nothing can be generated until the user picks one.
+The single ElevenLabs Account the whole app uses at a given moment: for generating, listing voices and showing the subscription. It stays the same across restarts until the user switches it. There may be no Active Account (none saved, or the active one was deleted while more than one other remained), and then nothing can be generated until the user picks one. Deleting the Active Account when a single other account remains makes that one active, since there is nothing to choose.
 _Avoid_: Current key, selected key
 
 **Voice**:

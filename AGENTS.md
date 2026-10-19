@@ -72,7 +72,9 @@ src/features/                       ├── elevenlabs/ (client.rs: one client
     ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
     ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
     │   player.ts reducer)          ├── accounts.rs (ElevenLabs Accounts commands)
-    ├── settings-panel/             └── updater.rs (check_for_update, install_update)
+    ├── accounts/ (AccountSwitcher  └── updater.rs (check_for_update, install_update)
+    │   at the sidebar's bottom)
+    ├── settings-panel/ (Voice Settings)
     ├── updater/ (useUpdater,   src-tauri/src/services/
     │   update.ts rules)            ├── app_dirs.rs (data root: voices.json, accounts.json, audio)
     └── voices/                     ├── account_store.rs (accounts.json, Active Account, keys in Keychain)
@@ -81,7 +83,7 @@ src/domain/                         ├── audio_store.rs (file names, Origin
     └── plan.ts (Plan rules)
 ```
 
-API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`, through `AccountStore`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountsSection` keeps it only while it is shown, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
+API keys only cross IPC into Rust: ElevenLabs commands resolve the Active Account's key themselves (`ElevenLabs::active_client`, through `AccountStore`), and the frontend shows `keyHint`. The one exception is `reveal_account_api_key`, called when the user clicks to show a key; `AccountSwitcher` (the account menu at the bottom of the sidebar) keeps it only while it is shown and forgets it when the menu closes, never in app state. `ElevenLabs` takes its base URL and `AudioStore` its root, so tests run against a `wiremock` server and a temp directory.
 
 **IPC Pattern**: Frontend calls `invoke()` from `@tauri-apps/api` → Rust commands in `src-tauri/src/commands/` → Results serialized back to TypeScript.
 

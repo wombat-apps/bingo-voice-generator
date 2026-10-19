@@ -44,7 +44,7 @@ import type {
 import { DEFAULT_VOICE_SETTINGS, isTtsModelId } from './types';
 import { hasDigit } from './domain/bingo';
 import { usePlayer } from './features/player/usePlayer';
-import { describeGenerationError } from './services/errors';
+import { describeGenerationError, errorMessage } from './services/errors';
 import { unavailableReason } from './domain/plan';
 import './styles/index.css';
 import './App.css';
@@ -67,13 +67,14 @@ function App() {
   // keyHint is null when the Keychain has no key for the account
   const hasActiveAccount = activeAccount?.keyHint != null;
   const accountUnavailableReason = !activeAccount
-    ? 'Pick an ElevenLabs Account in Settings'
+    ? 'Pick an ElevenLabs Account in the sidebar'
     : activeAccount.keyHint === null
       ? `No API key in the Keychain for "${activeAccount.name}"`
       : null;
 
   // Subscription info
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
   // Audio files
   const [audioFiles, setAudioFiles] = useState<Map<number, NumberAudioPair>>(new Map());
@@ -155,12 +156,14 @@ function App() {
   const refreshSubscription = useCallback(async (accountId: string | null) => {
     subscriptionAccountRef.current = accountId;
     setSubscription(null);
+    setSubscriptionError(null);
     if (!accountId) return;
     try {
       const sub = await getAccountSubscription(accountId);
       if (subscriptionAccountRef.current === accountId) setSubscription(sub);
     } catch (err) {
       console.error('Failed to fetch subscription info:', err);
+      if (subscriptionAccountRef.current === accountId) setSubscriptionError(errorMessage(err));
     }
   }, []);
 
@@ -170,7 +173,7 @@ function App() {
     refreshSubscription(state.activeAccountId);
   }, [refreshSubscription]);
 
-  const handleActiveAccountChange = useCallback(async (accountId: string | null) => {
+  const handleActiveAccountChange = useCallback(async (accountId: string) => {
     try {
       await applyAccountsState(await setActiveAccount(accountId));
     } catch (err) {
@@ -296,13 +299,6 @@ function App() {
   const selectedVoiceUnavailableReason = selectedVoice
     ? unavailableReason(selectedVoice.kind, subscription)
     : null;
-
-  // Auto-open settings panel if there is no Active Account
-  useEffect(() => {
-    if (accountsState.activeAccountId === null && accents.length > 0) {
-      setIsSettingsPanelOpen(true);
-    }
-  }, [accountsState.activeAccountId, accents.length]);
 
   // Load audio files when voice or mode changes
   useEffect(() => {
@@ -613,9 +609,11 @@ function App() {
           hasApiKey={hasActiveAccount}
           accountsState={accountsState}
           subscription={subscription}
+          subscriptionError={subscriptionError}
           voiceHasRecordings={voiceHasRecordings}
           platform={platform}
           onAccentChange={setSelectedAccent}
+          onAccountsChange={applyAccountsState}
           onActiveAccountChange={handleActiveAccountChange}
           onVoiceChange={setSelectedVoice}
           onOpenVoiceForm={handleOpenVoiceForm}
@@ -704,12 +702,12 @@ function App() {
               />
             )}
 
-            {/* Settings button */}
+            {/* Voice Settings button */}
             <button
               type="button"
               className="btn btn-icon"
               onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
-              title={isSettingsPanelOpen ? "Hide Settings" : "Show Settings"}
+              title={isSettingsPanelOpen ? "Hide Voice Settings" : "Show Voice Settings"}
             >
               <Settings size={18} />
             </button>
@@ -759,13 +757,11 @@ function App() {
         </footer>
       </div>
 
-      {/* Settings Panel - right sidebar (integrated in layout) */}
+      {/* Voice Settings - right sidebar (integrated in layout) */}
       <SettingsPanel
         isOpen={isSettingsPanelOpen}
-        accountsState={accountsState}
         voiceSettings={voiceSettings}
         onClose={() => setIsSettingsPanelOpen(false)}
-        onAccountsChange={applyAccountsState}
         onVoiceSettingsChange={setVoiceSettings}
       />
 

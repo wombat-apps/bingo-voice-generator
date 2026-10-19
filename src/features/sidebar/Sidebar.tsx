@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { EighthNotes, Star, Play } from 'lucide-react';
-import { SubscriptionInfo } from './SubscriptionInfo';
+import { AccountSwitcher } from '../accounts';
 import { VoiceContextMenu } from './VoiceContextMenu';
 import { unavailableReason as planUnavailableReason } from '../../domain/plan';
 import type { AccountsState, Accent, Voice, AccentId, SubscriptionInfo as SubscriptionInfoType } from '../../types';
@@ -14,10 +14,12 @@ interface SidebarProps {
   hasApiKey: boolean;
   accountsState: AccountsState;
   subscription: SubscriptionInfoType | null;
+  subscriptionError: string | null;
   voiceHasRecordings: Map<string, boolean>;
   platform: string;
   onAccentChange: (accent: AccentId) => void;
-  onActiveAccountChange: (accountId: string | null) => void;
+  onAccountsChange: (state: AccountsState) => void;
+  onActiveAccountChange: (accountId: string) => void;
   onVoiceChange: (voice: Voice | null) => void;
   onOpenVoiceForm: (voice?: Voice) => void;
   onToggleFavorite: (voice: Voice) => void;
@@ -34,9 +36,11 @@ export function Sidebar({
   hasApiKey,
   accountsState,
   subscription,
+  subscriptionError,
   voiceHasRecordings,
   platform,
   onAccentChange,
+  onAccountsChange,
   onActiveAccountChange,
   onVoiceChange,
   onOpenVoiceForm,
@@ -77,7 +81,7 @@ export function Sidebar({
 
   return (
     <div className="sidebar">
-      <div className="sidebar-section">
+      <div className="sidebar-section sidebar-top">
         <div className="form-group">
           <label className="form-label">Accent</label>
           <select
@@ -94,7 +98,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="sidebar-section">
+      <div className="sidebar-section sidebar-voices">
         <div className="sidebar-section-header">
           <h3 className="sidebar-section-title">
             <EighthNotes size={16} />
@@ -162,28 +166,15 @@ export function Sidebar({
       </div>
 
       {/* Active Account and its subscription - anchored at bottom */}
-      {accountsState.accounts.length > 0 && (
-        <div className="sidebar-actions">
-          <div className="form-group">
-            <label className="form-label">ElevenLabs Account</label>
-            <select
-              className="select"
-              value={accountsState.activeAccountId ?? ''}
-              onChange={(e) => onActiveAccountChange(e.target.value || null)}
-            >
-              {accountsState.activeAccountId === null && (
-                <option value="">Select an account…</option>
-              )}
-              {accountsState.accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {subscription && <SubscriptionInfo subscription={subscription} />}
-        </div>
-      )}
+      <div className="sidebar-account">
+        <AccountSwitcher
+          accountsState={accountsState}
+          subscription={subscription}
+          subscriptionError={subscriptionError}
+          onAccountsChange={onAccountsChange}
+          onActiveAccountChange={onActiveAccountChange}
+        />
+      </div>
 
       {/* Voice context menu */}
       {contextMenu && (
