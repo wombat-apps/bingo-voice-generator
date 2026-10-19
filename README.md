@@ -1,4 +1,4 @@
-# Bingo Voice Generator
+# bingo!! studio
 
 Desktop application (macOS, Apple Silicon) that generates audio files for bingo numbers using the ElevenLabs text-to-speech API.
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Bingo Voice Generator",
+  "productName": "bingo!! studio",
   "version": "0.3.2-dev",
   "identifier": "com.wombatapps.bingovoicegenerator",
   "build": {
@@ -13,7 +13,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "Bingo Voice Generator",
+        "title": "bingo!! studio",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

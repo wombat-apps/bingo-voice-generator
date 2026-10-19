@@ -4,7 +4,7 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## Project Overview
 
-A desktop application (macOS, Apple Silicon only for now) that generates bingo number audio files using the ElevenLabs TTS API. Built with Tauri 2 (Rust backend) and React 19 (TypeScript frontend).
+bingo!! studio: a desktop application (macOS, Apple Silicon only for now) that generates bingo number audio files using the ElevenLabs TTS API, for the Bundled Voices of bingo!! and bingo!! lite. Write the name as `bingo!! studio`, lowercase, like the rest of the bingo!! family. Only the visible name changed from "Bingo Voice Generator": the bundle identifier, the data folder, the Keychain service, the DMG name and the repository keep the old name (see `docs/adr/0002-rename-to-bingo-studio-keeping-identifiers.md`). Built with Tauri 2 (Rust backend) and React 19 (TypeScript frontend).
 
 ## Commands
 

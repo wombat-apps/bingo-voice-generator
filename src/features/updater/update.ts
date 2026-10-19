@@ -31,7 +31,7 @@ export function manualCheckDialog(outcome: CheckOutcome, currentVersion: string)
   if (outcome.update) return null;
   return {
     title: `You're up to date (${currentVersion})`,
-    message: `Bingo Voice Generator ${currentVersion} is the latest version.`,
+    message: `bingo!! studio ${currentVersion} is the latest version.`,
     kind: 'info',
   };
 }

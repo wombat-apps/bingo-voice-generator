@@ -1,4 +1,4 @@
-# Bingo Voice Generator
+# bingo!! studio
 
 Generates the audio a bingo caller plays for each number, in several languages, voices and modes, using ElevenLabs text-to-speech.
 
@@ -9,7 +9,7 @@ The language the numbers are said in (Spanish, English, Portuguese…). It sets 
 _Avoid_: Locale, idioma (for the concept in code)
 
 **Accent**:
-The regional way a Language is spoken, such as Peninsular, Rioplatense or neutral Latin American Spanish, or New Zealand English. It is what the user picks to generate in: every Voice and every audio file belongs to one Accent. Two Accents of the same Language say the same text, except for the few numbers an Accent writes differently (European Portuguese "dezasseis", Brazilian "dezesseis"); otherwise only the voice and the scene described to ElevenLabs change. It is the same concept as the Accent of a Bundled Voice in the bingo apps.
+The regional way a Language is spoken, such as Peninsular, Rioplatense or neutral Latin American Spanish, or New Zealand English. It is what the user picks to generate in: every Voice and every audio file belongs to one Accent. Two Accents of the same Language say the same text, except for the few numbers an Accent writes differently (European Portuguese "dezasseis", Brazilian "dezesseis"); otherwise only the voice and the scene described to ElevenLabs change. It is the same concept as the Accent of a Bundled Voice in bingo!! and bingo!! lite.
 _Avoid_: Variant (taken by Bingo Mode), dialect, locale, language (for an Accent)
 
 **TTS Model**:

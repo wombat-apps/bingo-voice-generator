@@ -20,7 +20,7 @@ describe('manualCheckDialog', () => {
   it('says the app is up to date, with its version', () => {
     expect(manualCheckDialog({ update: null }, '0.3.1')).toEqual({
       title: "You're up to date (0.3.1)",
-      message: 'Bingo Voice Generator 0.3.1 is the latest version.',
+      message: 'bingo!! studio 0.3.1 is the latest version.',
       kind: 'info',
     });
   });

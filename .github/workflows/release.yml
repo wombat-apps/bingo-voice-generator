@@ -125,13 +125,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           DMG_PATH="${{ steps.dmg.outputs.path }}"
-          # Replace the versioned DMG tauri-action already uploaded (GitHub turns
-          # spaces in asset names into dots) and add the stable-name copy.
-          VERSIONED_NAME=$(basename "$DMG_PATH")
-          cp "$DMG_PATH" "$RUNNER_TEMP/${VERSIONED_NAME// /.}"
+          # Replace the versioned DMG tauri-action already uploaded and add the
+          # stable-name copy. GitHub turns every character other than letters,
+          # digits, "_" and "-" into a dot, then collapses ".." (tauri-action's
+          # ghAssetName), so "bingo!! studio_X.dmg" lands as "bingo..studio_X.dmg".
+          GH_NAME=$(basename "$DMG_PATH" | sed -E 's/[^a-zA-Z0-9_-]/./g; s/\.\./\./g')
+          cp "$DMG_PATH" "$RUNNER_TEMP/$GH_NAME"
           cp "$DMG_PATH" "$RUNNER_TEMP/$DMG_NAME"
           gh release upload "${{ github.ref_name }}" \
-            "$RUNNER_TEMP/${VERSIONED_NAME// /.}" "$RUNNER_TEMP/$DMG_NAME" --clobber
+            "$RUNNER_TEMP/$GH_NAME" "$RUNNER_TEMP/$DMG_NAME" --clobber
 
       - name: Upload dry-run artifacts
         if: github.ref_type != 'tag'
