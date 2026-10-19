@@ -80,9 +80,7 @@ pub fn run() {
                 .timezone_strategy(TimezoneStrategy::UseLocal)
                 .build(),
         )
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init());
+        .plugin(tauri_plugin_opener::init());
 
     // Add updater plugin only on desktop
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
