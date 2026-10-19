@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Play, Pause, Volume2, SkipBack, SkipForward, FileHeadphone, RefreshCw, Trash } from 'lucide-react';
-import type { AudioPart, BingoModeId } from '../../types';
+import { Play, Pause, Volume2, SkipBack, SkipForward, FileHeadphone, RefreshCw, Trash, Info } from 'lucide-react';
+import type { AudioPart, BingoModeId, GenerationDetails } from '../../types';
 import { generateWaveform } from '../../services/audioPlayer';
+import { readGenerationDetails } from '../../services/tauri';
+import { GenerationDetailsModal } from './GenerationDetailsModal';
 import { displayNumber } from '../../domain/bingo';
 import type { PlayerPanel } from './usePlayer';
 import { WaveformSlider } from './WaveformSlider';
@@ -12,6 +14,8 @@ interface PartPanelProps {
   type: 'word' | 'digit';
   label: string;
   filePath: string | null;
+  /** Changes when the file is regenerated, to read its Generation Details again. */
+  createdAt: string | null;
   duration: number;
   currentTime: number;
   isPlaying: boolean;
@@ -32,6 +36,7 @@ function PartPanel({
   type,
   label,
   filePath,
+  createdAt,
   duration,
   currentTime,
   isPlaying,
@@ -47,6 +52,21 @@ function PartPanel({
   onDelete,
 }: PartPanelProps) {
   const [waveform, setWaveform] = useState<number[]>([]);
+  const [details, setDetails] = useState<GenerationDetails | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Audio generated before the Generation Details were kept has none, and no info button
+  useEffect(() => {
+    setDetails(null);
+    if (!filePath) return;
+    let cancelled = false;
+    readGenerationDetails(filePath)
+      .then((read) => !cancelled && setDetails(read))
+      .catch(console.error);
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath, createdAt]);
 
   useEffect(() => {
     if (filePath) {
@@ -109,11 +129,24 @@ function PartPanel({
               <FileHeadphone size={18} />
             )}
           </button>
+          {details && (
+            <button className="btn btn-icon btn-xs" onClick={() => setShowDetails(true)} title="How it was generated">
+              <Info size={18} />
+            </button>
+          )}
           <button className="btn btn-icon btn-xs btn-delete" onClick={onDelete} title={`Delete ${type}`} disabled={!hasAudio || isGenerating}>
             <Trash size={18} />
           </button>
         </div>
       </div>
+
+      {showDetails && details && (
+        <GenerationDetailsModal
+          title={`How ${label} was generated`}
+          details={details}
+          onClose={() => setShowDetails(false)}
+        />
+      )}
     </div>
   );
 }
@@ -223,6 +256,7 @@ export function ActionBar({
             type="word"
             label={selectedLabel || 'W'}
             filePath={word.filePath}
+            createdAt={word.createdAt}
             duration={word.duration}
             currentTime={word.time}
             isPlaying={isPlaying}
@@ -270,6 +304,7 @@ export function ActionBar({
           type="word"
           label={wordLabel}
           filePath={word.filePath}
+          createdAt={word.createdAt}
           duration={word.duration}
           currentTime={word.time}
           isPlaying={isPlaying}
@@ -289,6 +324,7 @@ export function ActionBar({
           type="digit"
           label={digitLabel}
           filePath={digit.filePath}
+          createdAt={digit.createdAt}
           duration={digit.duration}
           currentTime={digit.time}
           isPlaying={isPlaying}

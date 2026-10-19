@@ -4,8 +4,8 @@ use thiserror::Error;
 
 use super::elevenlabs::{ElevenLabs, ElevenLabsClient, ElevenLabsError};
 use crate::models::{
-    build_tts_text, AudioFile, AudioFileId, AudioPart, BingoMode, SelectedFormats, Voice,
-    VoiceNumber, VoiceSettings,
+    build_tts_text, default_format, AudioFile, AudioFileId, AudioPart, BingoMode, FormatSlot,
+    GenerationDetails, SelectedFormats, Voice, VoiceNumber, VoiceSettings,
 };
 use crate::services::app_dirs::AppDirs;
 use crate::services::audio_store::{AudioStore, StorageError};
@@ -45,8 +45,8 @@ impl Serialize for GenerationError {
 }
 
 /// Generates the Word or the Digit of `number` with `voice` and the Active Account, in the
-/// formats selected for its Language, and saves its Original Audio and Trimmed Audio,
-/// replacing any already there.
+/// formats selected for its Language, and saves its Original Audio and Trimmed Audio with
+/// their Generation Details, replacing any already there.
 #[tauri::command]
 pub async fn generate_audio(
     elevenlabs: State<'_, ElevenLabs>,
@@ -111,7 +111,26 @@ async fn generate(
             settings,
         )
         .await?;
-    Ok(store.save(&id, original).await?)
+    let details = GenerationDetails {
+        format: part_format(id, formats),
+        text: tts.text,
+        settings: settings.clone(),
+        elevenlabs_voice_id: voice.elevenlabs_id.clone(),
+        generated_at: chrono::Utc::now(),
+    };
+    Ok(store.save(&id, original, &details).await?)
+}
+
+/// The format the part was written in, as written, even the Default one.
+fn part_format(id: AudioFileId, formats: &SelectedFormats) -> String {
+    let selected = match id.part {
+        AudioPart::Word => formats.word(id.mode),
+        AudioPart::Digit => formats.digit(),
+    };
+    selected.map_or_else(
+        || default_format(FormatSlot::new(id.accent.language(), id.part, id.mode)),
+        str::to_string,
+    )
 }
 
 #[cfg(test)]
@@ -179,7 +198,11 @@ mod tests {
             .await
             .unwrap();
         assert!(loaded[&45].word_audio.is_some());
-        assert_eq!(store.read(&file.file_path).await.unwrap(), b"not an mp3");
+        assert!(store
+            .read(&file.file_path)
+            .await
+            .unwrap()
+            .ends_with(b"not an mp3"));
     }
 
     #[tokio::test]
@@ -197,7 +220,7 @@ mod tests {
         let store = AudioStore::new(dir.path().to_path_buf());
         let voice = voice();
 
-        generate(
+        let file = generate(
             &client(&server),
             &store,
             &voice,
@@ -210,6 +233,42 @@ mod tests {
         )
         .await
         .unwrap();
+
+        let details = store
+            .generation_details(&file.file_path)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(details.format, "\u{a1}{LETTER} {NUM}!");
+        assert_eq!(details.text, "\u{a1}N CUARENTA Y CINCO!");
+        assert_eq!(details.settings, VoiceSettings::default());
+        assert_eq!(details.elevenlabs_voice_id, "el-voice");
+    }
+
+    #[tokio::test]
+    async fn the_default_format_is_kept_as_written() {
+        let (server, _dir, store) =
+            setup(ResponseTemplate::new(200).set_body_bytes(b"mp3".to_vec())).await;
+        let voice = voice();
+
+        let file = generate(
+            &client(&server),
+            &store,
+            &voice,
+            id(&voice, BingoMode::Bingo90, 45, AudioPart::Digit),
+            &VoiceSettings::default(),
+            &SelectedFormats::default(),
+        )
+        .await
+        .unwrap();
+
+        let details = store.generation_details(&file.file_path).await.unwrap();
+        let slot = FormatSlot::new(
+            voice.accent.language(),
+            AudioPart::Digit,
+            BingoMode::Bingo90,
+        );
+        assert_eq!(details.unwrap().format, default_format(slot));
     }
 
     #[tokio::test]

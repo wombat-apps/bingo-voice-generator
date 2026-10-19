@@ -109,6 +109,7 @@ pub fn run() {
             delete_all_audio_files,
             voices_with_trimmed_audio,
             read_audio_file,
+            read_generation_details,
             get_voice_directory,
             // Voices commands
             load_voices,

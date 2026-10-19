@@ -69,9 +69,13 @@ A way of writing the Digit, saying where its first and second digit go and how t
 _Avoid_: Word Format (for the Digit), template, pattern
 
 **Original Audio**:
-The audio of a number exactly as ElevenLabs returned it, before the silence is trimmed. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
+The audio of a number as ElevenLabs returned it, before the silence is trimmed, carrying its Generation Details. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
 _Avoid_: Raw audio, backup, untrimmed audio, master
 
 **Trimmed Audio**:
 The audio of a number after its trailing silence is removed: the one the app plays and the user takes to their bingo. When trimming fails, it is a copy of the Original Audio.
 _Avoid_: Final audio, processed audio
+
+**Generation Details**:
+How one audio file was generated, kept inside the file itself, in both its Original Audio and its Trimmed Audio: the Word Format or Digit Format of its part as it was written (even the Default one), the exact text sent to ElevenLabs, the Voice Settings, the ElevenLabs voice and when it was generated. They describe that one file, not its Voice, and are replaced with it when it is regenerated. The ElevenLabs Account is not part of them. Audio generated before they were kept has none.
+_Avoid_: Metadata, tags, generation info

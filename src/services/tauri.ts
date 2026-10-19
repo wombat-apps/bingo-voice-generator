@@ -12,6 +12,7 @@ import type {
   VoiceDetails,
   AudioFile,
   AudioFileId,
+  GenerationDetails,
   VoiceNumber,
   NumberAudioPair,
   AccentId,
@@ -120,6 +121,11 @@ export async function voicesWithTrimmedAudio(accent: AccentId, mode: BingoModeId
 export async function readAudioFile(filePath: string): Promise<Uint8Array> {
   const result = await invoke<number[]>('read_audio_file', { filePath });
   return new Uint8Array(result);
+}
+
+/** The Generation Details of a Trimmed Audio, or `null` if it was generated before they were kept. */
+export async function readGenerationDetails(filePath: string): Promise<GenerationDetails | null> {
+  return invoke('read_generation_details', { filePath });
 }
 
 interface VoiceDirectoryInfo {

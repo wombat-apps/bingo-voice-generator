@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::models::{Accent, AudioFileId, BingoMode, NumberAudioPair, VoiceNumber};
+use crate::models::{
+    Accent, AudioFileId, BingoMode, GenerationDetails, NumberAudioPair, VoiceNumber,
+};
 use crate::services::app_dirs::AppDirs;
 pub use crate::services::audio_store::StorageError;
 
@@ -51,6 +53,16 @@ pub async fn read_audio_file(
     file_path: String,
 ) -> Result<Vec<u8>, StorageError> {
     dirs.audio_store().read(&file_path).await
+}
+
+/// The Generation Details of a Trimmed Audio, or `None` if it was generated before they were
+/// kept.
+#[tauri::command]
+pub async fn read_generation_details(
+    dirs: State<'_, AppDirs>,
+    file_path: String,
+) -> Result<Option<GenerationDetails>, StorageError> {
+    dirs.audio_store().generation_details(&file_path).await
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

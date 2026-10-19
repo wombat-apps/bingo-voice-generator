@@ -1,8 +1,11 @@
 use std::collections::HashMap;
+use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use id3::frame::ExtendedText;
+use id3::{Tag, TagLike, Version};
 use serde::Serialize;
 use thiserror::Error;
 use tokio::fs;
@@ -10,8 +13,12 @@ use uuid::Uuid;
 
 use super::audio_trimmer::{trim_trailing_silence, AudioTrimError, TrimConfig};
 use crate::models::{
-    Accent, AudioFile, AudioFileId, AudioPart, BingoMode, NumberAudioPair, VoiceNumber,
+    Accent, AudioFile, AudioFileId, AudioPart, BingoMode, GenerationDetails, NumberAudioPair,
+    VoiceNumber,
 };
+
+/// The description of the ID3 `TXXX` frame that holds the Generation Details, as JSON.
+const DETAILS_FRAME: &str = "bingo!! studio";
 
 #[derive(Debug, Error)]
 pub enum StorageError {
@@ -45,6 +52,8 @@ impl Serialize for StorageError {
 ///
 /// It is the only module that knows file names: `n45_word.mp3` (the Bingo 75 Word carries
 /// its letter), `45_word.mp3` (Bingo 90) and `45_digit.mp3` (shared by both Bingo Modes).
+/// Both audios carry their Generation Details in an ID3 tag (see
+/// `docs/adr/0003-generation-details-in-id3-tags.md`).
 #[derive(Debug, Clone)]
 pub struct AudioStore {
     root: PathBuf,
@@ -77,17 +86,18 @@ impl AudioStore {
     }
 
     /// Saves `original`, the audio exactly as ElevenLabs returned it, as the Original Audio,
-    /// then its Trimmed Audio. When trimming fails, the Trimmed Audio is a copy of the
-    /// Original Audio. Replaces any audio already saved for this part.
+    /// then its Trimmed Audio, both tagged with `details`. When trimming fails, the Trimmed
+    /// Audio is a copy of the Original Audio. Replaces any audio already saved for this part.
     pub async fn save(
         &self,
         id: &AudioFileId,
         original: Vec<u8>,
+        details: &GenerationDetails,
     ) -> Result<AudioFile, StorageError> {
         // The Original Audio is only a safety net: failing to save it must not
         // lose a generation that has already spent characters.
         let original_path = self.original_path(id);
-        if let Err(e) = write_file(&original_path, &original).await {
+        if let Err(e) = write_file(&original_path, &with_details(&original, details)).await {
             log::warn!(
                 "[audio_store] Could not save Original Audio {}: {}",
                 original_path.display(),
@@ -96,8 +106,9 @@ impl AudioStore {
         }
 
         let path = self.trimmed_path(id);
+        // Trimming re-encodes the audio and drops any tag, so it is tagged afterwards
         let trimmed = trim_or_keep(original).await;
-        write_file(&path, &trimmed).await?;
+        write_file(&path, &with_details(&trimmed, details)).await?;
 
         Ok(AudioFile::new(
             *id,
@@ -214,6 +225,50 @@ impl AudioStore {
         }
         Ok(fs::read(&path).await?)
     }
+
+    /// The Generation Details of a Trimmed Audio, by the path an `AudioFile` gave, or `None`
+    /// for audio generated before they were kept.
+    pub async fn generation_details(
+        &self,
+        file_path: &str,
+    ) -> Result<Option<GenerationDetails>, StorageError> {
+        Ok(read_details(&self.read(file_path).await?))
+    }
+}
+
+/// `audio` with `details` in its ID3 tag. When tagging fails the audio is kept as it is:
+/// the details are not worth losing a generation that has already spent characters.
+fn with_details(audio: &[u8], details: &GenerationDetails) -> Vec<u8> {
+    let tagged = serde_json::to_string(details)
+        .map_err(|e| e.to_string())
+        .and_then(|json| {
+            let mut tag = Tag::read_from2(Cursor::new(audio)).unwrap_or_default();
+            tag.add_frame(ExtendedText {
+                description: DETAILS_FRAME.to_string(),
+                value: json,
+            });
+            let mut file = Cursor::new(audio.to_vec());
+            tag.write_to_file(&mut file, Version::Id3v24)
+                .map_err(|e| e.to_string())?;
+            Ok(file.into_inner())
+        });
+    tagged.unwrap_or_else(|e| {
+        log::warn!(
+            "[audio_store] Could not write the Generation Details: {}",
+            e
+        );
+        audio.to_vec()
+    })
+}
+
+fn read_details(audio: &[u8]) -> Option<GenerationDetails> {
+    let tag = Tag::read_from2(Cursor::new(audio)).ok()?;
+    let frame = tag
+        .extended_texts()
+        .find(|frame| frame.description == DETAILS_FRAME)?;
+    serde_json::from_str(&frame.value)
+        .inspect_err(|e| log::warn!("[audio_store] Unreadable Generation Details: {}", e))
+        .ok()
 }
 
 /// `n45_word.mp3` for the Bingo 75 Word, `45_word.mp3` for the Bingo 90 Word and
@@ -359,6 +414,23 @@ mod tests {
     // Not an MP3, so trimming fails and the Trimmed Audio is a copy.
     const NOT_MP3: &[u8] = b"not an mp3";
 
+    fn details() -> GenerationDetails {
+        GenerationDetails {
+            format: "¡{LETTER} {NUM}!".into(),
+            text: "¡N CUARENTA Y CINCO!".into(),
+            settings: crate::models::VoiceSettings::default(),
+            elevenlabs_voice_id: "el-voice".into(),
+            generated_at: DateTime::parse_from_rfc3339("2026-10-19T10:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc),
+        }
+    }
+
+    /// The audio of a saved file, after its tag.
+    fn untagged(bytes: &[u8]) -> &[u8] {
+        &bytes[bytes.len() - NOT_MP3.len()..]
+    }
+
     #[tokio::test]
     async fn save_keeps_the_original_and_a_copy_when_trimming_fails() {
         let (_dir, store) = store();
@@ -368,15 +440,60 @@ mod tests {
             .save(
                 &id(voice, BingoMode::Bingo75, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
+                &details(),
             )
             .await
             .unwrap();
 
         assert!(file.file_path.ends_with("n45_word.mp3"));
-        assert_eq!(fs::read(&file.file_path).await.unwrap(), NOT_MP3);
+        assert_eq!(untagged(&fs::read(&file.file_path).await.unwrap()), NOT_MP3);
         let original = store.original_path(&id(voice, BingoMode::Bingo75, 45, AudioPart::Word));
-        assert_eq!(fs::read(&original).await.unwrap(), NOT_MP3);
+        assert_eq!(untagged(&fs::read(&original).await.unwrap()), NOT_MP3);
         assert!(!original.starts_with(store.voice_directory(ACCENT, voice)));
+    }
+
+    #[tokio::test]
+    async fn the_original_and_the_trimmed_audio_carry_the_generation_details() {
+        let (_dir, store) = store();
+        let id = id(Uuid::new_v4(), BingoMode::Bingo75, 45, AudioPart::Word);
+
+        let file = store.save(&id, NOT_MP3.to_vec(), &details()).await.unwrap();
+
+        assert_eq!(
+            store.generation_details(&file.file_path).await.unwrap(),
+            Some(details())
+        );
+        let original = fs::read(store.original_path(&id)).await.unwrap();
+        assert_eq!(read_details(&original), Some(details()));
+    }
+
+    #[tokio::test]
+    async fn audio_saved_before_the_details_were_kept_has_none() {
+        let (_dir, store) = store();
+        let id = id(Uuid::new_v4(), BingoMode::Bingo90, 45, AudioPart::Digit);
+        let path = store.trimmed_path(&id);
+        write_file(&path, NOT_MP3).await.unwrap();
+
+        assert_eq!(
+            store
+                .generation_details(path.to_str().unwrap())
+                .await
+                .unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn regenerating_replaces_the_details_instead_of_adding_more() {
+        let mut newer = details();
+        newer.format = "{NUM}".into();
+
+        let tagged = with_details(&with_details(NOT_MP3, &details()), &newer);
+
+        assert_eq!(read_details(&tagged), Some(newer));
+        assert_eq!(untagged(&tagged), NOT_MP3);
+        let tag = Tag::read_from2(Cursor::new(&tagged)).unwrap();
+        assert_eq!(tag.extended_texts().count(), 1);
     }
 
     #[tokio::test]
@@ -389,7 +506,7 @@ mod tests {
             (80, BingoMode::Bingo90, AudioPart::Word),
         ] {
             store
-                .save(&id(voice, mode, number, part), NOT_MP3.to_vec())
+                .save(&id(voice, mode, number, part), NOT_MP3.to_vec(), &details())
                 .await
                 .unwrap();
         }
@@ -412,7 +529,7 @@ mod tests {
         let mode = BingoMode::Bingo90;
         for part in AudioPart::all() {
             store
-                .save(&id(voice, mode, 45, part), NOT_MP3.to_vec())
+                .save(&id(voice, mode, 45, part), NOT_MP3.to_vec(), &details())
                 .await
                 .unwrap();
         }
@@ -444,6 +561,7 @@ mod tests {
             .save(
                 &id(only_bingo90_word, BingoMode::Bingo90, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
+                &details(),
             )
             .await
             .unwrap();
@@ -451,6 +569,7 @@ mod tests {
             .save(
                 &id(only_digit, BingoMode::Bingo90, 45, AudioPart::Digit),
                 NOT_MP3.to_vec(),
+                &details(),
             )
             .await
             .unwrap();
@@ -491,6 +610,7 @@ mod tests {
             .save(
                 &id(readable, BingoMode::Bingo90, 45, AudioPart::Word),
                 NOT_MP3.to_vec(),
+                &details(),
             )
             .await
             .unwrap();
@@ -517,11 +637,15 @@ mod tests {
             .save(
                 &id(Uuid::new_v4(), BingoMode::Bingo90, 7, AudioPart::Word),
                 NOT_MP3.to_vec(),
+                &details(),
             )
             .await
             .unwrap();
 
-        assert_eq!(store.read(&file.file_path).await.unwrap(), NOT_MP3);
+        assert_eq!(
+            untagged(&store.read(&file.file_path).await.unwrap()),
+            NOT_MP3
+        );
         assert!(matches!(
             store.read(outside.path().to_str().unwrap()).await,
             Err(StorageError::OutsideStore(_))

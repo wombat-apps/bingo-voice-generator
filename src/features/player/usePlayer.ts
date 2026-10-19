@@ -20,6 +20,8 @@ import {
 
 export interface PlayerPanel {
   filePath: string | null;
+  /** When the file was saved, so a regenerated file with the same path is told apart. */
+  createdAt: string | null;
   duration: number;
   time: number;
 }
@@ -133,8 +135,18 @@ export function usePlayer({ audioFiles, selectedNumber, selectNumber }: UsePlaye
     playingNumber: state.number,
     playingPart: state.part,
     isPlaying: state.isPlaying,
-    word: { filePath: wordFilePath, duration: durations.word, time: state.times.word } as PlayerPanel,
-    digit: { filePath: digitFilePath, duration: durations.digit, time: state.times.digit } as PlayerPanel,
+    word: {
+      filePath: wordFilePath,
+      createdAt: selectedPair?.wordAudio?.createdAt ?? null,
+      duration: durations.word,
+      time: state.times.word,
+    } as PlayerPanel,
+    digit: {
+      filePath: digitFilePath,
+      createdAt: selectedPair?.digitAudio?.createdAt ?? null,
+      duration: durations.digit,
+      time: state.times.digit,
+    } as PlayerPanel,
     canNavigate: numbers.length > 1,
     playNumber,
     playPart,

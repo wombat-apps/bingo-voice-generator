@@ -317,6 +317,7 @@ dependencies = [
  "apple-native-keyring-store",
  "chrono",
  "dirs",
+ "id3",
  "keyring-core",
  "log",
  "mp3lame-encoder",
@@ -1887,6 +1888,17 @@ dependencies = [
  "zerofrom",
  "zerotrie",
  "zerovec",
+]
+
+[[package]]
+name = "id3"
+version = "1.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef8be496a46468ba3d43690775aa3a79102ce4daf7d99e8072589aae1a3cd955"
+dependencies = [
+ "bitflags 2.13.2",
+ "byteorder",
+ "flate2",
 ]
 
 [[package]]

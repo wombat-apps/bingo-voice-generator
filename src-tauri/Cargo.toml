@@ -55,6 +55,7 @@ urlencoding = "2"
 # Audio processing for silence trimming
 symphonia = { version = "0.6", default-features = false, features = ["mp3"] }
 mp3lame-encoder = "0.2"
+id3 = "1.17.2"
 
 [features]
 default = ["custom-protocol"]

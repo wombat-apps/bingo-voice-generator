@@ -66,6 +66,17 @@ export interface AudioFile extends AudioFileId {
   createdAt: string;
 }
 
+/** How one audio file was generated, read from the file itself (see GLOSSARY.md). */
+export interface GenerationDetails {
+  /** The Word Format or Digit Format, as written, even the Default one. */
+  format: string;
+  /** The text sent to ElevenLabs. */
+  text: string;
+  settings: VoiceSettings;
+  elevenlabsVoiceId: string;
+  generatedAt: string;
+}
+
 export interface NumberAudioPair {
   number: number;
   wordAudio: AudioFile | null;
