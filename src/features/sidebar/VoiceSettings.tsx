@@ -1,4 +1,4 @@
-import { Sliders } from 'lucide-react';
+import { SlidersVertical } from 'lucide-react';
 import { SegmentedControl } from '../../components';
 import type { VoiceSettings as VoiceSettingsType, StabilityPreset, TtsModelId } from '../../types';
 import { STABILITY_PRESETS, TTS_MODELS } from '../../types';
@@ -43,7 +43,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
       <div className="voice-settings-divider">
         <span className="voice-settings-divider-line" />
         <span className="voice-settings-divider-text">
-          <Sliders size={12} />
+          <SlidersVertical size={12} />
           Voice Settings
         </span>
         <span className="voice-settings-divider-line" />

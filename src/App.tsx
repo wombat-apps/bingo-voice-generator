@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useWindowDrag } from './hooks/useWindowDrag';
 import { useSidebarResize } from './hooks/useSidebarResize';
-import { Settings, PanelLeft, Pencil, Trash2, Star } from 'lucide-react';
+import { Settings, PanelLeft, Pencil, Trash, Star } from 'lucide-react';
 import { SegmentedControl } from './components';
 import { BingoGrid } from './features/grid';
 import { Sidebar } from './features/sidebar';
@@ -669,7 +669,7 @@ function App() {
                     onClick={() => handleDeleteVoice(selectedVoice)}
                     title="Delete voice"
                   >
-                    <Trash2 size={14} />
+                    <Trash size={14} />
                   </button>
                 </div>
               </div>

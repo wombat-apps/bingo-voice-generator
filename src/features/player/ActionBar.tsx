@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Play, Pause, Volume2, SkipBack, SkipForward, FileAudio, RefreshCw, Trash2 } from 'lucide-react';
+import { Play, Pause, Volume2, SkipBack, SkipForward, FileHeadphone, RefreshCw, Trash } from 'lucide-react';
 import type { AudioPart, BingoModeId } from '../../types';
 import { generateWaveform } from '../../services/audioPlayer';
 import { displayNumber } from '../../domain/bingo';
@@ -106,11 +106,11 @@ function PartPanel({
             ) : hasAudio ? (
               <RefreshCw size={18} />
             ) : (
-              <FileAudio size={18} />
+              <FileHeadphone size={18} />
             )}
           </button>
           <button className="btn btn-icon btn-xs btn-delete" onClick={onDelete} title={`Delete ${type}`} disabled={!hasAudio || isGenerating}>
-            <Trash2 size={18} />
+            <Trash size={18} />
           </button>
         </div>
       </div>

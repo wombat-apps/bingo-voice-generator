@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FolderOpen, Pencil, Trash2 } from 'lucide-react';
+import { FolderOpen, Pencil, Trash } from 'lucide-react';
 import './VoiceContextMenu.css';
 
 interface VoiceContextMenuProps {
@@ -129,7 +129,7 @@ export function VoiceContextMenu({
         className="voice-context-menu-item voice-context-menu-item-danger"
         onClick={handleDelete}
       >
-        <Trash2 size={14} />
+        <Trash size={14} />
         <span>Delete</span>
       </button>
     </div>,

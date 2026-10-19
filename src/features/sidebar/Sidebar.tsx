@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Music, Star, Play } from 'lucide-react';
+import { EighthNotes, Star, Play } from 'lucide-react';
 import { SubscriptionInfo } from './SubscriptionInfo';
 import { VoiceContextMenu } from './VoiceContextMenu';
 import { unavailableReason as planUnavailableReason } from '../../domain/plan';
@@ -97,7 +97,7 @@ export function Sidebar({
       <div className="sidebar-section">
         <div className="sidebar-section-header">
           <h3 className="sidebar-section-title">
-            <Music size={16} />
+            <EighthNotes size={16} />
             Voices
           </h3>
           <button

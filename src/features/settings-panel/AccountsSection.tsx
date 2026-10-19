@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, EyeOff, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Trash, Check, X } from 'lucide-react';
 import {
   addAccount,
   confirmDeletion,
@@ -178,7 +178,7 @@ export function AccountsSection({ accountsState, onAccountsChange }: AccountsSec
                       <Pencil size={14} />
                     </button>
                     <button type="button" className="btn btn-icon btn-sm" onClick={() => handleDelete(account)} title="Delete account">
-                      <Trash2 size={14} />
+                      <Trash size={14} />
                     </button>
                   </div>
                 )}
