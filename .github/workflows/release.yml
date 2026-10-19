@@ -87,6 +87,10 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+          # Name the assets without the product name: GitHub turns the "!!" of
+          # "bingo!! studio" into dots but tauri-action does not, so it would
+          # not find the .sig among the uploaded assets and skip latest.json.
+          assetNamePattern: bingo-studio_[version]_[arch][ext]
 
       - name: Locate DMG
         id: dmg
@@ -125,11 +129,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           DMG_PATH="${{ steps.dmg.outputs.path }}"
-          # Replace the versioned DMG tauri-action already uploaded and add the
-          # stable-name copy. GitHub turns every character other than letters,
-          # digits, "_" and "-" into a dot, then collapses ".." (tauri-action's
-          # ghAssetName), so "bingo!! studio_X.dmg" lands as "bingo..studio_X.dmg".
-          GH_NAME=$(basename "$DMG_PATH" | sed -E 's/[^a-zA-Z0-9_-]/./g; s/\.\./\./g')
+          # Replace the versioned DMG tauri-action already uploaded (named by
+          # assetNamePattern above) and add the stable-name copy.
+          GH_NAME="bingo-studio_${{ steps.version.outputs.version }}_aarch64.dmg"
           cp "$DMG_PATH" "$RUNNER_TEMP/$GH_NAME"
           cp "$DMG_PATH" "$RUNNER_TEMP/$DMG_NAME"
           gh release upload "${{ github.ref_name }}" \
