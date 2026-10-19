@@ -12,6 +12,10 @@ Desktop application (macOS, Apple Silicon) that generates audio files for bingo 
 - **Multiple ElevenLabs Accounts**: Save several accounts and switch the active one; API keys stored in system keychain
 - **ElevenLabs Plans**: What each plan allows and the errors it produces are in `docs/elevenlabs-plans.md`
 
+## Where your data lives
+
+Generated audio, `voices.json` and `accounts.json` are in `~/Library/Application Support/BingoVoiceGenerator/`; API keys are in the Keychain. Uninstalling the app (dragging it to the Trash) keeps both, so a reinstall finds everything, but an uninstaller such as AppCleaner deletes them. Development builds (`npm run tauri dev`) use the same folder as the installed app. Audio costs ElevenLabs credits to regenerate, so back up this folder (Time Machine includes it by default).
+
 ## Tech Stack
 
 | Layer | Technology |
