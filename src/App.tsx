@@ -812,6 +812,7 @@ function App() {
         mode={voiceFormState.mode}
         voice={voiceFormState.voice}
         currentAccent={selectedAccent}
+        voices={voices}
         activeAccountId={activeAccountId}
         subscription={subscription}
         onClose={handleCloseVoiceForm}

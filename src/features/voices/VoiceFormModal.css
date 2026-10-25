@@ -354,3 +354,13 @@
 .voice-picker-item.is-unavailable .voice-picker-name {
   opacity: 0.6;
 }
+
+/* ElevenLabs voice already added as a Voice in this Accent: it can still be previewed */
+.voice-picker-item.is-added .voice-picker-info {
+  opacity: 0.5;
+}
+
+.added-as {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}

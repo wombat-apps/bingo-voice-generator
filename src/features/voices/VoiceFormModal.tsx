@@ -29,6 +29,8 @@ interface VoiceFormModalProps {
   mode: 'add' | 'edit';
   voice: Voice | null;
   currentAccent: AccentId;
+  /** Every Voice in the app: an ElevenLabs voice already added in the current Accent cannot be picked again. */
+  voices: Voice[];
   /** Searches again when the Active Account changes. */
   activeAccountId: string | null;
   subscription: SubscriptionInfo | null;
@@ -43,11 +45,17 @@ export function VoiceFormModal({
   mode,
   voice,
   currentAccent,
+  voices,
   activeAccountId,
   subscription,
   onClose,
   onVoiceSaved,
 }: VoiceFormModalProps) {
+  // The Voices of the current Accent by ElevenLabs voice: one can be added at most once per Accent
+  const addedVoices = new Map(
+    voices.filter((v) => v.accent === currentAccent).map((v) => [v.elevenlabsId, v])
+  );
+
   // Search state (add mode)
   const [searchResults, setSearchResults] = useState<VoiceOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -419,11 +427,15 @@ export function VoiceFormModal({
               ) : (
                 <div className="voice-picker-list">
                   {searchResults.map((voiceOption) => {
-                    const unavailableReason = planUnavailableReason(voiceOption.kind, subscription);
+                    const addedVoice = addedVoices.get(voiceOption.voiceId);
+                    // Already added: the Plan only matters when generating with the Voice
+                    const unavailableReason = addedVoice
+                      ? null
+                      : planUnavailableReason(voiceOption.kind, subscription);
                     return (
                       <div
                         key={voiceOption.voiceId}
-                        className={`voice-picker-item ${unavailableReason ? 'is-unavailable' : ''}`}
+                        className={`voice-picker-item ${unavailableReason ? 'is-unavailable' : ''} ${addedVoice ? 'is-added' : ''}`}
                       >
                         <div className="voice-picker-info">
                           <div className="voice-picker-avatar">
@@ -459,6 +471,9 @@ export function VoiceFormModal({
                             {unavailableReason && (
                               <span className="unavailable-reason">{unavailableReason}</span>
                             )}
+                            {addedVoice && addedVoice.customName !== voiceOption.name && (
+                              <span className="added-as">Added as {addedVoice.customName}</span>
+                            )}
                             {voiceOption.description && (
                               <span className="voice-picker-description">{voiceOption.description}</span>
                             )}
@@ -479,13 +494,25 @@ export function VoiceFormModal({
                               )}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => handleSelectVoice(voiceOption)}
-                          >
-                            Select
-                          </button>
+                          {addedVoice ? (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              disabled
+                              title="Already added in this accent"
+                            >
+                              <Check size={14} />
+                              Added
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleSelectVoice(voiceOption)}
+                            >
+                              Select
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
