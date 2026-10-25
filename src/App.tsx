@@ -83,6 +83,8 @@ function App() {
 
   // Track which voices have recordings (for sidebar play button)
   const [voiceHasRecordings, setVoiceHasRecordings] = useState<Map<string, boolean>>(new Map());
+  // Bumped after generating or deleting audio, so voiceHasRecordings is checked again
+  const [recordingsVersion, setRecordingsVersion] = useState(0);
 
   // Platform info (for context menu labels)
   const [platform, setPlatform] = useState<string>('macos');
@@ -360,7 +362,7 @@ function App() {
         );
       })
       .catch((error) => console.error('Failed to check voice recordings:', error));
-  }, [voices, selectedAccent, selectedMode]);
+  }, [voices, selectedAccent, selectedMode, recordingsVersion]);
 
   // Update selected voice when the Accent changes
   useEffect(() => {
@@ -407,6 +409,7 @@ function App() {
           }
           return newMap;
         });
+        setRecordingsVersion((v) => v + 1);
 
         // Play the newly generated audio
         player.playPart(part, selectedNumber);
@@ -469,6 +472,7 @@ function App() {
             return newMap;
           });
         }
+        setRecordingsVersion((v) => v + 1);
 
         // Stop playback if we deleted the currently playing file
         if (player.playingNumber === selectedNumber) {
