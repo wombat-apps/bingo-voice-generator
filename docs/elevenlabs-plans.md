@@ -29,6 +29,7 @@ Facts marked **Verified live** come from calls this app made with real Free and 
 - **Voice ids are global.** Verified live: the same Default Voice or Library Voice has the same `voice_id` in every account.
 - Saving or editing a voice uses one of the Plan's monthly voice add/edit operations.
 - When an owner stops sharing a Library Voice, accounts that saved it keep it for the notice period (30 days to 2 years); it then disappears. `GET /v1/voices/{voice_id}` shows the date in `disable_at_unix`.
+- **A Library Voice whose owner stopped sharing it can still show up in `GET /v1/shared-voices`.** Verified live on 2026-10-25: a voice listed first in its search, with nothing in its fields to tell it apart (no filter or field for the sharing status; [Get shared voices](https://elevenlabs.io/docs/api-reference/voices/voice-library/get-shared)), got `400 sharing_not_enabled` when saved ("Sharing is not enabled for voice …") and `404 voice_not_found` when used to generate by an account that had never saved it. Saving is the only way to tell, so the app does not add a Library Voice whose save fails that way.
 - Some Library Voices are paid-only or have a credit multiplier (a 2x voice costs twice the characters).
 - **`free_users_allowed` on a Library Voice does not mean the Free Plan can use it via the API.** The 402 above applies to every Library Voice, so the app marks only Default Voices as usable on every Plan, labelled "Default" as ElevenLabs does (never "Free", which reads as "costs nothing").
 
@@ -123,11 +124,12 @@ Current shape ([errors](https://elevenlabs.io/docs/eleven-api/resources/errors))
 {"detail": {"type": "payment_required", "code": "paid_plan_required", "message": "…", "status": "payment_required", "request_id": "…"}}
 ```
 
-Switch on `detail.code`, falling back to the HTTP status. `detail.status` is legacy: in the current shape it repeats the type, not the specific code. Older help-center pages still show `{"detail": {"status": "…", "message": "…"}}`, and validation errors can come back as a `422` list.
+Switch on `detail.code`, falling back to the HTTP status. `detail.status` is legacy: in the current shape it usually repeats the type, not the specific code. The exception, seen live on 2026-10-25: with the generic `code: "bad_request"`, `detail.status` carries the specific code (`sharing_not_enabled`), so the app takes it as the code then. Older help-center pages still show `{"detail": {"status": "…", "message": "…"}}`, and validation errors can come back as a `422` list.
 
 | HTTP | `code` | Meaning for this app |
 |---|---|---|
 | 400 | `text_too_long`, `invalid_voice_settings`, `invalid_output_format`, `unsupported_model`, … | Bad request |
+| 400 | `sharing_not_enabled` (in `detail.status`; `code` is `bad_request`) | Saving a Library Voice whose owner stopped sharing it (verified live) |
 | 401 | `invalid_api_key`, `unauthorized` | Wrong key, or the key lacks a permission |
 | 402 | `insufficient_credits` | Character quota used up |
 | 402 | `paid_plan_required` | Library Voice used on the Free Plan (not in the official list; verified live) |

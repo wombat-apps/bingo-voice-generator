@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeGenerationError, describeUpdateError } from './errors';
+import { describeGenerationError, describeUpdateError, isSharingDisabled } from './errors';
 
 const api = (status: number, apiCode: string | null, message = 'msg') => ({
   code: 'API_ERROR' as const,
@@ -22,6 +22,18 @@ describe('describeGenerationError', () => {
     expect(describeGenerationError({ code: 'NO_ACTIVE_ACCOUNT', message: '' }, null)).toMatch(/selecciona una cuenta/);
     expect(describeGenerationError({ code: 'STORAGE_ERROR', message: 'disk full' }, null)).toMatch(/disk full/);
     expect(describeGenerationError('boom', null)).toMatch(/boom/);
+  });
+});
+
+describe('isSharingDisabled', () => {
+  it('spots a Library Voice its owner stopped sharing', () => {
+    expect(isSharingDisabled(api(400, 'sharing_not_enabled'))).toBe(true);
+  });
+
+  it('ignores other failures', () => {
+    expect(isSharingDisabled(api(400, 'bad_request'))).toBe(false);
+    expect(isSharingDisabled(api(401, 'unauthorized'))).toBe(false);
+    expect(isSharingDisabled({ code: 'NETWORK_ERROR', message: 'sharing_not_enabled' })).toBe(false);
   });
 });
 

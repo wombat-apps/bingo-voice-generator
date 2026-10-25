@@ -79,6 +79,18 @@ export function describeGenerationError(err: unknown, accountName: string | null
 }
 
 /**
+ * Whether saving a Library Voice failed because its owner stopped sharing it. The voice can
+ * still show up in the Voice Library search, but generating with it fails with
+ * `404 voice_not_found` (docs/elevenlabs-plans.md).
+ */
+export function isSharingDisabled(err: unknown): boolean {
+  return isElevenLabsError(err) && err.code === 'API_ERROR' && err.apiCode === 'sharing_not_enabled';
+}
+
+export const SHARING_DISABLED_MESSAGE =
+  'Su autor ha dejado de compartir esta voz: aunque aún aparece en la Voice Library, ElevenLabs no permite guardarla ni generar con ella. Elige otra voz.';
+
+/**
  * Message for a failed update check or install: a serialized `UpdateError`
  * (`{code: "UPDATE_ERROR", message}`) or anything else.
  */

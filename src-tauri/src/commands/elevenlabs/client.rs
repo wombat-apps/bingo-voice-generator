@@ -112,9 +112,16 @@ fn parse_error_body(body: &str) -> ErrorBody {
         };
     }
     let text = |key: &str| detail[key].as_str().map(str::to_string);
+    // `detail.status` is the legacy code; in the current shape it usually repeats the type,
+    // but with the generic `bad_request` it carries the specific code (`sharing_not_enabled`).
+    let status = text("status").filter(|status| Some(status) != text("type").as_ref());
+    let code = match text("code") {
+        Some(code) if code == "bad_request" => status.or(Some(code)),
+        Some(code) => Some(code),
+        None => text("status"),
+    };
     ErrorBody {
-        // `detail.status` is the legacy code; in the current shape it repeats the type.
-        code: text("code").or_else(|| text("status")),
+        code,
         message: text("message"),
     }
 }
@@ -639,6 +646,24 @@ pub(crate) mod tests {
             parsed.message.as_deref(),
             Some("Free users cannot use library voices via the API.")
         );
+    }
+
+    #[test]
+    fn prefers_specific_status_over_generic_bad_request() {
+        let body = r#"{"detail":{"type":"invalid_request","code":"bad_request","message":"Sharing is not enabled for voice 'abc'.","status":"sharing_not_enabled","request_id":"abc"}}"#;
+
+        let parsed = parse_error_body(body);
+
+        assert_eq!(parsed.code.as_deref(), Some("sharing_not_enabled"));
+    }
+
+    #[test]
+    fn keeps_bad_request_when_status_repeats_the_type() {
+        let body = r#"{"detail":{"type":"invalid_request","code":"bad_request","message":"Nope","status":"invalid_request"}}"#;
+
+        let parsed = parse_error_body(body);
+
+        assert_eq!(parsed.code.as_deref(), Some("bad_request"));
     }
 
     #[test]

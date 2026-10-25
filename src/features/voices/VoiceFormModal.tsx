@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Play, Square, Check, Search, User, ArrowLeft, Users, Star } from 'lucide-react';
 import type { SharedVoice, LibraryVoiceSort, AccentId, SubscriptionInfo, Voice, VoiceDetails, VoiceKind } from '../../types';
 import { searchLibraryVoices, createVoice, updateVoice, addLibraryVoice, listDefaultVoices } from '../../services/tauri';
-import { errorMessage } from '../../services/errors';
+import { errorMessage, isSharingDisabled, SHARING_DISABLED_MESSAGE } from '../../services/errors';
 import { detailLabel } from '../../domain/voiceDetails';
 import { unavailableReason as planUnavailableReason, worksOnEveryPlan } from '../../domain/plan';
 import './VoiceFormModal.css';
@@ -252,7 +252,8 @@ export function VoiceFormModal({
 
         // Save Library Voices in the account so they stay usable during the notice period if
         // their owner stops sharing them. Not needed to use them, and voice ids are the same in
-        // every account (docs/elevenlabs-plans.md), so a failure is only logged. Skipped when the
+        // every account (docs/elevenlabs-plans.md), so a failure is only logged, except a voice
+        // its owner stopped sharing: generating fails too, so it is not added. Skipped when the
         // Plan cannot use them: ElevenLabs saves the voice on its own the first time an account
         // whose Plan allows it generates with it.
         if (selectedVoice.kind === 'library' && !selectedUnavailableReason) {
@@ -267,6 +268,10 @@ export function VoiceFormModal({
               );
             } catch (err) {
               console.error('[VoiceFormModal] Failed to save the Library Voice in the account:', err);
+              if (isSharingDisabled(err)) {
+                setFormError(SHARING_DISABLED_MESSAGE);
+                return;
+              }
             }
           }
         }
