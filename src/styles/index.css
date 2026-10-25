@@ -673,7 +673,7 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   margin-bottom: var(--spacing-md);
 }
 
-/* Why the Active Account's Plan cannot generate with a Voice (Sidebar, VoiceFormModal) */
+/* Why the Active Account's Plan cannot generate with a Voice (Sidebar, AddVoicesModal) */
 .unavailable-reason {
   font-size: var(--font-size-xs);
   color: var(--text-muted);

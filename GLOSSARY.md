@@ -29,7 +29,7 @@ The single ElevenLabs Account the whole app uses at a given moment: for generati
 _Avoid_: Current key, selected key
 
 **Voice**:
-A voice the user has added to the app for one Accent, under a name they chose, pointing at an ElevenLabs voice. An ElevenLabs voice can be added at most once per Accent, but the same one can be a Voice in several Accents. Voices belong to the app, not to an ElevenLabs Account: every account sees the same Voices and the same audio files. A Voice is either a Default Voice or a Library Voice. Whether the Active Account can generate with it depends on that account's Plan allowing that kind of voice, not on the voice having been saved in the account beforehand.
+A voice the user has added to the app for one Accent, pointing at an ElevenLabs voice, under a name that starts as that ElevenLabs voice's name and the user can change. An ElevenLabs voice can be added at most once per Accent, but the same one can be a Voice in several Accents. Voices belong to the app, not to an ElevenLabs Account: every account sees the same Voices and the same audio files. A Voice is either a Default Voice or a Library Voice. Whether the Active Account can generate with it depends on that account's Plan allowing that kind of voice, not on the voice having been saved in the account beforehand.
 _Avoid_: Speaker, account voice
 
 **Voice Details**:

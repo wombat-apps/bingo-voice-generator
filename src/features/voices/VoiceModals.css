@@ -1,4 +1,4 @@
-/* Modal overlay and base styles (shared with VoicePickerModal) */
+/* Modal overlay and base styles (shared with the other modals) */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -13,7 +13,7 @@
   padding: var(--spacing-lg);
 }
 
-.voice-form-modal {
+.voice-modal {
   background-color: var(--surface-popover);
   border-radius: var(--radius-lg);
   width: 100%;
@@ -38,65 +38,6 @@
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
-}
-
-/* Step indicator */
-.step-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--border-subtle);
-  background-color: var(--surface-card);
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  color: var(--text-subtle);
-}
-
-.step.active {
-  color: var(--accent-tertiary);
-}
-
-.step.completed {
-  color: var(--status-success);
-}
-
-.step-number {
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-full);
-  background-color: var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.step.active .step-number {
-  background-color: var(--accent-tertiary);
-  color: white;
-}
-
-.step.completed .step-number {
-  background-color: var(--status-success);
-  color: white;
-}
-
-.step-label {
-  font-size: var(--font-size-base);
-  font-weight: 500;
-}
-
-.step-divider {
-  width: 40px;
-  height: 2px;
-  background-color: var(--border-subtle);
 }
 
 /* Filters section */
@@ -363,4 +304,15 @@
 .added-as {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+}
+
+/* Why adding this voice failed; the row can be added again */
+.voice-row-error {
+  font-size: var(--font-size-sm);
+  color: var(--status-error);
+}
+
+.added-count {
+  font-size: var(--font-size-base);
+  color: var(--text-subtle);
 }

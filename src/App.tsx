@@ -8,7 +8,7 @@ import { BingoGrid } from './features/grid';
 import { Sidebar } from './features/sidebar';
 import { SettingsPanel } from './features/settings-panel';
 import { ActionBar } from './features/player';
-import { VoiceFormModal } from './features/voices';
+import { AddVoicesModal, EditVoiceModal } from './features/voices';
 import { UpdateButton, useUpdater } from './features/updater';
 import {
   getAccents,
@@ -117,12 +117,9 @@ function App() {
     localStorage.setItem('voiceSettings', JSON.stringify(voiceSettings));
   }, [voiceSettings]);
 
-  // Voice form modal state
-  const [voiceFormState, setVoiceFormState] = useState<{
-    isOpen: boolean;
-    mode: 'add' | 'edit';
-    voice: Voice | null;
-  }>({ isOpen: false, mode: 'add', voice: null });
+  // Voice modals: adding Voices, or editing one
+  const [isAddVoicesOpen, setIsAddVoicesOpen] = useState(false);
+  const [editingVoice, setEditingVoice] = useState<Voice | null>(null);
 
   // Error state
   const [error, setError] = useState<string | null>(null);
@@ -486,39 +483,26 @@ function App() {
   );
 
   const handleOpenVoiceForm = useCallback((voice?: Voice) => {
-    if (voice) {
-      // Edit mode
-      setVoiceFormState({ isOpen: true, mode: 'edit', voice });
-    } else {
-      // Add mode
-      setVoiceFormState({ isOpen: true, mode: 'add', voice: null });
-    }
+    if (voice) setEditingVoice(voice);
+    else setIsAddVoicesOpen(true);
   }, []);
 
-  const handleVoiceSaved = useCallback((updatedVoices: Voice[]) => {
+  // Each Voice added becomes the selected one, so the last one added stays selected
+  const handleVoiceAdded = useCallback((updatedVoices: Voice[], added: Voice) => {
+    setVoices(updatedVoices);
+    setSelectedVoice(added);
+  }, []);
+
+  const handleVoiceEdited = useCallback((updatedVoices: Voice[]) => {
     setVoices(updatedVoices);
     // If we were editing the selected voice, update it with the new data
-    if (voiceFormState.mode === 'edit' && voiceFormState.voice && selectedVoice) {
-      const updatedSelectedVoice = updatedVoices.find(
-        (v) => v.uuid === selectedVoice.uuid
-      );
+    if (selectedVoice) {
+      const updatedSelectedVoice = updatedVoices.find((v) => v.uuid === selectedVoice.uuid);
       if (updatedSelectedVoice) {
         setSelectedVoice(updatedSelectedVoice);
       }
-    } else if (voiceFormState.mode === 'add') {
-      // For add mode, select the newly added voice (last one matching the current Accent)
-      const newVoice = updatedVoices.find(
-        (v) => v.accent === selectedAccent && !voices.some((existing) => existing.uuid === v.uuid)
-      );
-      if (newVoice) {
-        setSelectedVoice(newVoice);
-      }
     }
-  }, [voiceFormState.mode, voiceFormState.voice, selectedVoice, selectedAccent, voices]);
-
-  const handleCloseVoiceForm = useCallback(() => {
-    setVoiceFormState({ isOpen: false, mode: 'add', voice: null });
-  }, []);
+  }, [selectedVoice]);
 
   const handleDeleteVoice = useCallback(async (voice: Voice) => {
     const confirmed = await confirmDeletion(
@@ -807,16 +791,20 @@ function App() {
         onVoiceSettingsChange={setVoiceSettings}
       />
 
-      <VoiceFormModal
-        isOpen={voiceFormState.isOpen}
-        mode={voiceFormState.mode}
-        voice={voiceFormState.voice}
+      <AddVoicesModal
+        isOpen={isAddVoicesOpen}
         currentAccent={selectedAccent}
         voices={voices}
         activeAccountId={activeAccountId}
         subscription={subscription}
-        onClose={handleCloseVoiceForm}
-        onVoiceSaved={handleVoiceSaved}
+        onClose={() => setIsAddVoicesOpen(false)}
+        onVoiceAdded={handleVoiceAdded}
+      />
+
+      <EditVoiceModal
+        voice={editingVoice}
+        onClose={() => setEditingVoice(null)}
+        onVoiceSaved={handleVoiceEdited}
       />
 
       {error && (

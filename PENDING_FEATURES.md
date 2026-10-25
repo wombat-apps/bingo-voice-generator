@@ -12,7 +12,7 @@ Listado de funcionalidades presentes en la app nativa de macOS (retirada; consul
 - ✅ Cambiar género
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Sidebar/VoiceFormSheet.swift`
-**Implementación Tauri:** `src/features/voices/VoiceFormModal.tsx`
+**Implementación Tauri:** `src/features/voices/EditVoiceModal.tsx`
 
 ### 1.2 Voces favoritas ✅ COMPLETADO
 - ✅ Marcar/desmarcar voces como favoritas (estrella)

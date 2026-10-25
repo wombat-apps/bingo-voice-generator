@@ -1,1 +1,2 @@
-export { VoiceFormModal } from './VoiceFormModal';
+export { AddVoicesModal } from './AddVoicesModal';
+export { EditVoiceModal } from './EditVoiceModal';
