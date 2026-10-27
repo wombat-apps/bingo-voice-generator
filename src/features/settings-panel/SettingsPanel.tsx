@@ -10,6 +10,8 @@ interface SettingsPanelProps {
   accent: AccentId;
   /** The number selected in the grid, which the format previews show. */
   number: number | null;
+  /** While the Pending Audio is generated, its settings and formats cannot change. */
+  locked: boolean;
   onClose: () => void;
   onVoiceSettingsChange: (settings: VoiceSettingsType) => void;
 }
@@ -19,6 +21,7 @@ export function SettingsPanel({
   voiceSettings,
   accent,
   number,
+  locked,
   onClose,
   onVoiceSettingsChange,
 }: SettingsPanelProps) {
@@ -39,7 +42,7 @@ export function SettingsPanel({
           </button>
         </header>
 
-        <div className="settings-panel-content">
+        <div className={`settings-panel-content${locked ? ' is-locked' : ''}`} inert={locked}>
           {/* Voice Settings */}
           <section className="settings-section">
             <VoiceSettings

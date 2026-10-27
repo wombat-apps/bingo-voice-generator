@@ -66,9 +66,11 @@ Frontend (React/TypeScript)     Backend (Rust/Tauri)
 src/App.tsx                     src-tauri/src/lib.rs (manages AppDirs, ElevenLabs, PendingUpdate)
     ↓                           src-tauri/src/menu.rs (app menu, "Check for Updates…")
 src/services/tauri.ts  ←IPC→   src-tauri/src/commands/
-    ↓                               ├── generation.rs (generate_audio: text → TTS → save)
+    ↓                               ├── generation.rs (generate_audio: text → TTS → save; pending_audio)
 src/features/                       ├── elevenlabs/ (client.rs: one client per key, errors;
     ├── grid/                       │                types.rs: DTOs; mod.rs: commands)
+    ├── pending/ (Generate Pending, │
+    │   pending.ts rules)           │
     ├── sidebar/                    ├── storage.rs (thin commands over audio_store)
     ├── player/ (usePlayer,         ├── voices.rs (voice CRUD)
     │   player.ts reducer)          ├── formats.rs (Word/Digit Format CRUD, selection, preview)
@@ -114,7 +116,7 @@ All Tauri command wrappers are in `src/services/tauri.ts`. When adding new backe
 ## Data Flow
 
 1. User selects Accent/mode/voice in Sidebar (an Accent belongs to a Language, which sets the number words; see `GLOSSARY.md`)
-2. Selects a number and clicks Word or Digit in the action bar (one request per part; there is no batch generation) → `App.tsx` calls `generate_audio` once
+2. Selects a number and clicks Word or Digit in the action bar (one request per part) → `App.tsx` calls `generate_audio` once. "Generate Pending", over the grid, instead lists the Pending Audio of the Voice and Bingo Mode (`pending_audio`, with the characters it will cost) and, once confirmed, calls `generate_audio` for each file in turn (`src/features/pending/`), retrying only `rate_limit_exceeded` and `system_busy` and stopping at any other error; meanwhile the app locks what it generates with
 3. `generate_audio` builds the TTS text for the Voice's Accent (`number_words.rs` for the Language's words, written in the Word Format and Digit Format selected for its Language, also in the context, `accent.rs` for the scene) and calls ElevenLabs with the Active Account
 4. `audio_store` keeps the untrimmed Original Audio in `~/Library/Application Support/BingoVoiceGenerator/Originals/<accent>/<voice uuid>/`, trims the trailing silence and saves the Trimmed Audio to `~/Library/Application Support/BingoVoiceGenerator/<accent>/<voice uuid>/` (the part is in the file name, and the Bingo 75 Word also carries its letter, e.g. `n45_word.mp3`; the Digit is shared by both Bingo Modes, e.g. `45_digit.mp3`, and numbers below 10 have none; see `GLOSSARY.md`). Both files carry their Generation Details (format, text sent, Voice Settings) in an ID3 tag, which the info button of each player track shows (`read_generation_details`; see `docs/adr/0003-generation-details-in-id3-tags.md`)
 5. The Player (`usePlayer`) loads the Trimmed Audio bytes and plays them through `<audio>`

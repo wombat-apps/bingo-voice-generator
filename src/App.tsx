@@ -10,6 +10,7 @@ import { SettingsPanel } from './features/settings-panel';
 import { ActionBar } from './features/player';
 import { AddVoicesModal, EditVoiceModal } from './features/voices';
 import { UpdateButton, useUpdater } from './features/updater';
+import { PendingHeader, usePendingGeneration, generatedAudio, totalAudio, withAudio } from './features/pending';
 import {
   getAccents,
   loadVoices,
@@ -37,6 +38,7 @@ import type {
   AccentId,
   BingoModeId,
   AudioPart,
+  AudioFile,
   NumberAudioPair,
   VoiceNumber,
   VoiceSettings,
@@ -398,17 +400,7 @@ function App() {
       try {
         const savedFile = await generateAudioFile(selectedNumber, selectedVoice, selectedMode, part, voiceSettings);
 
-        // Update local state
-        setAudioFiles((prev) => {
-          const newMap = new Map(prev);
-          const existing = newMap.get(selectedNumber) || { number: selectedNumber, wordAudio: null, digitAudio: null };
-          if (part === 'word') {
-            newMap.set(selectedNumber, { ...existing, wordAudio: savedFile });
-          } else {
-            newMap.set(selectedNumber, { ...existing, digitAudio: savedFile });
-          }
-          return newMap;
-        });
+        setAudioFiles((prev) => withAudio(prev, selectedNumber, part, savedFile));
         setRecordingsVersion((v) => v + 1);
 
         // Play the newly generated audio
@@ -422,6 +414,31 @@ function App() {
     },
     [selectedNumber, selectedVoice, hasActiveAccount, activeAccountName, selectedMode, voiceSettings, player.playPart]
   );
+
+  // Generate all the Pending Audio of the selected Voice and Bingo Mode, one file after another.
+  // Nothing plays and the selection stays: the grid fills in as files arrive.
+  const handlePendingGenerated = useCallback((pending: { number: number; part: AudioPart }, file: AudioFile) => {
+    setAudioFiles((prev) => withAudio(prev, pending.number, pending.part, file));
+    setRecordingsVersion((v) => v + 1);
+  }, []);
+  const handlePendingError = useCallback(
+    (err: unknown) => setError(describeGenerationError(err, activeAccountName)),
+    [activeAccountName]
+  );
+  const pending = usePendingGeneration({
+    accent: selectedAccent,
+    voice: selectedVoice,
+    mode: selectedMode,
+    settings: voiceSettings,
+    accountName: activeAccountName,
+    subscription,
+    onGenerated: handlePendingGenerated,
+    onError: handlePendingError,
+  });
+  // While it runs, nothing that changes what it generates can change
+  const isGeneratingPending = pending.progress !== null;
+  const pendingLockedReason = isGeneratingPending ? 'Generating the Pending Audio' : null;
+  const isGenerating = isGeneratingWord || isGeneratingDigit || isGeneratingPending;
 
   const handleGenerateWord = useCallback(() => {
     generateAudio('word');
@@ -616,7 +633,7 @@ function App() {
       <div className="drag-strip" id="titlebar" data-tauri-drag-region />
 
       {/* Sidebar - full height on left */}
-      <aside className="app-sidebar">
+      <aside className={`app-sidebar${isGeneratingPending ? ' is-locked' : ''}`} inert={isGeneratingPending}>
         <Sidebar
           accents={accents}
           voices={voices}
@@ -690,6 +707,7 @@ function App() {
                   <button
                     className="btn btn-icon btn-secondary btn-sm"
                     onClick={() => handleOpenVoiceForm(selectedVoice)}
+                    disabled={isGeneratingPending}
                     title="Edit voice"
                   >
                     <Pencil size={14} />
@@ -697,6 +715,7 @@ function App() {
                   <button
                     className="btn btn-icon btn-secondary btn-sm header-voice-delete"
                     onClick={() => handleDeleteVoice(selectedVoice)}
+                    disabled={isGeneratingPending}
                     title="Delete voice"
                   >
                     <Trash size={14} />
@@ -716,6 +735,7 @@ function App() {
             ]}
             value={selectedMode}
             onChange={setSelectedMode}
+            disabled={isGeneratingPending}
             size="md"
           />
 
@@ -723,7 +743,7 @@ function App() {
             {updater.update && (
               <UpdateButton
                 update={updater.update}
-                isGenerating={isGeneratingWord || isGeneratingDigit}
+                isGenerating={isGenerating}
                 isInstalling={updater.isInstalling}
                 onInstall={updater.install}
                 onLater={updater.later}
@@ -744,6 +764,21 @@ function App() {
 
         <main className="app-main">
           <section className="app-content">
+            {selectedVoice && (
+              <PendingHeader
+                mode={selectedMode}
+                generated={generatedAudio(audioFiles)}
+                total={totalAudio(selectedMode)}
+                progress={pending.progress}
+                disabledReason={
+                  accountUnavailableReason ??
+                  selectedVoiceUnavailableReason ??
+                  (isGeneratingWord || isGeneratingDigit ? 'Wait for the current generation to finish' : null)
+                }
+                onGenerate={pending.start}
+                onCancel={pending.cancel}
+              />
+            )}
             <BingoGrid
               mode={selectedMode}
               audioFiles={audioFiles}
@@ -776,6 +811,7 @@ function App() {
           isGeneratingWord={isGeneratingWord}
           isGeneratingDigit={isGeneratingDigit}
           accountUnavailableReason={accountUnavailableReason}
+          generationLockedReason={pendingLockedReason}
           voiceSelected={selectedVoice !== null}
           voiceUnavailableReason={selectedVoiceUnavailableReason}
           selectedHasWord={selectedHasWord}
@@ -791,6 +827,7 @@ function App() {
         voiceSettings={voiceSettings}
         accent={selectedAccent}
         number={selectedNumber}
+        locked={isGeneratingPending}
         onClose={() => setIsSettingsPanelOpen(false)}
         onVoiceSettingsChange={setVoiceSettings}
       />

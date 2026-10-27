@@ -77,6 +77,13 @@ export interface GenerationDetails {
   generatedAt: string;
 }
 
+/** The Pending Audio of a Voice in a Bingo Mode, numbers up, the Word before the Digit. */
+export interface PendingAudio {
+  parts: { number: number; part: AudioPart }[];
+  /** Characters of the texts that would be sent to ElevenLabs, in the selected formats. */
+  characters: number;
+}
+
 export interface NumberAudioPair {
   number: number;
   wordAudio: AudioFile | null;

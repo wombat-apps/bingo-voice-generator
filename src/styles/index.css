@@ -678,3 +678,8 @@ html.platform-macos .app.sidebar-collapsed .app-header {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
 }
+
+/* Inert while the Pending Audio is generated */
+.is-locked {
+  opacity: 0.5;
+}

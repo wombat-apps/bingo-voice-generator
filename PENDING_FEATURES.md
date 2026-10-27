@@ -126,8 +126,8 @@ Si se implementa, solo se deben ofrecer los formatos que permita el Plan de la A
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 **Implementación Tauri:** `src/features/player/WaveformSlider.tsx`, `src/services/audioPlayer.ts`
 
-### 4.5 Contador de audios
-- Indicador "X / Total" de audios generados
+### 4.5 Contador de audios ✅ COMPLETADO
+- ✅ Indicador "X / Total" de audios generados (en la cabecera sobre el grid)
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/NowPlayingBar.swift`
 
@@ -182,10 +182,9 @@ Si se implementa, solo se deben ofrecer los formatos que permita el Plan de la A
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/EmptyStateView.swift`
 
-### 7.2 Header de progreso
-- Barra de progreso durante generación batch
-- Porcentaje completado
-- Contador completados/total
+### 7.2 Header de progreso ✅ COMPLETADO
+- ✅ Contador completados/total
+- ✅ Generar todos los Pending Audio del modo, en serie, con progreso y cancelación
 
 **Referencia macOS:** `swift-final:Sources/BingoVoiceGenerator/Views/Grid/ProgressHeader.swift`
 

@@ -3,9 +3,11 @@ use tauri::State;
 use thiserror::Error;
 
 use super::elevenlabs::{ElevenLabs, ElevenLabsClient, ElevenLabsError};
+use uuid::Uuid;
+
 use crate::models::{
-    build_tts_text, default_format, AudioFile, AudioFileId, AudioPart, BingoMode, FormatSlot,
-    GenerationDetails, SelectedFormats, Voice, VoiceNumber, VoiceSettings,
+    build_tts_text, default_format, Accent, AudioFile, AudioFileId, AudioPart, BingoMode,
+    FormatSlot, GenerationDetails, SelectedFormats, Voice, VoiceNumber, VoiceSettings,
 };
 use crate::services::app_dirs::AppDirs;
 use crate::services::audio_store::{AudioStore, StorageError};
@@ -72,6 +74,68 @@ pub async fn generate_audio(
         &formats,
     )
     .await
+}
+
+/// The Pending Audio of a Voice in a Bingo Mode, in the order it is generated: numbers up,
+/// the Word before the Digit.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingAudio {
+    pub parts: Vec<PendingPart>,
+    /// Characters of the texts that would be sent to ElevenLabs, in the selected formats.
+    pub characters: usize,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+pub struct PendingPart {
+    pub number: u32,
+    pub part: AudioPart,
+}
+
+#[tauri::command]
+pub async fn pending_audio(
+    dirs: State<'_, AppDirs>,
+    accent: Accent,
+    voice_uuid: Uuid,
+    mode: BingoMode,
+) -> Result<PendingAudio, GenerationError> {
+    let formats = dirs
+        .format_store()
+        .selected_formats(accent.language())
+        .await?;
+    pending(&dirs.audio_store(), accent, voice_uuid, mode, &formats).await
+}
+
+/// A Word or Digit is pending when its file does not exist, whatever it was generated with.
+/// The Digit serves both Bingo Modes, so one generated for the other mode is not pending.
+async fn pending(
+    store: &AudioStore,
+    accent: Accent,
+    voice: Uuid,
+    mode: BingoMode,
+    formats: &SelectedFormats,
+) -> Result<PendingAudio, GenerationError> {
+    let existing = store.load(accent, voice, mode).await?;
+    let mut parts = Vec::new();
+    let mut characters = 0;
+    for number in 1..=mode.max_number() {
+        let pair = existing.get(&number);
+        for part in AudioPart::all() {
+            let exists = match part {
+                AudioPart::Word => pair.is_some_and(|p| p.word_audio.is_some()),
+                AudioPart::Digit => pair.is_some_and(|p| p.digit_audio.is_some()),
+            };
+            if exists {
+                continue;
+            }
+            let Some(tts) = build_tts_text(number, accent, mode, part, formats) else {
+                continue;
+            };
+            characters += tts.text.chars().count();
+            parts.push(PendingPart { number, part });
+        }
+    }
+    Ok(PendingAudio { parts, characters })
 }
 
 /// The text is built for the Voice's Accent first, so a number with no such part fails
@@ -300,6 +364,130 @@ mod tests {
             .await
             .unwrap()
             .is_empty());
+    }
+
+    async fn save_part(
+        store: &AudioStore,
+        voice: &Voice,
+        mode: BingoMode,
+        number: u32,
+        part: AudioPart,
+    ) {
+        let details = GenerationDetails {
+            format: String::new(),
+            text: String::new(),
+            settings: VoiceSettings::default(),
+            elevenlabs_voice_id: voice.elevenlabs_id.clone(),
+            generated_at: chrono::Utc::now(),
+        };
+        store
+            .save(&id(voice, mode, number, part), b"mp3".to_vec(), &details)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn every_word_and_every_digit_from_10_up_is_pending_for_a_new_voice() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = AudioStore::new(dir.path().to_path_buf());
+        let voice = voice();
+
+        let pending = pending(
+            &store,
+            voice.accent,
+            voice.uuid,
+            BingoMode::Bingo90,
+            &SelectedFormats::default(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(pending.parts.len(), 90 + 81);
+        assert_eq!(
+            &pending.parts[8..11],
+            &[
+                PendingPart {
+                    number: 9,
+                    part: AudioPart::Word
+                },
+                PendingPart {
+                    number: 10,
+                    part: AudioPart::Word
+                },
+                PendingPart {
+                    number: 10,
+                    part: AudioPart::Digit
+                },
+            ]
+        );
+        assert!(pending.characters > 0);
+    }
+
+    #[tokio::test]
+    async fn existing_files_and_the_digits_of_the_other_mode_are_not_pending() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = AudioStore::new(dir.path().to_path_buf());
+        let voice = voice();
+        save_part(&store, &voice, BingoMode::Bingo90, 45, AudioPart::Digit).await;
+        save_part(&store, &voice, BingoMode::Bingo90, 45, AudioPart::Word).await;
+        save_part(&store, &voice, BingoMode::Bingo75, 3, AudioPart::Word).await;
+
+        let pending = pending(
+            &store,
+            voice.accent,
+            voice.uuid,
+            BingoMode::Bingo75,
+            &SelectedFormats::default(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(pending.parts.len(), 75 + 66 - 2);
+        assert!(pending.parts.contains(&PendingPart {
+            number: 45,
+            part: AudioPart::Word
+        }));
+        assert!(!pending.parts.contains(&PendingPart {
+            number: 45,
+            part: AudioPart::Digit
+        }));
+        assert!(!pending.parts.contains(&PendingPart {
+            number: 3,
+            part: AudioPart::Word
+        }));
+    }
+
+    #[tokio::test]
+    async fn characters_count_the_texts_in_the_selected_formats() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = AudioStore::new(dir.path().to_path_buf());
+        let voice = voice();
+        for number in 2..=75 {
+            save_part(&store, &voice, BingoMode::Bingo75, number, AudioPart::Word).await;
+            save_part(&store, &voice, BingoMode::Bingo75, number, AudioPart::Digit).await;
+        }
+
+        let pending = pending(
+            &store,
+            voice.accent,
+            voice.uuid,
+            BingoMode::Bingo75,
+            &SelectedFormats {
+                word_75: Some("{LETTER} {NUM}".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            pending.parts,
+            vec![PendingPart {
+                number: 1,
+                part: AudioPart::Word
+            }]
+        );
+        assert_eq!(pending.characters, "B UNO".chars().count());
     }
 
     #[tokio::test]

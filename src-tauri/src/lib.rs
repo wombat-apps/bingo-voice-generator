@@ -99,6 +99,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // ElevenLabs commands
             generate_audio,
+            pending_audio,
             list_default_voices,
             search_library_voices,
             get_account_subscription,

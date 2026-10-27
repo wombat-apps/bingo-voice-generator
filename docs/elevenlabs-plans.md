@@ -88,7 +88,7 @@ The app sends each Audio Part with unspoken context: a scene describing the bing
 | Scale / Business | 15 | 30 |
 | Enterprise | Elevated | Elevated |
 
-Going over the limit returns `429`. The app sends at most 2 requests at once (Word and Digit), so this only matters on the Free Plan. Source: [models](https://elevenlabs.io/docs/overview/models), [429 help article](https://elevenlabs.io/docs/help-center/technical/api-error-code-429).
+Going over the limit returns `429`. The app sends at most 2 requests at once (the Word and the Digit of the selected number), and generates the Pending Audio one request at a time, so this only matters on the Free Plan. Source: [models](https://elevenlabs.io/docs/overview/models), [429 help article](https://elevenlabs.io/docs/help-center/technical/api-error-code-429).
 
 ## Audio formats
 

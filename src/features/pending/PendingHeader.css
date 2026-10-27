@@ -1,0 +1,36 @@
+.pending-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-height: 32px;
+  margin: 0 auto var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+/* As wide as the grid below */
+.pending-header--bingo75 {
+  max-width: 400px;
+}
+
+.pending-header--bingo90 {
+  max-width: 800px;
+}
+
+.pending-header-count {
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-header-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-header .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}

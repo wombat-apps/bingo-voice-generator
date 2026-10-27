@@ -25,6 +25,7 @@ interface PartPanelProps {
   canGenerate: boolean;
   /** Shown as the generate button's tooltip instead of the default one. */
   generateDisabledReason: string | null;
+  canDelete: boolean;
   onGenerate: () => void;
   onPlay: () => void;
   onPause: () => void;
@@ -45,6 +46,7 @@ function PartPanel({
   isGenerating,
   canGenerate,
   generateDisabledReason,
+  canDelete,
   onGenerate,
   onPlay,
   onPause,
@@ -134,7 +136,7 @@ function PartPanel({
               <Info size={18} />
             </button>
           )}
-          <button className="btn btn-icon btn-xs btn-delete" onClick={onDelete} title={`Delete ${type}`} disabled={!hasAudio || isGenerating}>
+          <button className="btn btn-icon btn-xs btn-delete" onClick={onDelete} title={`Delete ${type}`} disabled={!hasAudio || isGenerating || !canDelete}>
             <Trash size={18} />
           </button>
         </div>
@@ -180,6 +182,8 @@ interface ActionBarProps {
   isGeneratingDigit: boolean;
   /** Why the Active Account cannot generate at all (none, or no key), or null. */
   accountUnavailableReason: string | null;
+  /** Why no number can be generated or deleted now (the Pending Audio is being generated), or null. */
+  generationLockedReason: string | null;
   voiceSelected: boolean;
   /** Why the Active Account's Plan cannot generate with the selected Voice, or null. */
   voiceUnavailableReason: string | null;
@@ -213,6 +217,7 @@ export function ActionBar({
   isGeneratingWord,
   isGeneratingDigit,
   accountUnavailableReason,
+  generationLockedReason,
   voiceSelected,
   voiceUnavailableReason,
   selectedHasWord,
@@ -221,7 +226,7 @@ export function ActionBar({
 }: ActionBarProps) {
   // Determine button states
   const canGenerate =
-    accountUnavailableReason === null && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
+    generationLockedReason === null && accountUnavailableReason === null && voiceSelected && voiceUnavailableReason === null && selectedNumber !== null;
 
   // Format display number for selected cell
   const selectedLabel = selectedNumber !== null ? displayNumber(selectedNumber, mode) : null;
@@ -264,7 +269,8 @@ export function ActionBar({
             hasAudio={selectedHasWord}
             isGenerating={isGeneratingWord}
             canGenerate={canGenerate}
-            generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
+            generateDisabledReason={generationLockedReason ?? accountUnavailableReason ?? voiceUnavailableReason}
+            canDelete={generationLockedReason === null}
             onGenerate={onGenerateWord}
             onPlay={onPlayWord}
             onPause={onPause}
@@ -312,7 +318,8 @@ export function ActionBar({
           hasAudio={selectedHasWord}
           isGenerating={isGeneratingWord}
           canGenerate={canGenerate}
-          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
+          generateDisabledReason={generationLockedReason ?? accountUnavailableReason ?? voiceUnavailableReason}
+            canDelete={generationLockedReason === null}
           onGenerate={onGenerateWord}
           onPlay={onPlayWord}
           onPause={onPause}
@@ -332,7 +339,8 @@ export function ActionBar({
           hasAudio={selectedHasDigit}
           isGenerating={isGeneratingDigit}
           canGenerate={canGenerate}
-          generateDisabledReason={accountUnavailableReason ?? voiceUnavailableReason}
+          generateDisabledReason={generationLockedReason ?? accountUnavailableReason ?? voiceUnavailableReason}
+            canDelete={generationLockedReason === null}
           onGenerate={onGenerateDigit}
           onPlay={onPlayDigit}
           onPause={onPause}

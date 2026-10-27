@@ -15,6 +15,7 @@ import type {
   GenerationDetails,
   VoiceNumber,
   NumberAudioPair,
+  PendingAudio,
   AccentId,
   BingoModeId,
   AudioPart,
@@ -45,6 +46,10 @@ export async function generateAudio(
   settings: VoiceSettings
 ): Promise<AudioFile> {
   return invoke<AudioFile>('generate_audio', { number, voice, mode, part, settings });
+}
+
+export async function pendingAudio(accent: AccentId, voice: Voice, mode: BingoModeId): Promise<PendingAudio> {
+  return invoke<PendingAudio>('pending_audio', { accent, voiceUuid: voice.uuid, mode });
 }
 
 export async function listDefaultVoices(
@@ -157,6 +162,11 @@ export async function revealVoiceInFileManager(
  */
 export async function confirmDeletion(title: string, message: string): Promise<boolean> {
   return ask(message, { title, kind: 'warning', okLabel: 'Delete', cancelLabel: 'Cancel' });
+}
+
+/** Native dialog asking to start generating; resolves to true only when the user confirms. */
+export async function confirmGeneration(title: string, message: string): Promise<boolean> {
+  return ask(message, { title, kind: 'info', okLabel: 'Generate', cancelLabel: 'Cancel' });
 }
 
 /** Native dialog with an OK button. Use instead of `window.alert`. */

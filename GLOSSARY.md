@@ -68,6 +68,10 @@ _Avoid_: Digits audio, spelled number
 A way of writing the Digit, saying where its first and second digit go and how they are written ("{FIRST}… {second}" gives "SIETE… cinco"). Like the Digit, it belongs to one Language and not to a Bingo Mode. Otherwise it works like a Word Format: it has no name, there is always the Default one, the user can add more, and one is selected for each Language, for all its Voices.
 _Avoid_: Word Format (for the Digit), template, pattern
 
+**Pending Audio**:
+A Word or Digit a Voice still has no audio file for in a Bingo Mode: the Word of each of its numbers, and the Digit of each number from 10 up. An audio file that exists is never pending, whatever Word Format, Digit Format, Voice Settings or ElevenLabs Account it was generated with. Since the Digit serves both Bingo Modes, a Digit generated for one is not pending in the other. The user can generate all the Pending Audio of the selected Voice and Bingo Mode at once, one file after another.
+_Avoid_: Missing audio, batch, remaining numbers
+
 **Original Audio**:
 The audio of a number as ElevenLabs returned it, before the silence is trimmed, carrying its Generation Details. It is kept only so the Trimmed Audio can be rebuilt by hand without spending characters again; the app neither plays nor uses it. It lives and dies with its Trimmed Audio: regenerating replaces both, deleting removes both. Audio generated before originals were kept has none.
 _Avoid_: Raw audio, backup, untrimmed audio, master

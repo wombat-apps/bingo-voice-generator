@@ -10,6 +10,7 @@ interface SegmentedControlProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   size?: 'sm' | 'md';
+  disabled?: boolean;
 }
 
 export function SegmentedControl<T extends string>({
@@ -17,6 +18,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   size = 'sm',
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <div className={`segmented-control segmented-control-${size}`}>
@@ -26,6 +28,7 @@ export function SegmentedControl<T extends string>({
           type="button"
           className={`segmented-button ${value === option.value ? 'active' : ''}`}
           onClick={() => onChange(option.value)}
+          disabled={disabled}
         >
           {option.label}
         </button>
